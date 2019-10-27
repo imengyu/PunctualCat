@@ -1,0 +1,63 @@
+/*Intro*/
+#intro {
+  display: flex;
+  z-index: 3000;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  background-color: #fff;
+  opacity: 1;
+
+  img {
+    width: 100px;
+    height: 100px;
+  }
+  h3 {
+    margin-top: 25px;
+    font-size: 26px;
+    font-weight: 300;
+  }
+
+  &.hidding {
+    transition: opacity linear .6s;
+    opacity: 0;
+  }
+  &.hidden {
+    display: none;
+  }
+
+  .ver-text{
+    text-align: center;
+    color: #8f8f8f;
+    position: absolute;
+    bottom: 50px;
+    font-size: 12px;
+  }
+}
+
+/*错误区域*/
+.error-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  z-index: 1000;
+  background: #fff;
+  padding: 30px 20px 50px 20px;
+
+  div {
+    text-align: center;
+  }
+
+  .erricon {
+    font-size: 38px;
+    color: #bd6819;
+    margin-bottom: 10px;
+  }
+
+  span {
+    text-align: center;
+    display: block;
+    color: #8f8f8f;
+  }
+}

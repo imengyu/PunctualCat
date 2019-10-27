@@ -1,0 +1,36 @@
+<html>
+  <head>
+    <meta charset="utf8">
+    <meta content="width=device-width,initial-scale=1,minimal-ui" name="viewport">
+    <title>PunctualCat</title>
+  </head>
+
+  <body>
+    <div class="window">
+
+      <!--进入遮罩和错误信息遮罩-->
+      <div id="global-error-info" class="window-container error-area" style="display: none">
+        <i class="erricon fa fa-exclamation-triangle" aria-hidden="true"></i>
+        <span id="global-error-info-text" class="text-secondary mb-3">程序发生了一个错误，
+          请尝试 <a href="javascript:;" onclick="location.reload(true)">重载程序</a>  或 <a href="#" onclick="alert('错误已提交！我们将尽快解决此问题。');location.reload(true)">向我们反馈错误报告</a> </span>
+      </div>
+      <div id="intro" class="window-container">
+        <img src="assets/images/logo128.png" style="display: none" />
+        <h3 style="display: none">PunctualCat</h3>
+        <div style="display: none" class="ver-text">
+          Version <span id="intro-ver"></span> <br>
+          <i class="fa fa-copyright mr-2" aria-hidden="true"></i>2019 BY 梦欤
+        </div>
+      </div>
+
+      <!--App-->
+      <div id="app"></div>
+
+    </div>
+
+    <!--非打包代码-->
+    <script>if(typeof require=="undefined"){window.onload=function(){document.getElementById("intro").setAttribute("style","display:none");document.getElementById("global-error-info").setAttribute("style","");document.getElementById("global-error-info-text").innerText="本应用不能在浏览器中运行!"};throw Error("本应用不能在浏览器中运行! App must run in Electron")}const appWin32=require("./app.node");const Datastore=require("nedb");var appPath=process.cwd();var dbPath=appPath+"/data/data.db";var db=new Datastore({filename:dbPath});var main=null;var data=null;var appVesrsion='V 2.0.1';var appBuildDate='2919/11/28';</script> 
+
+  </body>
+
+</html>

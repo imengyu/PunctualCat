@@ -1,0 +1,129 @@
+.about-head {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  padding: 50px 10px 20px 10px;
+  text-align: center;
+
+  -webkit-app-region: drag;
+
+  img {
+    width: 80px;
+    height: 80px;
+  }
+
+  span {
+    margin-top: 20px;
+    color: #3f51b5;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  label {
+    margin-top: 5px;
+    display: block;
+    margin: 0;
+    color: #8f8f8f;
+    font-size: 13px;
+  }
+}
+
+.toolbar-time {
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: auto;
+  position: relative;
+  color: #fff;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: auto;
+
+  .time {
+    display: inline-block;
+    font-size: 30px;
+    margin-left: 8px;
+  }
+
+  .date {
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+    flex-direction: column;
+    height: 100%;
+    margin-left: 8px;
+
+    .date-normal{
+      font-size: 12px;
+      line-height: 14px;
+    }
+    .date-lunar{
+      font-size: 12px;
+      line-height: 14px;
+    }
+  }
+
+}
+
+.app-toolbar-tab-item {
+
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+
+  span {
+    font-size: 16px;
+  }
+  button {
+    background-color: transparent;
+    margin-left: 15px;
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    outline: none;
+    border: none;
+    transition: all linear .3s;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, .35)
+    }
+
+  }
+
+}
+
+.side-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #415563;
+  position: absolute;
+  bottom: 22px;
+  z-index: 2100;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+
+  i {
+    color: #fff;
+  }
+
+  &.in-group {
+    position: relative;
+    bottom: unset;
+  }
+  &:hover {
+    background-color: #607d92;
+  }
+  
+}

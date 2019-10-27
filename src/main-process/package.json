@@ -1,0 +1,17 @@
+{
+  "name": "punctual-cat",
+  "version": "1.0.0",
+  "description": "校园铃声自动播放系统.这是一款为中小学校播音工作室打造的一款可自动播放铃声、音乐的一款软件.",
+  "main": "main.js",
+  "keywords": [],
+  "author": "梦欤",
+  "license": "ISC",
+  "config": {
+    "arch": "ia32",
+    "registry": "https://registry.npm.taobao.org"
+  },
+  "dependencies": {
+    "nedb": "^1.8.0"
+  },
+  "devDependencies": {}
+}
