@@ -1,7 +1,8 @@
 export default {
   getFestival,
   getLunarDay,
-  getDateStr
+  getDateStr,
+  getWeekStr,
 }
 
 export function getFestival(){
@@ -24,6 +25,8 @@ export function getFestival(){
 
   return str;
 }
+
+
 
 /*农历部分*/
 
@@ -156,4 +159,8 @@ export function getDateStr(AddDayCount, dateStr, type) {
   
   let time = y + '-' + m + '-' + d
   return time
- }
+}
+
+export function getWeekStr(week) {
+  return '星期' + weekString.substr(week, 1);
+}

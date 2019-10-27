@@ -2,7 +2,9 @@
   <div class="icon-tollbar">
     <div v-for="(item,index) in items" :key="index" :class="'icon-item'+(activeItem==item?' active':'')" @click="itemClick(item)" 
       :style="'width:'+itemSize+'px;height: '+itemSize+'px;line-height:'+itemSize+'px'">
-      <span :class="'iconfont ' + item.icon" :style="'font-size:'+(item.fixSize?item.fixSize:'32')+'px'"></span>
+      <span :class="'iconfont ' + item.content" :style="'font-size:'+(item.fixSize?item.fixSize:'32')+'px'">
+        {{ item.type == 'icon' ? '' : item.content }}
+      </span>
       <div class="tooltip">{{ item.tooltip }}</div>
     </div>
     <div v-if="activeItem" :class="'select-arrow '+arrowDirection" 
@@ -27,12 +29,13 @@ export default class IconToolBar extends Vue {
   @Prop({default: 0}) arrowOffest : number;
   @Prop({default: true}) showSelect : boolean;
   @Prop({default: null}) items : Array<IconToolItem>;
-
-  activeItem : IconToolItem = null;
+  @Prop({default: null}) activeItem : IconToolItem = null;
 
   mounted() {
 
   }
+
+  
 
   calcActiveItemLeft() : number{
     let index = this.items.indexOf(this.activeItem);
@@ -40,7 +43,6 @@ export default class IconToolBar extends Vue {
   }
   itemClick(item : IconToolItem) {
     if(this.activeItem != item){
-      this.activeItem = item;
       this.$emit('select-item-changed', item);
     }
   }
@@ -112,6 +114,8 @@ export default class IconToolBar extends Vue {
     position: absolute;
     border-width: 15px;
     border-style: solid;
+
+    transition: left ease-in-out .3s;
 
     &.top {
       border-color: #fff transparent transparent transparent;

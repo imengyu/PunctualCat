@@ -1012,7 +1012,7 @@ export default {
 .calendar-years {
   position: absolute;
   left: 0px;
-  top: 60px;
+  top: 50px;
   right: 0px;
   bottom: 0px;
   background: #fff;
@@ -1039,7 +1039,8 @@ export default {
   border-radius: 20px;
   text-align: center;
   border: 1px solid #fbfbfb;
-  color: #999;
+  color: #525252;
+  font-weight: 800;
 }
 .calendar-years > span.active {
   border: 1px solid #5e7a88;

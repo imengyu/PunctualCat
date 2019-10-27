@@ -1,22 +1,61 @@
 <template>
   <div class="window-container">
+    <!--日历弹出区-->
+    <transition enter-active-class="animated fadeInLeft anim-fast delay-300ms" leave-active-class="animated bounceOutLeft anim-fast">
+      <div v-show="calendarViaible" class="calendar-host">
+        <div class="place-holder-top">
+          <text-time @date-click="switchCalendar" />
+        </div>
+        <div class="place-holder-center">
+          <calendar :lunar="true" />
+        </div>
+        <div class="place-holder-bottom">
+          <el-button @click="calendarViaible=false" round>收起日历</el-button>
+        </div>
+      </div>
+    </transition>
+    <!--日历遮罩-->
+    <transition enter-active-class="animated fadeIn anim-fast delay-300ms" leave-active-class="animated fadeOut anim-fast">
+      <div v-show="calendarViaible" class="calendar-mask" @click="calendarViaible=false"></div>
+    </transition>
+    <!--顶栏-->
     <div class="top-bar">
-      <el-popover
-        placement="bottom"
-        width="300"
-        trigger="manual"
-        transition="el-zoom-in-top"
-        v-model="calendarViaible">
-        <calendar :lunar="true" />
-        <text-time slot="reference" @date-click="switchCalendar" />
-      </el-popover>
-      
+      <transition enter-active-class="animated bounceIn anim-fast delay-400ms" leave-active-class="animated fadeOut anim-fast">
+        <text-time v-show="!calendarViaible" @date-click="switchCalendar" />
+      </transition>
+      <div v-show="calendarViaible"></div>
       <div class="top-menu">
-        <icon-toolbar :items="topToolbar" :arrow-offest="-15" />
+        <icon-toolbar :items="topToolbar" :active-item="topTabSelectItem" :arrow-offest="-15" @select-item-changed="onMainTabChanged" />
       </div>
     </div>
-    <div class="main-area"></div>
-    <div class="bottom-area"></div>
+    <!--主区域-->
+    <transition enter-active-class="animated fadeIn anim-fast" leave-active-class="animated fadeOut anim-fast">
+      <div v-if="topTabSelectItem" v-show="topTabSelectItem.name=='main-list'" class="main-area">
+        <div class="main-container">
+          主播放列表
+        </div>
+        <div class="bottom-area"></div>
+      </div>
+    </transition>
+    <transition enter-active-class="animated fadeIn anim-fast" leave-active-class="animated fadeOut anim-fast">
+      <div v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" class="main-area">
+        <div class="main-container">
+          广播消息
+        </div>
+        <div class="bottom-area"></div>
+      </div>
+    </transition>
+    <transition enter-active-class="animated fadeIn anim-fast" leave-active-class="animated fadeOut anim-fast">
+      <div v-if="topTabSelectItem" v-show="topTabSelectItem.name=='voice-settings'" class="main-area">
+        <div class="main-container">
+          声音设置
+        </div>
+        <div class="bottom-area"></div>
+      </div>
+    </transition>
+    <transition enter-active-class="animated fadeIn anim-fast" leave-active-class="animated fadeOut anim-fast">
+      <settings-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" />
+    </transition>
   </div>
 </template>
 
@@ -30,6 +69,8 @@ import TextTime from "./components/TextTime.vue"
 import IconToolBar from "./components/IconToolBar.vue"
 import Calendar from "./components/Calendar.vue"
 
+import SettingsView from "./views/SettingsView.vue"
+
 import IconToolItem from "./model/IconToolItem";
 import TableModel from "./model/TableModel";
 import TableServices from "./services/TableServices";
@@ -42,7 +83,8 @@ const ipc = electron.ipcRenderer;
   components: {
     'text-time': TextTime,
     'icon-toolbar': IconToolBar,
-    'calendar': Calendar
+    'calendar': Calendar,
+    'settings-view': SettingsView
   }
 })
 export default class App extends Vue {
@@ -61,12 +103,13 @@ export default class App extends Vue {
 
   //Toolbar and menu
   topToolbar: Array<IconToolItem> = [
-    new IconToolItem('icon-xiaoxizhongxin', '铃声列表'),
-    new IconToolItem('icon-yanchu', '音乐列表'),
-    new IconToolItem('icon-guangbo', '广播消息'),
-    new IconToolItem('icon-shengyin', '声音设置', 36),
-    new IconToolItem('icon-shezhi1', '软件设置'),
+    new IconToolItem('main-list', 'icon-xiaoxizhongxin', '铃声列表'),
+    new IconToolItem('music-list', 'icon-yanchu', '音乐列表'),
+    new IconToolItem('radio-message', 'icon-guangbo', '广播消息'),
+    new IconToolItem('voice-settings', 'icon-shengyin', '声音设置', 36),
+    new IconToolItem('settings', 'icon-shezhi1', '软件设置'),
   ];
+  topTabSelectItem : IconToolItem = null;
 
   currentWindow : electron.BrowserWindow = null;
 
@@ -116,6 +159,7 @@ export default class App extends Vue {
     //hide intro
     setTimeout(() => {
       this.hideIntro();
+      this.topTabSelectItem = this.topToolbar[0];
     }, 2000);
   }
   initIpcs() {
@@ -129,10 +173,14 @@ export default class App extends Vue {
     this.serviceTables.destroy();
   }
 
-  //** */
+  //** 界面控制
   switchCalendar() {
     this.calendarViaible = !this.calendarViaible;
   }
+  onMainTabChanged(item : IconToolItem) {
+    this.topTabSelectItem = item;
+  }
+
 
   //** 添加与删除工作函数
   addTable() {}

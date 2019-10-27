@@ -67,21 +67,78 @@ $bottom-bar-height: 70px;
 
   background-color: #eeeeee;
 }
+.calendar-mask {
+  position: absolute;
+  background-color: rgba(0,0,0,0.2);
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  z-index: 2998;
+}
+.calendar-host {
+  position: absolute;
+  background-color: #fff;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 330px;
+  z-index: 2999;
+  box-shadow: 3px 0px 10px 0px rgba(0,0,0,0.2);
+  background-image: url(../images/bg2.jpg);
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+
+  .place-holder-top {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: $top-bar-height;
+    right: 0;
+  }
+  .place-holder-center {
+    background-color: rgba(255,255,255,.4);
+    position: absolute;
+    left: 0;
+    top: $top-bar-height;
+    bottom: $bottom-bar-height;
+    right: 0;
+    z-index: -1;
+    padding: 10px 15px 15px 15px;
+  }
+  .place-holder-bottom {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    height: $bottom-bar-height;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
 .main-area {
   position: absolute;
   left: 0;
   right: 0;
   top: $top-bar-height;
-  bottom: $bottom-bar-height;
-
-
-}
-.bottom-area {
-  position: absolute;
-  left: 0;
-  right: 0;
   bottom: 0;
-  height: $bottom-bar-height;
 
-  background-color: #f1f1f1;
+  .main-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: $bottom-bar-height;
+  }
+  .bottom-area {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: $bottom-bar-height;
+  
+    background-color: #f1f1f1;
+  }
 }
