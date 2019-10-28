@@ -14,11 +14,12 @@ import "./assets/sass/main.scss";
 import Vue from 'vue'
 import ElementUI from 'element-ui';
 
-import jQuery from "jquery";
+import $ from "jquery";
 import App from './App.vue'
 
 Vue.config.productionTip = false
 Vue.use(ElementUI);
+Vue.prototype.$ = $;
 
 const initVue = function() {
   main = new Vue({
@@ -28,10 +29,10 @@ const initVue = function() {
   showIntro();
 };
 const showIntro = function() {
-  jQuery('#intro img').show().addClass(['animated','bounceInDown']);
-  jQuery('#intro h3').show().addClass(['animated','bounceInUp']);
-  jQuery('#intro .ver-text').show().addClass(['animated','bounceInUp']);
-  jQuery('#intro-ver').text(main.appVesrsion + ' ' + main.appBuildDate);
+  $('#intro img').show().addClass(['animated','bounceInDown']);
+  $('#intro h3').show().addClass(['animated','bounceInUp']);
+  $('#intro .ver-text').show().addClass(['animated','bounceInUp']);
+  $('#intro-ver').text(appVesrsion + ' ' + appBuildDate);
 }
 
 //Loader start
@@ -42,4 +43,4 @@ window.addEventListener('load', () => {
 
 //Base type extends
 
-import './utils/base-extends'
+import './utils/BaseExtends'

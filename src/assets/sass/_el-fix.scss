@@ -1,0 +1,103 @@
+@import "scroll";
+
+.el-message {
+  border: none;
+  background-color: #7e8d9a;
+  color: #fff;
+
+  .el-message__closeBtn {
+    color: #fff;
+  }
+}
+.el-message--info {
+
+  background-color: #7e8d9a;
+  .el-icon-info { color: #fff; }
+  .el-message__content { color: #fff; }
+}
+.el-message--success {
+  background-color: #5bc146;
+  .el-icon-success { color: #fff; }
+  .el-message__content { color: #fff; }
+}
+.el-message--warning {
+  background-color: #ffd14d;
+  .el-icon-warning { color: #fff; }
+  .el-message__content { color: #fff; }
+}
+.el-message--error {
+  background-color: #fe4d62;
+  .el-icon-error { color: #fff; }
+  .el-message__content { color: #fff; }
+}
+
+.el-dialog-width-fix-30 {
+  .el-dialog { width: 30%; }
+}
+.el-dialog-width-fix-40 {
+  .el-dialog { width: 40%; }
+}
+.el-dialog-width-fix-50 {
+  .el-dialog { width: 50%; }
+}
+.el-dialog-width-fix-60 {
+  .el-dialog { width: 60%; }
+}
+.el-dialog-width-fix-70 {
+  .el-dialog { width: 70%; }
+}
+.el-dialog-width-fix-80 {
+  .el-dialog { width: 80%; }
+}
+.el-dialog-width-fix-90 {
+  .el-dialog { width: 90%; }
+}
+
+@media only screen and (max-width: 768px) {
+  .el-dialog-width-fix-30 {
+    .el-dialog { width: 50%; }
+  }
+  .el-dialog-width-fix-40 {
+    .el-dialog { width: 60%; }
+  }
+  .el-dialog-width-fix-50 {
+    .el-dialog { width: 70%; }
+  }
+  .el-dialog-width-fix-60 {
+    .el-dialog { width: 80%; }
+  }
+  .el-dialog-width-fix-70,
+  .el-dialog-width-fix-80,
+  .el-dialog-width-fix-90 {
+    .el-dialog { width: 90%; }
+  }
+}
+@media only screen and (max-width: 425px) {
+  .el-dialog-width-fix-30,
+  .el-dialog-width-fix-40,
+  .el-dialog-width-fix-50,
+  .el-dialog-width-fix-60,
+  .el-dialog-width-fix-70,
+  .el-dialog-width-fix-80,
+  .el-dialog-width-fix-90 {
+    .el-dialog { width: 92%; }
+  }
+}
+
+.el-dialog__wrapper{
+  @include pc-fix-scrollbar-white();
+}
+.el-table__body-wrapper{
+  @include pc-fix-scrollbar-white();
+}
+
+.el-form-span {
+  display: inline-block;
+  color: rgb(143, 143, 143);
+  margin-top: 10px;
+  line-height: 23px !important;
+}
+
+.el-dialog {
+  border-radius: 4px;
+}

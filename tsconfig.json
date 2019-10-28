@@ -1,13 +1,4 @@
 {
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "src/**/*.js",
-    "src/app.js",
-    "src/main-process",
-  ],
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
@@ -21,10 +12,22 @@
       "es5",
       "es2015.promise"
     ],
-    "types": [
-      "jquery"
+    "typeRoots": [
+      "./src/types",   
+      "./node_modules/vue/types",
+      "./node_modules/@types/**",
+      "./node_modules/element-ui/types"
     ],
     "sourceMap": true,
     "pretty": true
-  }
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/app.js",
+    "src/main-process",
+    "dist",
+  ],
 }

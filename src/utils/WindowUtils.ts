@@ -1,4 +1,4 @@
-import electron, { Rectangle, BrowserWindow } from 'electron'
+import { Rectangle, BrowserWindow } from 'electron'
 
 export type WindowSizeType = 'none'|'t'|'b'|'r'|'l'|'tl'|'tr'|'bl'|'br';
 

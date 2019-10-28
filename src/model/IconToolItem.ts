@@ -4,13 +4,15 @@ export default class IconToolItem {
   public tooltip : string;
   public fixSize : number;
   public type : IconToolItemType;
+  public selectable : boolean;
 
-  public constructor(name : string, content : string, tooltip : string, fixSize? : number, type : IconToolItemType = 'icon') {
+  public constructor(name : string, content : string, tooltip : string, fixSize? : number, type : IconToolItemType = 'icon', selectable = true) {
     this.name = name;
     this.content = content;
     this.tooltip = tooltip;
     this.fixSize = fixSize;
     this.type = type;
+    this.selectable = selectable;
   }
   
 }

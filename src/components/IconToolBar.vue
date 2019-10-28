@@ -1,6 +1,6 @@
 <template>
   <div class="icon-tollbar">
-    <div v-for="(item,index) in items" :key="index" :class="'icon-item'+(activeItem==item?' active':'')" @click="itemClick(item)" 
+    <div v-for="(item,index) in items" :key="index" :class="'icon-item'+(activeItem==item?' active':'')+(' '+arrowDirection)" @click="itemClick(item)" 
       :style="'width:'+itemSize+'px;height: '+itemSize+'px;line-height:'+itemSize+'px'">
       <span :class="'iconfont ' + item.content" :style="'font-size:'+(item.fixSize?item.fixSize:'32')+'px'">
         {{ item.type == 'icon' ? '' : item.content }}
@@ -16,11 +16,7 @@
 import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-property-decorator";
 import IconToolItem from '../model/IconToolItem'
 
-@Component({
-  components: {
-
-  }
-})
+@Component
 export default class IconToolBar extends Vue {
   name = "IconToolBar";
 
@@ -35,14 +31,15 @@ export default class IconToolBar extends Vue {
 
   }
 
-  
+
 
   calcActiveItemLeft() : number{
     let index = this.items.indexOf(this.activeItem);
     return index * (this.itemSize + 10)  + (this.itemSize / 2 - 15)
   }
   itemClick(item : IconToolItem) {
-    if(this.activeItem != item){
+    this.$emit('item-click', item);
+    if(this.activeItem != item && item.selectable){
       this.$emit('select-item-changed', item);
     }
   }
@@ -92,11 +89,15 @@ export default class IconToolBar extends Vue {
     }
     &:hover {
 
-      transform: translateY(-6px);
-
-      &.active {
-        transform: translateY(-13px);
+      &.bottom {
+        transform: translateY(-6px);
+        &.active { transform: translateY(-13px); }
       }
+      &.top {
+        transform: translateY(6px);
+        &.active { transform: translateY(13px); }
+      }
+
       .tooltip {
         opacity: 1;
       }

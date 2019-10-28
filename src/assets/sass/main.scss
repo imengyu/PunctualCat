@@ -3,8 +3,9 @@
 @import "icons";
 @import "window";
 @import "small-widgets";
-@import "md-fix";
+@import "el-fix";
 @import "fonts";
+@import "scroll";
 
 //
 
@@ -20,7 +21,7 @@ body, html{
 }
 body{
   overflow: hidden;
-  background-color: transparent;
+  background-color: #f1f1f1;
 }
 
 /*App*/
@@ -57,6 +58,7 @@ $bottom-bar-height: 70px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  z-index: 2;
 
   .top-menu {
     display: inline-flex;
@@ -65,7 +67,7 @@ $bottom-bar-height: 70px;
     padding: 25px 13px 0 0;
   }
 
-  background-color: #eeeeee;
+  background-color: transparent;
 }
 .calendar-mask {
   position: absolute;
@@ -105,7 +107,11 @@ $bottom-bar-height: 70px;
     bottom: $bottom-bar-height;
     right: 0;
     z-index: -1;
-    padding: 10px 15px 15px 15px;
+    padding: 10px 15px;
+    overflow: hidden;
+    overflow-y: scroll;
+
+    @include pc-fix-scrollbar-white();
   }
   .place-holder-bottom {
     position: absolute;
@@ -124,6 +130,8 @@ $bottom-bar-height: 70px;
   right: 0;
   top: $top-bar-height;
   bottom: 0;
+  z-index: 1;
+  overflow: hidden;
 
   .main-container {
     position: absolute;
@@ -131,6 +139,12 @@ $bottom-bar-height: 70px;
     left: 0;
     right: 0;
     bottom: $bottom-bar-height;
+    background-color: #ffffff;
+    box-shadow: 0 0 5px 2px rgba(0,0,0,0.08);
+    overflow: hidden;
+    overflow-y: scroll;
+
+    @include pc-fix-scrollbar-white();
   }
   .bottom-area {
     position: absolute;
@@ -139,6 +153,6 @@ $bottom-bar-height: 70px;
     bottom: 0;
     height: $bottom-bar-height;
   
-    background-color: #f1f1f1;
+    background-color: transparent;
   }
 }

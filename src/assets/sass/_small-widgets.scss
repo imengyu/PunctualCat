@@ -127,3 +127,97 @@
   }
   
 }
+
+.btn-add {
+  height: 30px;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg%20class%3D%22icon%22%20viewBox%3D%220%200%201024%201024%22%20version%3D%221.1%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2228%22%20height%3D%2228%22%3E%3Cpath%20d%3D%22M488%20488V192a16%2016%200%200%201%2016-16h16a16%2016%200%200%201%2016%2016v296H832a16%2016%200%200%201%2016%2016v16a16%2016%200%200%201-16%2016H536V832a16%2016%200%200%201-16%2016h-16a16%2016%200%200%201-16-16V536H192a16%2016%200%200%201-16-16v-16a16%2016%200%200%201%2016-16h296z%22%20fill%3D%22%23000%22%3E%3C%2Fpath%3E%3C%2Fsvg%3E");
+  background-size: 26px;
+  background-position: center center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+
+  &.round {
+    width: 30px;
+    border-radius: 50%;
+    padding: 5px;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+.btn-round {
+  display: inline-block;
+
+  height: 30px;
+  width: 30px;
+  background-size: 26px;
+  background-position: center center;
+  background-repeat: no-repeat;
+  cursor: pointer;
+  
+  border-radius: 50%;
+  padding: 5px;
+  
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+}
+
+
+
+.music-container {
+  padding: 15px;
+  height: calc(100% - 30px); 
+  overflow-y: scroll;
+}
+.music-none-view {
+  display: flex;
+  position: absolute;
+  text-align: center;
+  top: 50px;
+  left: 0;
+  right: 0;
+  bottom: 100px;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+.music-list {
+
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  margin-top: 10px;
+
+  li {
+    list-style: none;
+    margin: 0;
+    padding: 5px 0;
+    height: 36px;
+    cursor: pointer;
+    user-select: none;
+
+    span {
+      display: inline-block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: calc(100% - 110px);
+      margin-top: 7px;
+      max-height: 40px;
+      white-space: nowrap;
+
+      &:hover {
+        color: #2977df;
+      }
+    }
+
+    .btn-round {
+      height: 25px;
+      width: 25px;
+      background-size: 16px;
+      float: right;
+    }
+  }
+
+}

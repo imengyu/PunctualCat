@@ -903,7 +903,7 @@ export default {
 .calendar table {
   clear: both;
   width: 100%;
-  margin-bottom: 10px;
+  margin-bottom: 0;
   border-collapse: collapse;
   color: #444444;
 }

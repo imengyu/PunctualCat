@@ -20,7 +20,7 @@
 
 <script lang="ts">
 import { Component, Prop, Vue } from 'vue-property-decorator'
-import { getLunarDay, getWeekStr } from '../utils/date-utils'
+import { getLunarDay, getWeekStr } from '../utils/DateUtils'
 @Component
 export default class TextTime extends Vue {
 

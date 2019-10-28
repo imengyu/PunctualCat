@@ -5,6 +5,10 @@ export default {
   getWeekStr,
 }
 
+/**
+ * 获取今日的节日
+ * @return {string} 今日的节日
+ */
 export function getFestival(){
   var str = '';
   var calendar = new Date();
@@ -25,8 +29,6 @@ export function getFestival(){
 
   return str;
 }
-
-
 
 /*农历部分*/
 
@@ -92,7 +94,7 @@ function e2c() {
   }
 }
 
-export function GetcDateString() {
+function GetcDateString() {
   var tmp = "";
   tmp += tgString.charAt((cYear - 4) % 10);
   tmp += dzString.charAt((cYear - 4) % 12);
@@ -113,6 +115,13 @@ export function GetcDateString() {
   return tmp;
 }
 
+/**
+ * 获取指定日期的农历日期
+ * @param {number} solarYear 阳历年
+ * @param {number} solarMonth 阳历月
+ * @param {number} solarDay 阳历天
+ * @return {string} 返回农历日期字符串
+ */
 export function getLunarDay(solarYear, solarMonth, solarDay) {
   //solarYear = solarYear<1900?(1900+solarYear):solarYear;  
   if (solarYear < 1921 || solarYear > 2020) {
@@ -125,10 +134,11 @@ export function getLunarDay(solarYear, solarMonth, solarDay) {
 }
 
 /**
- * @param AddDayCount 必传 今天前后N天的日期
+ * 获取日期字符串
+ * @param {number} AddDayCount 必传 今天前后N天的日期
  * @param dateStr： 非必传 获取传入日期前后N天的日期：'2018-01-20'
  * @param type 非必传 'lhRili'类型格式如'2018-7-3'
- * @return 返回日期'2018/01/20'
+ * @return {string} 返回日期'2018/01/20'
  */
 export function getDateStr(AddDayCount, dateStr, type) {
   // console.log('getDateStr', AddDayCount, dateStr, type)
@@ -161,6 +171,11 @@ export function getDateStr(AddDayCount, dateStr, type) {
   return time
 }
 
+/**
+ * 获取星期的字符
+ * @param {number} week new Date().getDay() 星期几的数字
+ * @return {string} 返回星期几的字符串
+ */
 export function getWeekStr(week) {
   return '星期' + weekString.substr(week, 1);
 }
