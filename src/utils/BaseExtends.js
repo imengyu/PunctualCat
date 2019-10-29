@@ -44,6 +44,9 @@ Array.prototype.remove = function(item) {
   }
   return rs;
 }
+Array.prototype.contains = function(item) {
+  return this.indexOf(item)
+}
 if(!Array.prototype.findIndex){
 	Array.prototype.findIndex = function(predicateFn,thisArg){
 		var len = this.length

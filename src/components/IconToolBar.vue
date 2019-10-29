@@ -1,6 +1,6 @@
 <template>
   <div class="icon-tollbar">
-    <div v-for="(item,index) in items" :key="index" :class="'icon-item'+(activeItem==item?' active':'')+(' '+arrowDirection)" @click="itemClick(item)" 
+    <div :id="'icon-item-'+item.name" v-for="(item,index) in items" :key="index" :class="'icon-item'+(activeItem==item?' active':'')+(' '+arrowDirection)" @click="itemClick(item)" 
       :style="'width:'+itemSize+'px;height: '+itemSize+'px;line-height:'+itemSize+'px'">
       <span :class="'iconfont ' + item.content" :style="'font-size:'+(item.fixSize?item.fixSize:'32')+'px'">
         {{ item.type == 'icon' ? '' : item.content }}

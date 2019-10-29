@@ -10,6 +10,11 @@ interface Array<T> {
    * @param item 元素 或 元素索引
    */
   remove(item: T | Number): boolean;
+  /**
+   * 查找数组中是否存在某一元素
+   * @param item 元素
+   */
+  contains(item: T) : boolean;
 }
 interface Date {
   /**

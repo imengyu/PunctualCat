@@ -64,6 +64,8 @@
       direction="rtl">
       <music-list :items="musicHistoryList" @item-click="onMusicItemClick" @add-music="onAddMusicToList" />
     </el-drawer>
+    <!--音乐播放器区-->
+
     <!--退出对话框-->
     <el-dialog
       :visible.sync="quitDialog"
@@ -93,6 +95,7 @@ import Calendar from "./components/Calendar.vue"
 import MusicList from "./components/MusicList.vue"
 
 import SettingsView from "./views/SettingsView.vue"
+import PlayerView from "./views/PlayerView.vue"
 
 import { MusicItem, MusicAction } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
@@ -111,7 +114,8 @@ const remote = electron.remote;
     'icon-toolbar': IconToolBar,
     'calendar': Calendar,
     'music-list': MusicList,
-    'settings-view': SettingsView
+    'settings-view': SettingsView,
+    'palyer-view' : PlayerView
   }
 })
 export default class App extends Vue {
@@ -349,11 +353,11 @@ export default class App extends Vue {
   onMainTabClick(item : IconToolItem) {
     this.isShowMusicList = item.name == 'music-list';
     if(item.name == 'main-menu') { 
-      let mousePos = 
+      let letPos = $('#icon-item-main-menu').offset();
       this.menuSettings.popup({
         window: this.currentWindow,
-        x: this.currentMousePos.x - 180,
-        y: this.currentMousePos.y + 10,
+        x: Math.floor(letPos.left) - 125,
+        y: Math.floor(letPos.top) + 75,
       });
     }
   }

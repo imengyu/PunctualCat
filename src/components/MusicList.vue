@@ -26,7 +26,7 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { MusicItem, MusicAction } from '../model/MusicItem'
 
 @Component
-export default class SettingsView extends Vue {
+export default class MusicView extends Vue {
 
   @Prop({default:null})
   items : Array<MusicItem>;
