@@ -26,9 +26,14 @@ Date.prototype.format = function (formatStr) {
   return str;
 }
 
-/**
- * 数组删除
- */
+//字符串
+
+String.prototype.contains = function (str) {
+  return this.indexOf(str) >= 0;
+}
+
+//数组
+
 Array.prototype.remove = function(item) {
   
   var dx = isNumber(item) ? item : this.indexOf(item);

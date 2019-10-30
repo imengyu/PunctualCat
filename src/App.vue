@@ -56,6 +56,10 @@
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
       <settings-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" />
     </transition>
+    <!--音量弹出-->
+    <transition enter-active-class="animated bounceInDown anim-fast" leave-active-class="animated fadeOutUp anim-fast">
+      <voice-view v-show="voiceProverVisible" :show.sync="voiceProverVisible" @volume-soft-changed="onVolumeSoftChanged" style="top:120px;right:20px" />
+    </transition>
     <!--音乐列表-->
     <el-drawer
       title="音乐列表"
@@ -64,8 +68,6 @@
       direction="rtl">
       <music-list :items="musicHistoryList" @item-click="onMusicItemClick" @add-music="onAddMusicToList" />
     </el-drawer>
-    <!--音乐播放器区-->
-
     <!--退出对话框-->
     <el-dialog
       :visible.sync="quitDialog"
@@ -92,15 +94,17 @@ import $ from "jquery";
 import TextTime from "./components/TextTime.vue"
 import IconToolBar from "./components/IconToolBar.vue"
 import Calendar from "./components/Calendar.vue"
-import MusicList from "./components/MusicList.vue"
 
+import MusicView from "./views/MusicView.vue"
+import VoiceView from "./views/VoiceView.vue"
 import SettingsView from "./views/SettingsView.vue"
-import PlayerView from "./views/PlayerView.vue"
 
-import { MusicItem, MusicAction } from './model/MusicItem'
+import { MusicItem, MusicAction, MusicStatus } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
 import TableModel from "./model/TableModel";
 import TableServices from "./services/TableServices";
+import SettingsServices from "./services/SettingsServices";
+import { DataStorageServices, createDataStorageServices, destroyDataStorageServices } from "./services/DataStorageServices";
 
 import electron, { BrowserWindow, screen } from "electron";
 import { Menu, MenuItem } from "electron";
@@ -113,9 +117,9 @@ const remote = electron.remote;
     'text-time': TextTime,
     'icon-toolbar': IconToolBar,
     'calendar': Calendar,
-    'music-list': MusicList,
+    'music-list': MusicView,
+    'voice-view': VoiceView,
     'settings-view': SettingsView,
-    'palyer-view' : PlayerView
   }
 })
 export default class App extends Vue {
@@ -128,6 +132,7 @@ export default class App extends Vue {
   calendarViaible = false;
   isShowMusicList: boolean = false;
   menuVisible: boolean = false;
+  voiceProverVisible: boolean = false;
   quitDialog: boolean = false;
   shutdownNowDialog: boolean = false;
   rebootNowDialog: boolean = false;
@@ -135,9 +140,9 @@ export default class App extends Vue {
   //Toolbar and menu
   topToolbar: Array<IconToolItem> = [
     new IconToolItem('main-list', 'icon-xiaoxizhongxin', '铃声列表', 36),
-    new IconToolItem('music-list', 'icon-yanchu', '音乐列表', 36, 'icon', false),
-    new IconToolItem('radio-message', 'icon-guangbo', '广播消息', 36),
-    new IconToolItem('voice-settings', 'icon-shengyin', '声音设置', 36),
+    new IconToolItem('radio-message', 'icon-guangbo', '广播消息', 42),
+    new IconToolItem('music-list', 'icon-yanchu', '音乐列表', 36, 'icon', false), 
+    new IconToolItem('voice-settings', 'icon-shengyin', '声音设置', 36, 'icon', false),
     new IconToolItem('settings', 'icon-shezhi1', '软件设置', 36),
     new IconToolItem('main-menu', 'icon-caidan_o', '主菜单', 40, 'icon', false),
   ];
@@ -159,6 +164,7 @@ export default class App extends Vue {
     x: 0,
     y: 0
   }
+  playingMusicCount = 0;
 
   //Data pool
 
@@ -167,6 +173,7 @@ export default class App extends Vue {
   //Services
 
   serviceTables: TableServices = null;
+  serviceDataStorage : DataStorageServices = null;
 
   autoWorkerOn = true;
 
@@ -184,6 +191,17 @@ export default class App extends Vue {
   onCurrentShowItemChanged(val: TabModel, oldVal: TabModel) { 
   }*/
 
+  @Watch('playingMusicCount')
+  onPlayingMusicCountChanged(val : number){
+    if(val > 0) {
+      this.topToolbar[2].showHotPoint = true;
+      this.topToolbar[2].hotPointCount = val;
+    }else{
+      this.topToolbar[2].showHotPoint = false;
+      this.topToolbar[2].hotPointCount = 0;
+    }
+  }
+
   //Methods
   //=====
 
@@ -195,6 +213,10 @@ export default class App extends Vue {
       $("#intro").addClass('hidden');
     }, 1000);
   }
+  showStartUpError(e) {
+    $("#global-error-info").show();
+    $("#global-error-info-content").text(e);
+  }
   exitHide(callback) {
     $("html,body").addClass(["animated", "zoomOut"]);
     $("html,body").on("animationend", function() {
@@ -203,19 +225,41 @@ export default class App extends Vue {
   }
 
   //** Init styles
+
+  //初始化和卸载
   init() {
-    this.initIpcs();
 
+    //初始化所有服务
     this.currentWindow = remote.getCurrentWindow();
-    this.serviceTables = new TableServices((<any>window).globalData);
+    this.serviceDataStorage = createDataStorageServices();
 
-    this.initMenus();
+    this.serviceDataStorage.init().then(() => {
+      
+      SettingsServices.initSettings();
+      SettingsServices.loadSettings().then(() => initInternal()).catch((e) => {
+        console.error('loadSettings failed ! ' + e);
+        initInternal();
+      })
 
-    //hide intro
-    setTimeout(() => {
-      this.hideIntro();
-      this.topTabSelectItem = this.topToolbar[0];
-    }, 2000);
+      let initInternal = () => {
+
+        this.loadAllDatas(() => {
+
+          //Core services
+          this.serviceTables = new TableServices((<any>window).globalData);
+          //Menu
+          this.initMenus();
+          //IPCS
+          this.initIpcs();
+
+          //hide intro
+          setTimeout(() => {
+            this.hideIntro();
+            this.topTabSelectItem = this.topToolbar[0];
+          }, 1000);   
+        })
+      }
+    }).catch((e) =>  this.showStartUpError('初始化数据失败 ' + e))
   }
   initIpcs() {
     ipc.on("main-window-act", (event, arg) => {
@@ -243,7 +287,8 @@ export default class App extends Vue {
         var index = 0;
         path.forEach(element => {
           if(element!=''){
-            this.addMusicToHistoryList(new MusicItem(path[0]));
+            if(!this.existsInHistoryList(element))
+              this.addMusicToHistoryList(new MusicItem(element));
             index++;
           }
         });    
@@ -260,7 +305,10 @@ export default class App extends Vue {
     this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => {  } }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '数据导出与导入', click: () => {  } }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '手动保存数据', accelerator: 'CmdOrCtrl+S', click: () => {  } }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '手动保存数据', accelerator: 'CmdOrCtrl+S', click: () => {  
+      this.saveDatas().then(() => this.$message({ message: '手动保存数据成功', type: 'success' }))
+        .catch((e) => this.$alert('保存数据失败，错误信息：' + e, '保存数据失败', { type: 'error' }))
+    }}));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', click: () => {  } }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => {  } }));
@@ -283,7 +331,7 @@ export default class App extends Vue {
     } }));
 
     this.menuItemDeveloper = new electron.remote.MenuItem({ label: '开发者选项', submenu: developerSubMenu });
-    this.menuItemDeveloper.visible = false;
+    //this.menuItemDeveloper.visible = false;
     this.menuSettings.append(this.menuItemDeveloper);
     
     var powerSubMenu = new electron.remote.Menu();
@@ -326,14 +374,51 @@ export default class App extends Vue {
       }
     }, false);
   }
-  uninit() {
-    this.serviceTables.destroy();
+  initCoreServices() {
+    
+  }
+  uninit() : Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.saveDatas().then(() => {
+        this.serviceTables.destroy();
+        destroyDataStorageServices();
+        resolve();
+      }).catch((e) => reject(e))
+    })
+  }
+
+  //数据控制
+  loadAllDatas(callback : () => void) {
+    //musics
+    this.serviceDataStorage.loadData('musics').then((musics) => {
+      if(musics) musics.forEach((element : string) => {
+        if(!this.existsInHistoryList(element))
+          this.addMusicToHistoryList(new MusicItem(element));
+      });
+      callback();
+    }).catch((e) => {
+      console.error('loadAllDatas for musics failed ! ' + e);
+      callback();
+    })
+  }
+  saveDatas() : Promise<any> {
+    return new Promise((resolve, reject) => {
+      //musics
+      let musics = [];
+      for(var i = 0, c = this.musicHistoryList.length; i < c; i++)
+        musics.push(this.musicHistoryList[i].fullPath);
+      this.serviceDataStorage.saveData('musics', musics).then(() => {
+        SettingsServices.saveSettings().then(() => resolve()).catch((e) => reject(e));
+      }).catch((e) =>  reject(e))
+    })
+    
   }
 
   //** 界面控制
   switchCalendar() {
     this.calendarViaible = !this.calendarViaible;
   }
+  //主tab
   onMainTabChanged(item : IconToolItem) {
     let oldIndex = this.topToolbar.indexOf(this.topTabSelectItem);
     let newIndex = this.topToolbar.indexOf(item);
@@ -359,30 +444,55 @@ export default class App extends Vue {
         x: Math.floor(letPos.left) - 125,
         y: Math.floor(letPos.top) + 75,
       });
+    }else if(item.name=='voice-settings'){
+      this.voiceProverVisible = !this.voiceProverVisible;
     }
   }
 
-
-  //** 添加与删除工作函数
-  addTable() {}
-
-
   
-  //音乐列表扩展
+  //音乐列表事件
   onMusicItemClick(item : MusicItem, mode : MusicAction) {
-
+    if(mode == 'play') {
+      item.play();
+    } else if(mode == 'pause') {
+      item.pause();
+    } else if(mode == 'stop') {
+      item.stop();
+    } else if(mode == 'looplay') {
+      item.loopmode = true;
+      item.play();
+    } else if(mode == 'delete') {    
+      this.removeMusicFromHistoryList(item);
+      item.destroy();
+    } 
   }
   onAddMusicToList() { this.chooseMusic({ type: 'addMusicsToHistoryList'}); }
-
-  addMusicToHistoryList(music : MusicItem){
-    this.musicHistoryList.forEach(element => {
-      if(element == music) return;
-    });
-    this.musicHistoryList.push(music);
+  onVolumeSoftChanged(newVolume : number) {
+    let volume = newVolume / 100.0;
+    SettingsServices.setSettingNumber('player.volume', volume);
+    //更新所有已加载的音乐音量
+    for(var i = 0; i < this.musicHistoryList.length; i++){
+      if(this.musicHistoryList[i].loaded) 
+        this.musicHistoryList[i].setVolume(volume);
+    }
   }
-  removeMusicFromHistoryList(music : MusicItem){
-    this.musicHistoryList.splice(this.musicHistoryList.indexOf(music), 1);
+  //音乐列表扩展
+  existsInHistoryList(musicPath : string) {
+    for(var i = 0; i < this.musicHistoryList.length; i++){
+      if(this.musicHistoryList[i].fullPath == musicPath) return true;
+    }
+    return false;
   }
+  addMusicToHistoryList(music : MusicItem){ 
+    this.musicHistoryList.push(music); 
+    music.addListener('statuschanged', (newStatus : MusicStatus, oldStatus : MusicStatus) => {
+      if(oldStatus != 'paused' && newStatus == 'playing')
+        this.playingMusicCount ++;
+      if((oldStatus == 'playing' || oldStatus == 'paused') && (newStatus == 'normal' || newStatus == 'playerr' || newStatus == 'lost'))
+        this.playingMusicCount --;
+    })
+  }
+  removeMusicFromHistoryList(music : MusicItem){ this.musicHistoryList.splice(this.musicHistoryList.indexOf(music), 1); }
 
 
   //** 应用工作函数
@@ -395,7 +505,47 @@ export default class App extends Vue {
   executeShutdownNow() { ipc.send("main-act-shutdown"); }
   executeRebootNow() { ipc.send("main-act-reboot"); }
   exitAppWithAsk() { this.quitDialog = true; }
-  exitApp() { ipc.send("main-act-quit")/*this.exitHide(() =>  ipc.send("main-act-quit"));*/ }
+  exitApp() { 
+    let doExit = () => {
+      ipc.send("main-act-quit")
+      /*this.exitHide(() =>  ipc.send("main-act-quit"));*/ 
+    }
+    this.uninit().then(() =>  doExit()).catch((e) => {
+      const h = this.$createElement;
+      this.$msgbox({
+        title: '发生了错误',
+        message: h('p', null, [
+          h('span', null, '在保存数据时发生了错误 '),
+          h('b', { style: 'color: teal' }, e),
+          h('p', null, '是否依然要退出？'),
+        ]),
+        showCancelButton: true,
+        confirmButtonText: '重试',
+        cancelButtonText: '仍然退出',
+        beforeClose: (action, instance, done) => {
+          if (action === 'confirm') {
+            instance.confirmButtonLoading = true;
+            instance.confirmButtonText = '正在保存...';
+
+            this.uninit().then(() => { 
+              instance.confirmButtonLoading = false;
+              done();
+              doExit();
+            }).catch((e) => {
+              instance.confirmButtonLoading = false;
+              done();
+              doExit();
+            })
+
+          } else {
+            done();
+            doExit()
+          }
+        }
+      }).then(action => {
+      }).catch(() => doExit());
+    })
+  }
 }
 </script>
 

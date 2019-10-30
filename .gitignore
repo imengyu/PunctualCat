@@ -2,10 +2,10 @@
 /build/
 /data/
 /musics/
-/native/build/Release/
 /dist/
 node_modules/
 .vs/
 /src/node_modules/
-/native/build/
+/src/native-module/build/
+
 package-lock.json

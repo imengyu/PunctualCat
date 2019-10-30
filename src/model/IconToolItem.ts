@@ -6,6 +6,9 @@ export default class IconToolItem {
   public type : IconToolItemType;
   public selectable : boolean;
 
+  public showHotPoint : boolean = false;
+  public hotPointCount : number = 0;
+
   public constructor(name : string, content : string, tooltip : string, fixSize? : number, type : IconToolItemType = 'icon', selectable = true) {
     this.name = name;
     this.content = content;

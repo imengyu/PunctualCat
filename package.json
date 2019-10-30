@@ -6,7 +6,7 @@
   "scripts": {
     "build": "webpack --progress --colors --watch",
     "start": "electron ./dist/",
-    "pack": "electron-packager ./dist/ 校园铃声自动播放系统 --out './build' --overwrite --platform=win32 --arch=ia32 --icon=./src/assets/images/logo.ico --asar --app-version=1.0.0 --ignore=package-lock.json"
+    "pack": "electron-packager ./dist/ PunctualCat --out './build' --overwrite --platform=win32 --arch=ia32 --icon=./src/assets/images/logo.ico --asar --app-version=1.0.0 --ignore=package-lock.json"
   },
   "keywords": [],
   "author": "梦欤",

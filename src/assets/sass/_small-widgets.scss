@@ -197,6 +197,7 @@
     height: 36px;
     cursor: pointer;
     user-select: none;
+    transition: all ease-in-out .25s;
 
     span {
       display: inline-block;
@@ -206,8 +207,41 @@
       margin-top: 7px;
       max-height: 40px;
       white-space: nowrap;
+      transition: all ease-in-out .25s;
 
       &:hover {
+        color: #2977df;
+      }
+    }
+
+    &.notload {
+      span {
+        color: #8f8f8f;
+      }
+    }
+    &.paused {
+
+      height: 66px;
+
+      span {
+        color: #2977df;
+      }
+    }
+    &.playerr {
+      span {
+        color: #ee5700;
+      }
+    }
+    &.lost{
+      span {
+        color: #ee6b00;
+      }
+    }
+    &.playing {
+
+      height: 66px;
+
+      span {
         color: #2977df;
       }
     }
@@ -217,6 +251,53 @@
       width: 25px;
       background-size: 16px;
       float: right;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+
+      i {
+        font-size: 16px;
+      }
+    }
+
+    .track {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      height: 30px;
+
+      span {
+        padding: 0 6px;
+        max-width: 90px;
+        color: #000;
+        font-size: 13px;
+        margin: 0;
+        text-align: right;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        width: calc(100% - 90px);
+        background-color: #cecece;
+        border-radius: 10px;
+        height: 4px;
+        padding: 0;
+        border: none;
+        margin-left: 6px;
+
+        &::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          height: 20px;
+          width: 20px;
+          background: #e9e9e9;
+          border-radius: 15px;
+          border: 5px solid #0073bb;
+        }
+        &:focus {
+          outline: none;
+        }
+      }
     }
   }
 

@@ -1,7 +1,9 @@
 <template>
   <div class="icon-tollbar">
-    <div :id="'icon-item-'+item.name" v-for="(item,index) in items" :key="index" :class="'icon-item'+(activeItem==item?' active':'')+(' '+arrowDirection)" @click="itemClick(item)" 
+    <div :id="'icon-item-'+item.name" v-for="(item,index) in items" :key="index" tabindex="2"
+      :class="'icon-item'+(activeItem==item?' active':'')+(' '+arrowDirection)" @click="itemClick(item)" 
       :style="'width:'+itemSize+'px;height: '+itemSize+'px;line-height:'+itemSize+'px'">
+      <span v-if="item.showHotPoint" class="hot-point">{{ item.hotPointCount > 0 ? item.hotPointCount : '' }}</span>
       <span :class="'iconfont ' + item.content" :style="'font-size:'+(item.fixSize?item.fixSize:'32')+'px'">
         {{ item.type == 'icon' ? '' : item.content }}
       </span>
@@ -58,7 +60,21 @@ export default class IconToolBar extends Vue {
     text-align: center;
     cursor: pointer;
     transition: all ease-in-out .2s;
+    outline: none;
 
+    .hot-point {
+      position: absolute;
+      display: inline-block;
+      background-color: rgb(223, 74, 37);
+      color: #fff;
+      border-radius: 10px;
+      font-size: 12px;
+      padding: 0 6px;
+      height: 20px;
+      line-height: 20px;
+      top: 0;
+      right: 0;
+    }
     .iconfont {
       transition: all ease-in-out .2s;
       font-size: 32px;

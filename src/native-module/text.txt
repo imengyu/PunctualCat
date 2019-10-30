@@ -1,0 +1,1 @@
+node-gyp rebuild --target=6.0.1 --arch=ia32 --dist-url=https://npm.taobao.org/mirrors/atom-shell/

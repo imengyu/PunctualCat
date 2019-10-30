@@ -3,6 +3,18 @@ import SettingsServices from "../services/SettingsServices";
 import CommonUtils from "../utils/CommonUtils";
 import { EventEmitter } from "events";
 
+let staticPlayingCount = 0;
+let staticMusicPool = Array<MusicItem>();
+
+export function getPlayingCount() { return staticPlayingCount };
+
+export function stopAllMusics() { 
+  staticMusicPool.forEach(music => {
+    if(music.status == 'normal' || music.status == 'paused' || music.status == 'playing')
+      music.stop();
+  });
+};
+
 /**
  * 音乐条目以及播放器
  */
@@ -11,7 +23,9 @@ export class MusicItem extends EventEmitter {
   public name : string;
   public fullPath : string;
   public status : MusicStatus = 'notload';
+  public loading : boolean = false;
   public loaded : boolean = false;
+  public loopmode : boolean = false;
   public tracking : boolean = false;
 
   public playtime : number = 0;
@@ -31,35 +45,84 @@ export class MusicItem extends EventEmitter {
     super();
     this.fullPath = fullPath;
     this.name = name || getFileName(fullPath);
+
+    staticMusicPool.push(this);
   }
 
   private loadAudio(audio : HTMLAudioElement) {
-    audio.addEventListener('playing', this.audio_playing);
-    audio.addEventListener('durationchange', this.audio_durationchange);
-    audio.addEventListener('pause', this.audio_pause);
-    audio.addEventListener('play', this.audio_play);
-    audio.addEventListener('ended', this.audio_ended);
+    let _this = this;
+    audio.onplaying = () => this.audio_playing(_this);
+    audio.ondurationchange = () => this.audio_durationchange(_this);
+    audio.onpause = () => this.audio_pause(_this);
+    audio.onplay = () => this.audio_play(_this);
+    audio.onended = () => this.audio_ended(_this);
   }
   private unloadAudio(audio : HTMLAudioElement) {
-    audio.removeEventListener('playing', this.audio_playing);
-    audio.removeEventListener('durationchange', this.audio_durationchange);
-    audio.removeEventListener('pause', this.audio_pause);
-    audio.removeEventListener('play', this.audio_play);
-    audio.removeEventListener('ended', this.audio_ended);
+    audio.onplaying = null;
+    audio.ondurationchange = null;
+    audio.onpause = null;
+    audio.onplay = null;
+    audio.onended = null;
   }
 
-  private audio : HTMLAudioElement = null;
-  private audioUpdateInterval : NodeJS.Timeout = null;
-  private audioFadeInterval : NodeJS.Timeout = null;
-  private audioFading : boolean = false;
+  public audio : HTMLAudioElement = null;
+  private audioUpdateInterval = null;
+  private audioFadeInterval = null;
+  public audioFading : boolean = false;
+
+
+  private doFadeOut(callback : () => void) {
+    if(SettingsServices.getSettingBoolean('player.enableFade') && this.status == 'playing'){
+
+      let endVolume = SettingsServices.getSettingNumber('player.volume');
+      let volumeStep = (endVolume - 0.01) / 25.0;
+
+      if(this.audioFading) 
+        clearInterval(this.audioFadeInterval);
+      this.audioFading = true;
+      this.audioFadeInterval = setInterval(() => {
+        if(this.audio.volume > 0.01) this.audio.volume-=volumeStep;
+        else {
+          clearInterval(this.audioFadeInterval);
+          callback();
+          this.audioFading = false;
+          this.audio.volume = endVolume;
+        }
+      }, 40);
+
+    }else callback();
+  }
+  private doFadeIn(callback : () => void) {
+    if(SettingsServices.getSettingBoolean('player.enableFade') && this.audio.currentTime > 0){
+  
+      let endVolume = SettingsServices.getSettingNumber('player.volume');
+      let volumeStep = (endVolume - 0.01) / 25.0;
+
+      this.audio.volume = 0.01;
+      if(this.audioFading) 
+        clearInterval(this.audioFadeInterval);
+      this.audioFading = true;
+      this.audioFadeInterval = setInterval(() => {
+        if(this.audio.volume < endVolume) this.audio.volume+=volumeStep;
+        else {
+          this.audio.volume = endVolume;
+          clearInterval(this.audioFadeInterval);
+          this.audioFading = false;
+          callback();
+        }
+      }, 40);
+    }else callback();
+  }
 
   /**
    * 加载音乐
    */
-  public load() {
+  public load(callback? : (success: boolean) => void) {
     if(this.audio == null) {
+      this.loading = true;
       this.audio = document.createElement('audio');
       this.audio.src = this.fullPath;
+      this.audio.volume = SettingsServices.getSettingNumber('player.volume');
       document.body.appendChild(this.audio);
       this.loadAudio(this.audio);
     }
@@ -78,17 +141,25 @@ export class MusicItem extends EventEmitter {
           this.playError = err;
           this.updateStatus(this.audio.error.code == 2 ? 'lost' : 'playerr');
           this.loaded = false;
+          this.loading = false;
+          if(typeof callback == 'function') callback(false);
+
         }else {
+          this.updateStatus('normal');
           this.playError = null;
           this.loaded = true;
+          this.loading = false;
           this.audioDurtion = this.audio.duration;
           this.audioDurtionString = CommonUtils.getTimeStringSec(this.audio.duration);
+          if(typeof callback == 'function') callback(true);
         }
-      },1000);
+      }, 600);
     }catch(e) {
       this.playError = e;
       this.updateStatus('playerr');
       this.loaded = false;
+      this.loading = false;
+      if(typeof callback == 'function') callback(false);
     }
 
   }
@@ -97,86 +168,65 @@ export class MusicItem extends EventEmitter {
    * @param fromStart 是否从头开始播放
    */
   public play(fromStart : boolean = false, callback? : (success: boolean) => void) {
-    if(this.audio && this.loaded && !this.audioFading){
 
-      if(fromStart) this.audio.currentTime = 0;//从头开始
+    let playInternal = () => {
 
-      this.audio.play().then(() => {
+      if(this.audio && this.loaded){
 
-        let playFinish = () => {
+        if(fromStart) this.audio.currentTime = 0;//从头开始
+  
+        this.audio.play().then(() => {
+  
+          this.doFadeIn(() => {
+            this.audioUpdateInterval = setInterval(() => this.audio_updateTime(this), 500);
+            if(typeof callback == 'function') callback(true);
+          });
           this.updateStatus('playing');
-          this.audioUpdateInterval = setInterval(this.audio_updateTime, 500);
-          if(typeof callback == 'function') callback(true);
-        }
+  
+        }).catch((e) => {
+          this.playError = e;
+          this.updateStatus('playerr');
+          clearInterval(this.audioUpdateInterval);
+          if(typeof callback == 'function') callback(false);
+        });
+      }
+    };
 
-        //开启渐变
-        if(SettingsServices.getSettingBoolean('player.enableFade')){
-
-          let endVolume = SettingsServices.getSettingNumber('player.volume');
-          let volumeStep = (endVolume - 0.01) / 25.0;
-
-          this.audio.volume = 0.01;
-          this.audioFading = true;
-          this.audioFadeInterval = setInterval(() => {
-            if(this.audio.volume > 0.01) this.audio.volume+=volumeStep;
-            else {
-              clearInterval(this.audioFadeInterval);
-              this.audioFading = false;
-              playFinish();
-            }
-          }, 40);
-        }else playFinish();
-
-      }).catch((e) => {
-        this.playError = e;
-        this.updateStatus('playerr');
-        clearInterval(this.audioUpdateInterval);
-        if(typeof callback == 'function') callback(false);
-      });
-    }
+    if(!this.loaded) this.load(() =>  playInternal());
+    else playInternal();
+    
   }
   /**
    * 暂停音乐
    */
   public pause(callback? : () => void) {
-    if(this.audio && this.loaded && !this.audioFading) {
-
-      let pauseInternal = () => {
+    if(this.audio && this.loaded && !this.audio.paused) {
+      this.doFadeOut(() => {
         this.audio.pause();
         clearInterval(this.audioUpdateInterval);
         if(typeof callback == 'function') callback();
-      }
-
-      if(SettingsServices.getSettingBoolean('player.enableFade')){
-
-        let endVolume = SettingsServices.getSettingNumber('player.volume');
-        let volumeStep = (endVolume - 0.01) / 25.0;
-
-        this.audioFading = true;
-        this.audioFadeInterval = setInterval(() => {
-          if(this.audio.volume > 0.01) this.audio.volume-=volumeStep;
-          else {
-            clearInterval(this.audioFadeInterval);
-            this.audioFading = false;
-            this.audio.volume = endVolume;
-            pauseInternal();
-          }
-        }, 40);
-
-      }else pauseInternal();
-
+      });
+      this.updateStatus('paused');
     }
   }
   /**
    * 停止音乐
    */
   public stop(callback? : () => void) {
-    if(this.audio && this.loaded && !this.audioFading) {
-      this.pause(() => {
-        this.audio.currentTime = 0;
+    if(this.audio && this.loaded) {
+      let stopInternal = () => {
         this.updateStatus('normal');
+        this.loopmode = false;
+        this.audio.pause();
+        this.audio.currentTime = 0;
         if(typeof callback == 'function') callback();
-      });
+      }
+      
+      if(this.audio.paused) stopInternal()
+      else {
+        this.doFadeOut(stopInternal);
+        this.updateStatus('normal');
+      }
     }
   }
   /**
@@ -189,8 +239,9 @@ export class MusicItem extends EventEmitter {
       let destroyInternal = () => {
         this.unloadAudio(this.audio);
         this.audio.src = '';
-        document.removeChild(this.audio);
+        document.body.removeChild(this.audio);
 
+        this.loopmode = false;
         this.status = 'notload';
         this.loaded = false;   
         this.playtime  = 0;
@@ -207,6 +258,7 @@ export class MusicItem extends EventEmitter {
       if(this.status == 'playing') this.stop(() => destroyInternal() );
       else destroyInternal();
     }
+    staticMusicPool.remove(this);
   }
   /**
    * 跳转到音乐指定位置
@@ -217,42 +269,57 @@ export class MusicItem extends EventEmitter {
       this.audio.currentTime = pos;
   }
 
+  public setVolume(vol : number) {
+    if(this.audio) this.audio.volume = vol;
+  }
+
   //更新状态
   private updateStatus(newStatus : MusicStatus) {
+    let oldStatus = this.status;
     this.status = newStatus;
-    this.emit('statuschanged', newStatus);
+    this.emit('statuschanged', newStatus, oldStatus);
+
+    if(oldStatus != 'paused' && newStatus == 'playing')
+      staticPlayingCount ++;
+    if((oldStatus == 'playing' || oldStatus == 'paused') && (newStatus == 'normal' || newStatus == 'playerr' || newStatus == 'lost'))
+      staticPlayingCount --;
   }
 
-  private audio_updateTime(){
-    if(!this.tracking) {
-      this.playtime = this.audio.currentTime;
-      this.playtimeString = CommonUtils.getTimeStringSec(this.audio.currentTime) + '/' + this.audioDurtionString;
-      this.playProgress = this.audio.currentTime / this.audio.duration;
-      this.emit('timechanged', this.playProgress, this.playtimeString);
+  private audio_updateTime(_this : MusicItem){
+    if(!_this.tracking) {
+      _this.playtime = _this.audio.currentTime;
+      _this.playtimeString = CommonUtils.getTimeStringSec(_this.audio.currentTime) + '/' + _this.audioDurtionString;
+      _this.playProgress = _this.audio.currentTime / _this.audio.duration;
+      _this.emit('timechanged', _this.playProgress, _this.playtimeString);
     }
   }
-  private audio_playing() {
+  private audio_playing(_this : MusicItem) {
 
   }
-  private audio_durationchange() {
+  private audio_durationchange(_this : MusicItem) {
     if(this.loaded) {
-      this.audioDurtion = this.audio.duration;
-      this.audioDurtionString = CommonUtils.getTimeStringSec(this.audio.duration);
+      _this.audioDurtion = _this.audio.duration;
+      _this.audioDurtionString = CommonUtils.getTimeStringSec(_this.audio.duration);
     }
   }
-  private audio_pause() {
-    this.updateStatus('paused');
+  private audio_pause(_this : MusicItem) {
+    //_this.updateStatus('paused');
   }
-  private audio_play() {
-    this.updateStatus('playing');
+  private audio_play(_this : MusicItem) {
+    _this.updateStatus('playing');
   }
-  private audio_ended() {
-    this.updateStatus('normal');
-    this.emit('ended');
+  private audio_ended(_this : MusicItem) {
+    _this.updateStatus('normal');
+    _this.emit('ended');
+
+    if(_this.loopmode) {
+      _this.audio.currentTime = 0;
+      _this.audio.play();
+    }
   }
 
 }
 
 export type MusicStatus = 'notload'|'normal'|'playing'|'paused'|'lost'|'playerr';
 
-export type MusicAction = 'play'|'looplay'|'delete'|'none';
+export type MusicAction = 'play'|'pause'|'looplay'|'delete'|'none'|'stop';

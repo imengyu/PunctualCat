@@ -23,3 +23,11 @@ interface Date {
    */
   format(formatStr: String);
 }
+
+interface String {
+   /**
+   * 查找字符串中是包含另一个字符串
+   * @param item 字符串
+   */
+  contains(str: String) : boolean;
+}

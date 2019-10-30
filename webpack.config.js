@@ -15,6 +15,7 @@ const config = {
   },
   target: 'electron-renderer',
   mode: 'development',
+  devtool: 'source-map',
   resolve: {
     extensions: ['.js', '.vue', '.json', '.ts'],
     alias: {
