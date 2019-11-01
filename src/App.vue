@@ -46,15 +46,7 @@
       </div>
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <div v-if="topTabSelectItem" v-show="topTabSelectItem.name=='voice-settings'" class="main-area">
-        <div class="main-container">
-          声音设置
-        </div>
-        <div class="bottom-area"></div>
-      </div>
-    </transition>
-    <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <settings-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" />
+      <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" />
     </transition>
     <!--音量弹出-->
     <transition enter-active-class="animated bounceInDown anim-fast" leave-active-class="animated fadeOutUp anim-fast">
@@ -99,7 +91,7 @@ import MusicView from "./views/MusicView.vue"
 import VoiceView from "./views/VoiceView.vue"
 import SettingsView from "./views/SettingsView.vue"
 
-import { MusicItem, MusicAction, MusicStatus } from './model/MusicItem'
+import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
 import TableModel from "./model/TableModel";
 import TableServices from "./services/TableServices";
@@ -147,6 +139,13 @@ export default class App extends Vue {
     new IconToolItem('main-menu', 'icon-caidan_o', '主菜单', 40, 'icon', false),
   ];
   topTabSelectItem : IconToolItem = null;
+  getTopTabByName(name : string) {
+    for(var i=0;i<this.topToolbar.length;i++){
+      if(this.topToolbar[i].name == name) return this.topToolbar[i];
+    }
+    return null;
+  }
+
   tabTransitionClass = [
     "animated fadeInLeft anim-fast", 
     "animated fadeOutRight anim-fast"
@@ -164,7 +163,7 @@ export default class App extends Vue {
     x: 0,
     y: 0
   }
-  playingMusicCount = 0;
+  playingMusicCount : number = 0;
 
   //Data pool
 
@@ -193,12 +192,13 @@ export default class App extends Vue {
 
   @Watch('playingMusicCount')
   onPlayingMusicCountChanged(val : number){
+    let playerTabItem = this.getTopTabByName('music-list');
     if(val > 0) {
-      this.topToolbar[2].showHotPoint = true;
-      this.topToolbar[2].hotPointCount = val;
+      playerTabItem.showHotPoint = true;
+      playerTabItem.hotPointCount = val;
     }else{
-      this.topToolbar[2].showHotPoint = false;
-      this.topToolbar[2].hotPointCount = 0;
+      playerTabItem.showHotPoint = false;
+      playerTabItem.hotPointCount = 0;
     }
   }
 
@@ -247,6 +247,8 @@ export default class App extends Vue {
 
           //Core services
           this.serviceTables = new TableServices((<any>window).globalData);
+
+          setPlayingCountChangedCallback((count) => this.playingMusicCount = count);
           //Menu
           this.initMenus();
           //IPCS
@@ -301,30 +303,47 @@ export default class App extends Vue {
   }
   initMenus() {
     this.menuSettings = new electron.remote.Menu();
-        
+    
+
     this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => {  } }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '数据导出与导入', click: () => {  } }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '手动保存数据', accelerator: 'CmdOrCtrl+S', click: () => {  
       this.saveDatas().then(() => this.$message({ message: '手动保存数据成功', type: 'success' }))
-        .catch((e) => this.$alert('保存数据失败，错误信息：' + e, '保存数据失败', { type: 'error' }))
+        .catch((e) => this.$alert('保存数据失败，错误信息：' + e, '保存数据失败', { type: 'error', roundButton: true, }))
     }}));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', click: () => {  } }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => {  } }));
 
     var developerSubMenu = new electron.remote.Menu();
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '切换开发者工具', click: () => { ipc.send('main-act-window-control', 'switchDevTools'); } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '切换开发者工具', click: () => { 
+      if(this.currentWindow.webContents.isDevToolsOpened()) this.currentWindow.webContents.closeDevTools();
+      else this.currentWindow.webContents.openDevTools();
+    }}));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => { ipc.send('main-act-window-control', 'openProcessManager'); } }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制清除数据', click: () => {  } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制清除数据', click: () => { 
+      this.$confirm('警告！这是调试功能，数据清除后不可恢复，是否继续？', {
+        title: '调试功能',
+        type: 'warning',
+        roundButton: true,
+        confirmButtonText: '确定清除',
+        confirmButtonClass: 'el-button--danger'
+      }).then(() => {
+        this.serviceDataStorage.clearData().then(() => this.$message({ message: '清除数据成功！', type: 'success' }))
+        .catch((e) => this.$message({ message: '清除数据失败！错误信息：' + e, type: 'success' }))
+      }).catch(() => {});
+    } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制结束进程', accelerator: 'CmdOrCtrl+K', click: () => { ipc.send('main-act-quit'); } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制重载页面', accelerator: 'CmdOrCtrl+R', click: () => { location.reload(true) } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制杀死页面', click: () => { location.href = 'chrome://kill/' } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制跳转到 URL', click: () => { 
-      this.$prompt('输入要跳转到的 URL ', 'DEBUG', {
+      this.$prompt('输入要跳转到的 URL ', 'DEBUG - URL', {
         confirmButtonText: '跳转',
         cancelButtonText: '取消',
+        roundButton: true,
+        inputValue: location.href
       }).then((data : MessageBoxInputData) => {
         location.href = data.value;
       }).catch(() => {});
@@ -338,10 +357,10 @@ export default class App extends Vue {
     powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭计算机', click: () => { /*this.shutdownByUser();*/ } }));
     powerSubMenu.append(new electron.remote.MenuItem({ label: '重启计算机', click: () => { /*this.rebootByUser();*/ } }));
     powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭显示器', click: () => this.closeMointor() }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => {  } }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => { this.topTabSelectItem = this.getTopTabByName('settings') } }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '系统电源', submenu: powerSubMenu }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '关于软件', click: () => {  } }));    
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '关于软件', click: () => { this.topTabSelectItem = this.getTopTabByName('settings'); (<SettingsView>this.$refs['settingsView']).showPage('about') } }));    
     this.menuSettings.append(new electron.remote.MenuItem({ label: '退出程序', click: () => this.exitAppWithAsk() }));
 
     this.menuInput = new electron.remote.Menu();
@@ -373,6 +392,9 @@ export default class App extends Vue {
         this.menuCopy.popup({ window: this.currentWindow });
       }
     }, false);
+
+    this.currentWindow.setMenu(this.menuSettings);
+    this.currentWindow.setMenuBarVisibility(false);
   }
   initCoreServices() {
     
@@ -445,7 +467,8 @@ export default class App extends Vue {
         y: Math.floor(letPos.top) + 75,
       });
     }else if(item.name=='voice-settings'){
-      this.voiceProverVisible = !this.voiceProverVisible;
+      if(!this.voiceProverVisible)
+        this.voiceProverVisible = true;
     }
   }
 
@@ -463,6 +486,7 @@ export default class App extends Vue {
       item.play();
     } else if(mode == 'delete') {    
       this.removeMusicFromHistoryList(item);
+      item.stop();
       item.destroy();
     } 
   }
@@ -470,6 +494,7 @@ export default class App extends Vue {
   onVolumeSoftChanged(newVolume : number) {
     let volume = newVolume / 100.0;
     SettingsServices.setSettingNumber('player.volume', volume);
+    
     //更新所有已加载的音乐音量
     for(var i = 0; i < this.musicHistoryList.length; i++){
       if(this.musicHistoryList[i].loaded) 
@@ -483,14 +508,8 @@ export default class App extends Vue {
     }
     return false;
   }
-  addMusicToHistoryList(music : MusicItem){ 
+  addMusicToHistoryList(music : MusicItem) { 
     this.musicHistoryList.push(music); 
-    music.addListener('statuschanged', (newStatus : MusicStatus, oldStatus : MusicStatus) => {
-      if(oldStatus != 'paused' && newStatus == 'playing')
-        this.playingMusicCount ++;
-      if((oldStatus == 'playing' || oldStatus == 'paused') && (newStatus == 'normal' || newStatus == 'playerr' || newStatus == 'lost'))
-        this.playingMusicCount --;
-    })
   }
   removeMusicFromHistoryList(music : MusicItem){ this.musicHistoryList.splice(this.musicHistoryList.indexOf(music), 1); }
 

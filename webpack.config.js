@@ -94,7 +94,11 @@ const config = {
       {
         from: path.resolve(__dirname, 'src/main-process'),
         to: path.resolve(__dirname, 'dist')
-      }
+      },
+      {
+        from: path.resolve(__dirname, 'src/pages'),
+        to: path.resolve(__dirname, 'dist/pages')
+      },
     ]),
   ]
 };

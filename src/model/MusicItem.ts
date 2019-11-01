@@ -4,9 +4,12 @@ import CommonUtils from "../utils/CommonUtils";
 import { EventEmitter } from "events";
 
 let staticPlayingCount = 0;
+let staticPlayingCountChangedCallback : (count : number) => void = null;
 let staticMusicPool = Array<MusicItem>();
 
 export function getPlayingCount() { return staticPlayingCount };
+
+export function setPlayingCountChangedCallback(callback : (count : number) => void) { staticPlayingCountChangedCallback = callback };
 
 export function stopAllMusics() { 
   staticMusicPool.forEach(music => {
@@ -27,6 +30,7 @@ export class MusicItem extends EventEmitter {
   public loaded : boolean = false;
   public loopmode : boolean = false;
   public tracking : boolean = false;
+  public volume : number = 1.0;
 
   public playtime : number = 0;
   public playtimeString : string = '00:00';
@@ -74,7 +78,7 @@ export class MusicItem extends EventEmitter {
   private doFadeOut(callback : () => void) {
     if(SettingsServices.getSettingBoolean('player.enableFade') && this.status == 'playing'){
 
-      let endVolume = SettingsServices.getSettingNumber('player.volume');
+      let endVolume = SettingsServices.getSettingNumber('player.volume') * this.volume;
       let volumeStep = (endVolume - 0.01) / 25.0;
 
       if(this.audioFading) 
@@ -95,7 +99,7 @@ export class MusicItem extends EventEmitter {
   private doFadeIn(callback : () => void) {
     if(SettingsServices.getSettingBoolean('player.enableFade') && this.audio.currentTime > 0){
   
-      let endVolume = SettingsServices.getSettingNumber('player.volume');
+      let endVolume = SettingsServices.getSettingNumber('player.volume') * this.volume;
       let volumeStep = (endVolume - 0.01) / 25.0;
 
       this.audio.volume = 0.01;
@@ -122,7 +126,7 @@ export class MusicItem extends EventEmitter {
       this.loading = true;
       this.audio = document.createElement('audio');
       this.audio.src = this.fullPath;
-      this.audio.volume = SettingsServices.getSettingNumber('player.volume');
+      this.audio.volume = SettingsServices.getSettingNumber('player.volume') * this.volume;
       document.body.appendChild(this.audio);
       this.loadAudio(this.audio);
     }
@@ -270,19 +274,29 @@ export class MusicItem extends EventEmitter {
   }
 
   public setVolume(vol : number) {
-    if(this.audio) this.audio.volume = vol;
+    if(this.audio) this.audio.volume = vol * this.volume;
   }
 
+  public changeVolume(item : MusicItem, vol : number) {
+    item.volume = vol;
+    if(item.audio) 
+      item.audio.volume = SettingsServices.getSettingNumber('player.volume') * vol;
+  }
   //更新状态
   private updateStatus(newStatus : MusicStatus) {
     let oldStatus = this.status;
     this.status = newStatus;
     this.emit('statuschanged', newStatus, oldStatus);
 
-    if(oldStatus != 'paused' && newStatus == 'playing')
+    if((oldStatus == 'normal' || oldStatus == 'notload') && newStatus == 'playing'){
       staticPlayingCount ++;
+      if(typeof staticPlayingCountChangedCallback == 'function') staticPlayingCountChangedCallback(staticPlayingCount);
+    }
     if((oldStatus == 'playing' || oldStatus == 'paused') && (newStatus == 'normal' || newStatus == 'playerr' || newStatus == 'lost'))
+    { 
       staticPlayingCount --;
+      if(typeof staticPlayingCountChangedCallback == 'function') staticPlayingCountChangedCallback(staticPlayingCount);
+    }
   }
 
   private audio_updateTime(_this : MusicItem){
@@ -309,13 +323,14 @@ export class MusicItem extends EventEmitter {
     _this.updateStatus('playing');
   }
   private audio_ended(_this : MusicItem) {
-    _this.updateStatus('normal');
-    _this.emit('ended');
-
+  
     if(_this.loopmode) {
       _this.audio.currentTime = 0;
       _this.audio.play();
+    } else {
+      _this.updateStatus('normal');
     }
+    _this.emit('ended');
   }
 
 }

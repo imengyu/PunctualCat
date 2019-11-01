@@ -1,10 +1,12 @@
 <template>
   <div class="music-container scroll-fix">
           
-    <el-tooltip effect="dark" content="添加音乐" placement="right" :visible-arrow="false">
-      <div v-if="items && items.length > 0" class="btn-add round float-right" @click="addMusicsToHistoryList()"></div>
-    </el-tooltip>
-    <span class="text-secondary">您可以添加一些常用的音乐在此列表中快速进行播放</span>
+    <div class="music-title">
+      <span class="text-secondary">您可以添加一些常用的音乐在此列表中快速进行播放</span>
+      <el-tooltip effect="dark" content="添加音乐" placement="right" :visible-arrow="false">
+        <div v-if="items && items.length > 0" class="btn-add round" @click="addMusicsToHistoryList()"></div>
+      </el-tooltip>
+    </div>
 
     <ul v-if="items && items.length > 0" class="music-list">
       <li v-for="(item, index) in items" :key="index" @dblclick="itemClick(item, 'play');" :class="item.status">
@@ -14,7 +16,7 @@
         <div v-if="!item.loading && (item.status == 'notload' || item.status == 'normal')" class="btn-round icon-loop" title="循环播放" @click="itemClick(item, 'looplay');"></div>
         <div v-else-if="(item.status == 'playing' || item.status == 'paused')" class="btn-round icon-stop" title="停止播放" style="background-size: 19px;" @click="itemClick(item, 'stop');"></div>
 
-        <div v-if="!item.loading && (item.status == 'notload' || item.status == 'normal' || item.status == 'paused')" class="btn-round icon-play" title="播放" @click="itemClick(item, 'play');"></div>
+        <div v-if="!item.loading && (item.status == 'notload' || item.status == 'normal' || item.status == 'paused')" class="btn-round icon-play" style="background-position-x: 8px;" title="播放" @click="itemClick(item, 'play');"></div>
         <div v-else-if="(item.status == 'playing')" class="btn-round icon-pause" title="暂停" style="background-size: 13px;" @click="itemClick(item, 'pause');"></div>
         <div v-else-if="item.loading" class="btn-round" title="正在加载，请稍后">
           <i class="fa fa-circle-o-notch fa-spin"></i>
@@ -29,7 +31,16 @@
             @mousedown="trackMusicDown(item)"
             @mouseup="trackMusicUp(item)"
             :min="0" :max="item.audioDurtion" />
-          <span>{{ item.playtimeString }}</span>
+          <span class="time">{{ item.playtimeString }}</span>
+          <el-popover
+            
+            class="volume"
+            placement="top"
+            width="150"
+            trigger="click">
+            <el-slider class="el-slider-small" :format-tooltip="(val) => { return parseInt(val*100) + '%' }" v-model="item.volume" :max="1" :step="0.01" @input="(val)=>item.changeVolume(item,val)" ></el-slider>
+            <a slot="reference" href="javascript:;" title="设置音乐的音量"><i :class="'fa ' + (item.volume == 0 ? 'fa-volume-off' : (item.volume == 1 ? 'fa-volume-up' : 'fa-volume-down'))" aria-hidden="true"></i></a>
+          </el-popover>
         </div>
       </li>
     </ul>

@@ -44,9 +44,9 @@ export class DataStorageServices {
   public saveData(key : string, object : any) : Promise<any> {
     return new Promise((resolve, reject) => {
       let objectO = { key: key, data: object };
-      this.db.findOne({ key: key }, (err, objectReturn)  => {
+      this.db.find({ key: key }, (err, objectReturn)  => {
         if(objectReturn && objectReturn.length > 0){//有记录，更新
-          this.db.update(objectO, (err, doc)  => {
+          this.db.update({ key: key }, objectO, {}, (err, doc)  => {
             if(err) reject(err);
             else resolve();
           });
@@ -76,6 +76,17 @@ export class DataStorageServices {
       });
     });
     
+  }
+  /**
+   * 清除数据
+   */
+  public clearData() : Promise<any> {
+    return new Promise((resolve, reject) => {
+      this.db.remove({}, { multi: true }, function (err, numRemoved) {
+        if(err) reject(err);
+        else resolve(numRemoved);
+      });
+    });
   }
 
   public destroy() {

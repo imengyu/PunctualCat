@@ -29,7 +29,34 @@
     </div>
 
     <!--非打包代码-->
-    <script>if(typeof require=="undefined"){window.onload=function(){document.getElementById("intro").setAttribute("style","display:none");document.getElementById("global-error-info").setAttribute("style","");document.getElementById("global-error-info-text").innerText="本应用不能在浏览器中运行!"};throw Error("本应用不能在浏览器中运行! App must run in Electron")}const appWin32=require("./app.node");const Datastore=require("nedb");var appPath=process.cwd();var dbPath=appPath+"/data/data.db";var db=new Datastore({filename:dbPath});var main=null;var data=null;var appVesrsion='V 2.0.1';var appBuildDate='2919/11/28';</script> 
+    <script>
+
+      if (typeof require == "undefined") {
+        window.onload = function() {
+            document.getElementById("intro").setAttribute("style", "display:none");
+            document.getElementById("global-error-info").setAttribute("style", "");
+            document.getElementById("global-error-info-text").innerText = "本应用不能在浏览器中运行!"
+        };
+        throw Error("本应用不能在浏览器中运行! App must run in Electron")
+      }
+
+      var appWin32 = null;
+      var Datastore = require("nedb");
+
+      if(process.arch == 'ia32' || process.arch == 'x32'){
+        appWin32 = require("./app.node");
+      }
+      else console.log('Native module is not support whith arch ' + process.arch);
+
+      var appPath = process.cwd();
+      var dbPath = appPath + "/data/data.db";
+      var db = new Datastore({ filename: dbPath });
+      var main = null;
+      var data = null;
+      var appVesrsion = 'V 2.0.1';
+      var appBuildDate = '2919/11/28';
+      
+    </script> 
 
   </body>
 

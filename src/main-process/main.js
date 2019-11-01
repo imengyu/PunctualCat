@@ -6,6 +6,7 @@ const { app,BrowserWindow,globalShortcut,dialog } = require('electron')
  
 var mainWindow
 var helpWindow
+var crashedWindow
 var screenSize = {};
 
 const Menu = electron.Menu;
@@ -23,7 +24,7 @@ function createWindow () {
   screenSize = electron.screen.getPrimaryDisplay().workAreaSize;
 
   mainWindow = new BrowserWindow({
-    minWidth: 650,
+    minWidth: 710,
     minHeight: 500,
     width: 900, 
     height: 600,
@@ -46,10 +47,41 @@ function createWindow () {
     slashes: true
   }))
   mainWindow.webContents.openDevTools();
- 
+  mainWindow.webContents.on('crashed', (event, killed) => {
+
+    if(killed) {
+      showCrashedWindow();
+      destroyMain();
+    }
+    else {
+      /*
+      mainWindow.webContents.loadURL(url.format({
+        pathname: path.join(__dirname, 'pages/index.html'),
+        protocol: 'file:',
+        slashes: true
+      }))
+
+      //Collect error info
+
+      //Reload
+      setTimeout(() => {
+        mainWindow.loadURL(url.format({
+          pathname: path.join(__dirname, 'index.html'),
+          protocol: 'file:',
+          slashes: true
+        }))
+      }, 10000);*/
+    }
+  });
   mainWindow.on('closed', function () {
-    if(helpWindow != null)
+    if(helpWindow != null) {      
       helpWindow.close();
+      helpWindow = NULL;
+    }
+    if(appTray != null) {
+      appTray.destroy();
+      appTray = null;
+    }
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
@@ -86,6 +118,37 @@ function createWindow () {
   appTray.on('click',function(){
     mainWindow.show();
   })
+  
+}
+function destroyMain() {
+  appQuit = true;
+  mainWindow.close();
+}
+function showCrashedWindow() {
+  crashedWindow = new BrowserWindow({
+    width: 560, 
+    height: 410,
+    frame: true,
+    transparent: false,
+    fullscreen: false,
+    resizable: false,
+    minimizable: false,
+    icon: path.join(__dirname, 'app.ico'),
+    webPreferences: {
+      webSecurity: false,
+      nodeIntegration: true,
+      disableBlinkFeatures: "",
+    },
+  })
+  crashedWindow.setMenu(null)
+  crashedWindow.loadURL(url.format({
+    pathname: path.join(__dirname, 'pages/crashed.html'),
+    protocol: 'file:',
+    slashes: true
+  }));
+  crashedWindow.on('close', () => {
+    crashedWindow = null;
+  });
 }
  
 // This method will be called when Electron has finished
@@ -172,6 +235,9 @@ ipc.on('main-save-file-dialog-json', function (event, arg) {
 })
 ipc.on('main-act-quit', function (event, arg) {
   appQuit = true; app.quit();
+});
+ipc.on('main-act-recreate', function (event) {
+  if(mainWindow == null) createWindow();
 });
 ipc.on('main-act-run-shell', function (event, arg) {
   let workerProcess
