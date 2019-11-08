@@ -1,23 +1,27 @@
-import TableModel from '../model/TableModel'
+import PlayTable from '../model/PlayTable'
 
 /**
  * 时间表控制服务
  */
 export default class TableServices {
 
-  private _data: Array<TableModel>;
+  private _data: Array<PlayTable>;
 
-  constructor(data: Array<TableModel> | Array<Object>) {
+  constructor(data: Array<PlayTable> | Array<Object>) {
     this._data = data;
+  }
+
+  public getData() {
+    return this._data
   }
 
   /**
    * 添加时间表
    * @param name 时间表名称
    */
-  public addTable(name: String): TableModel {
-    let newTable: TableModel;
-    newTable = new TableModel();
+  public addTable(name: String): PlayTable {
+    let newTable: PlayTable;
+    newTable = new PlayTable();
 
     return newTable;
   }

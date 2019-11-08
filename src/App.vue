@@ -30,20 +30,10 @@
     </div>
     <!--主区域-->
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <div v-if="topTabSelectItem" v-show="topTabSelectItem.name=='main-list'" class="main-area">
-        <div class="main-container">
-          主播放列表
-        </div>
-        <div class="bottom-area"></div>
-      </div>
+      <table-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='main-list'" :table-service="serviceTables" />
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <div v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" class="main-area">
-        <div class="main-container">
-          广播消息
-        </div>
-        <div class="bottom-area"></div>
-      </div>
+      <radio-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" />
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
       <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" />
@@ -90,10 +80,12 @@ import Calendar from "./components/Calendar.vue"
 import MusicView from "./views/MusicView.vue"
 import VoiceView from "./views/VoiceView.vue"
 import SettingsView from "./views/SettingsView.vue"
+import TableView from "./views/TableView.vue"
+import RadioView from "./views/RadioView.vue"
 
 import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
-import TableModel from "./model/TableModel";
+import PlayTable from "./model/PlayTable";
 import TableServices from "./services/TableServices";
 import SettingsServices from "./services/SettingsServices";
 import { DataStorageServices, createDataStorageServices, destroyDataStorageServices } from "./services/DataStorageServices";
@@ -112,6 +104,8 @@ const remote = electron.remote;
     'music-list': MusicView,
     'voice-view': VoiceView,
     'settings-view': SettingsView,
+    'table-view': TableView,
+    'radio-view': RadioView
   }
 })
 export default class App extends Vue {

@@ -49,6 +49,7 @@
               Electron <br />
               Chromium <br />
               V8 <br />
+              软件架构 <br />
               操作系统 <br />
             </div>
             <div style="display: inline-block; width: 200px; text-align: left; padding-left: 5px">
@@ -56,8 +57,9 @@
               <span class="text-important">{{ process.versions.electron }}</span><br />
               <span class="text-important">{{ process.versions.chrome }}</span><br />
               <span class="text-important">{{ process.versions.v8 }}</span><br />
+              <span class="text-important">{{ process.arch }}</span><br />
               <span
-                class="text-important">{{ process.platform + ' ' + process.arch + ' ' + process.getSystemVersion() }}</span><br />
+                class="text-important">{{ process.platform + ' ' + process.getSystemVersion() }}</span><br />
             </div>
           </div>
 

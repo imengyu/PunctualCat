@@ -86,11 +86,18 @@ namespace bells {
 		LASTINPUTINFO lpi;
 		DWORD dwTime = 0;
 		lpi.cbSize = sizeof(lpi);
-		GetLastInputInfo(&lpi);//关于此windows API接口的介绍，参见同文件夹下的文档
+		GetLastInputInfo(&lpi);
 		dwTime = ::GetTickCount() - lpi.dwTime;
-
 		bool b = dwTime >= 600000;
 		args.GetReturnValue().Set(Nan::New(b));
+	}
+    void MethodGetLastInputTime(const FunctionCallbackInfo<Value>& args) {
+		LASTINPUTINFO lpi;
+		DWORD dwTime = 0;
+		lpi.cbSize = sizeof(lpi);
+		GetLastInputInfo(&lpi);
+		dwTime = ::GetTickCount() - lpi.dwTime;
+		args.GetReturnValue().Set(Nan::New((int)(dwTime / 1000)));
 	}
 	void MethodCloseMointor(const FunctionCallbackInfo<Value>& args) {
 		PostMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, (LPARAM)2);
@@ -122,14 +129,21 @@ namespace bells {
 
 		args.GetReturnValue().Set(Nan::New(result));
 	}
+	void MethodGetVersion(const FunctionCallbackInfo<Value>& args) {
+		Isolate* isolate = args.GetIsolate();
+		v8::Local<v8::String> string = v8::String::NewFromUtf8(isolate, "v1.0", v8::NewStringType::kInternalized).ToLocalChecked();
+		args.GetReturnValue().Set(string);
+	}
 
 	void Initialize(Local<Object> exports) {
 		NODE_SET_METHOD(exports, "setPowerStateEnable", MethodSetPowerStateEnable);
 		NODE_SET_METHOD(exports, "setAutoStartEnable", MethodSetAutoStartEnable);
 		NODE_SET_METHOD(exports, "getAutoStartEnabled", MethodGetAutoStartEnabled);
 		NODE_SET_METHOD(exports, "getIsUserLeave", MethodGetIsUserLeave);
+        NODE_SET_METHOD(exports, "getLastInputTime", MethodGetLastInputTime);
 		NODE_SET_METHOD(exports, "closeMointor", MethodCloseMointor);
 		NODE_SET_METHOD(exports, "openMointor", MethodOpenMointor);
+		NODE_SET_METHOD(exports, "version", MethodGetVersion);
 	}
 
 	NODE_MODULE(NODE_GYP_MODULE_NAME, Initialize)
