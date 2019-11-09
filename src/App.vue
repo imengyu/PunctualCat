@@ -85,7 +85,6 @@ import RadioView from "./views/RadioView.vue"
 
 import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
-import PlayTable from "./model/PlayTable";
 import TableServices from "./services/TableServices";
 import SettingsServices from "./services/SettingsServices";
 import { DataStorageServices, createDataStorageServices, destroyDataStorageServices } from "./services/DataStorageServices";
@@ -161,6 +160,7 @@ export default class App extends Vue {
 
   //Data pool
 
+  baseData = null;
   musicHistoryList : Array<MusicItem> = [];
 
   //Services
@@ -240,7 +240,12 @@ export default class App extends Vue {
         this.loadAllDatas(() => {
 
           //Core services
-          this.serviceTables = new TableServices((<any>window).globalData);
+          this.serviceTables = new TableServices();
+          if(this.baseData) this.serviceTables.loadFromJsonObject(this.baseData);
+          else {
+            this.baseData = [];
+            console.log('Base data lost, use empty data');
+          }
 
           setPlayingCountChangedCallback((count) => this.playingMusicCount = count);
           //Menu
@@ -405,15 +410,22 @@ export default class App extends Vue {
 
   //数据控制
   loadAllDatas(callback : () => void) {
-    //musics
-    this.serviceDataStorage.loadData('musics').then((musics) => {
-      if(musics) musics.forEach((element : string) => {
-        if(!this.existsInHistoryList(element))
-          this.addMusicToHistoryList(new MusicItem(element));
-      });
-      callback();
+    //base
+    this.serviceDataStorage.loadData('basedata').then((data) => {
+      this.baseData = data;
+      //musics
+      this.serviceDataStorage.loadData('musics').then((musics) => {
+        if(musics) musics.forEach((element : string) => {
+          if(!this.existsInHistoryList(element))
+            this.addMusicToHistoryList(new MusicItem(element));
+        });
+        callback();
+      }).catch((e) => {
+        console.error('loadAllDatas for musics failed ! ' + e);
+        callback();
+      })
     }).catch((e) => {
-      console.error('loadAllDatas for musics failed ! ' + e);
+      console.error('loadAllDatas for base data failed ! ' + e);
       callback();
     })
   }
@@ -423,8 +435,11 @@ export default class App extends Vue {
       let musics = [];
       for(var i = 0, c = this.musicHistoryList.length; i < c; i++)
         musics.push(this.musicHistoryList[i].fullPath);
-      this.serviceDataStorage.saveData('musics', musics).then(() => {
-        SettingsServices.saveSettings().then(() => resolve()).catch((e) => reject(e));
+      this.baseData = this.serviceTables.saveToJSONObject();
+      this.serviceDataStorage.saveData('basedata', this.baseData).then(() => {
+        this.serviceDataStorage.saveData('musics', musics).then(() => {
+          SettingsServices.saveSettings().then(() => resolve()).catch((e) => reject(e));
+        }).catch((e) =>  reject(e))
       }).catch((e) =>  reject(e))
     })
     

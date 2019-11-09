@@ -13,3 +13,11 @@ export interface AutoPlayable {
   isPlayingTime(type : AutoPlayCheckType);
 
 }
+
+/**
+ * 可存为 JSON 的项目
+ */
+export interface AutoSaveable {
+  saveToJSONObject() : object;
+  loadFromJsonObject(obj : any);
+}
