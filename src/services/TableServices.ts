@@ -8,6 +8,9 @@ export default class TableServices implements AutoSaveable {
 
   private tables: Array<PlayTable> = [];
 
+  /**
+   * 获取数据数组
+   */
   public getData() {
     return this.tables
   }
@@ -45,7 +48,7 @@ export default class TableServices implements AutoSaveable {
   }
   public loadFromJsonObject(obj: any) {
     let i = 0, objTable : PlayTable = null;
-    for(; i< obj.length; i++) {
+    for(; i< obj.tables.length; i++) {
       objTable = new PlayTable();
       objTable.loadFromJsonObject(obj.tables[i]);
       this.tables.push(objTable);

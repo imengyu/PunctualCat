@@ -1,11 +1,14 @@
-import { AutoPlayable, AutoSaveable, AutoPlayCheckType } from './PlayInterfaces'
+import { AutoPlayable, AutoSaveable, AutoPlayCheckType, AutoPlayStatus } from './PlayInterfaces'
 import { PlayTask } from './PlayTask'
 import { PlayCondition } from './PlayCondition'
+
+
 
 /**
  * 播放计划表
  */
 export class PlayTable implements AutoPlayable, AutoSaveable {
+
 
   public saveToJSONObject(): object {
     let buf = {
@@ -46,6 +49,8 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   public tasks : Array<PlayTask> = [];
   public condition: PlayCondition = null;
   public color = '#000';
+  public enabled = true;
+  public status : AutoPlayStatus = 'unknow';
 
   /**
    * 检测当前 播放计划表 是否达到指定的播放时间
@@ -54,9 +59,11 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   public isPlayingTime(type: AutoPlayCheckType) {
     return this.condition ? this.condition.isPlayingTime(type) : false;
   }
-
-
-
-
-
+  /**
+   * 检测当前 播放计划表 是否达到指定的停止时间
+   * @param type 检测类型
+   */
+  public isStoppingTime(type: AutoPlayCheckType) {
+    return this.condition ? this.condition.isStoppingTime(type) : false;
+  }
 }

@@ -75,7 +75,9 @@
 
 <script lang="ts">
 import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-property-decorator";
+import electron, { BrowserWindow, screen } from "electron";
 
+const ipc = electron.ipcRenderer;
 const process = require('process');
 
 @Component({
@@ -94,6 +96,11 @@ export default class SettingsView extends Vue {
     this.process = process;
     this.appVesrsion = (<any>window).appVesrsion;
     this.appBuildDate = (<any>window).appBuildDate;
+  }
+
+  showHelpWindow(arg) { ipc.send('main-act-show-help-window', arg); }
+  toggleDeveloperMode() {
+    
   }
 
   public showPage(name : string) { this.currentPage = name }

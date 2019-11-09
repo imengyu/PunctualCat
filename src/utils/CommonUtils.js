@@ -14,7 +14,8 @@ export default {
   getPageArea,
   getElementWindowLeft,
   getElementWindowTop,
-  getTimeStringSec
+  getTimeStringSec,
+  deleteSpaceInStringArray
 }
 
 /**
@@ -123,6 +124,20 @@ function getElementWindowTop(element) {
   }
   return actualTop;
 }
+/**
+ * 去除字符串数组的空值
+ * @param {Array<String>} array 字符串数组
+ * @return {Array<String>} 返回新的字符串数组
+ */
+function deleteSpaceInStringArray(array) {
+  var newArray = [], i = 0;
+  for(;i<array.length;i++){
+    if(array[i] != '')
+      newArray.push(array[i]);
+  }
+  return newArray;
+}
+
 /**
  * 获取网页大小
  * @returns {{width: number, height: number}} 返回网页大小

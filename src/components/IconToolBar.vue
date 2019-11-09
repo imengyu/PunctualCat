@@ -52,6 +52,8 @@ export default class IconToolBar extends Vue {
 .icon-tollbar {
   display: inline-block;
   position: relative;
+  word-break: keep-all;
+  white-space: nowrap;
 
   .icon-item {
 

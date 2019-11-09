@@ -1,6 +1,8 @@
 
 export type AutoPlayCheckType = 'full'|'minute'|'hour';
 
+export type AutoPlayStatus = 'unknow'|'playing'|'disabled'|'normal'|'error'|'played'
+
 /**
  * 可执行自动时间判断项目
  */
@@ -11,7 +13,11 @@ export interface AutoPlayable {
    * @param type 检测时间
    */
   isPlayingTime(type : AutoPlayCheckType);
-
+  /**
+   * 检测是否达到指定的停止时间
+   * @param type 检测时间
+   */
+  isStoppingTime(type : AutoPlayCheckType);
 }
 
 /**

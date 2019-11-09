@@ -87,7 +87,10 @@ import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountCh
 import IconToolItem from "./model/IconToolItem";
 import TableServices from "./services/TableServices";
 import SettingsServices from "./services/SettingsServices";
+import AutoPlayService from "./services/AutoPlayService";
+import { MusicHistoryService, createMusicHistoryService } from "./services/MusicHistoryService";
 import { DataStorageServices, createDataStorageServices, destroyDataStorageServices } from "./services/DataStorageServices";
+import GlobalWorker from "./services/GlobalWorker";
 
 import electron, { BrowserWindow, screen } from "electron";
 import { Menu, MenuItem } from "electron";
@@ -165,8 +168,10 @@ export default class App extends Vue {
 
   //Services
 
+  autoPlayService: AutoPlayService = null;
   serviceTables: TableServices = null;
   serviceDataStorage : DataStorageServices = null;
+  serviceMusicHistory : MusicHistoryService = null;
 
   autoWorkerOn = true;
 
@@ -237,17 +242,19 @@ export default class App extends Vue {
 
       let initInternal = () => {
 
+        //Load actions
+        GlobalWorker.registerGlobalAction('shutdown', this.executeShutdownNow);
+        GlobalWorker.registerGlobalAction('reboot', this.executeRebootNow);
+        //music history
+        this.serviceMusicHistory = createMusicHistoryService(this.musicHistoryList);
+
         this.loadAllDatas(() => {
 
           //Core services
-          this.serviceTables = new TableServices();
-          if(this.baseData) this.serviceTables.loadFromJsonObject(this.baseData);
-          else {
-            this.baseData = [];
-            console.log('Base data lost, use empty data');
-          }
+          this.initCoreServices();
 
           setPlayingCountChangedCallback((count) => this.playingMusicCount = count);
+
           //Menu
           this.initMenus();
           //IPCS
@@ -257,6 +264,7 @@ export default class App extends Vue {
           setTimeout(() => {
             this.hideIntro();
             this.topTabSelectItem = this.topToolbar[0];
+            //this.autoPlayService.start();
           }, 1000);   
         })
       }
@@ -279,17 +287,17 @@ export default class App extends Vue {
       if(!path || path.length == 0) 
         return;
       if(arg.type=='chooseCommandMusic'){
-        this.addMusicToHistoryList(new MusicItem(path[0]));
+        this.serviceMusicHistory.addMusicToHistoryList(new MusicItem(path[0]));
       }
       if(arg.type=='openAndPlay'){
-        this.addMusicToHistoryList(new MusicItem(path[0]));
+        this.serviceMusicHistory.addMusicToHistoryList(new MusicItem(path[0]));
       }
       if(arg.type=='addMusicsToHistoryList'){
         var index = 0;
         path.forEach(element => {
           if(element!=''){
-            if(!this.existsInHistoryList(element))
-              this.addMusicToHistoryList(new MusicItem(element));
+            if(!this.serviceMusicHistory.existsInHistoryList(element))
+              this.serviceMusicHistory.addMusicToHistoryList(new MusicItem(element));
             index++;
           }
         });    
@@ -396,11 +404,19 @@ export default class App extends Vue {
     this.currentWindow.setMenuBarVisibility(false);
   }
   initCoreServices() {
-    
+    this.serviceTables = new TableServices();
+    if(this.baseData) this.serviceTables.loadFromJsonObject(this.baseData);
+    else {
+      this.baseData = [];
+      console.log('Base data lost, use empty data');
+    }
+    this.autoPlayService = new AutoPlayService(this.serviceTables);
+    this.autoPlayService.on('daychange', this.onDayChange);
   }
   uninit() : Promise<any> {
     return new Promise((resolve, reject) => {
       this.saveDatas().then(() => {
+        this.autoPlayService.stop();
         this.serviceTables.destroy();
         destroyDataStorageServices();
         resolve();
@@ -413,11 +429,16 @@ export default class App extends Vue {
     //base
     this.serviceDataStorage.loadData('basedata').then((data) => {
       this.baseData = data;
+
+      console.log('Data load check baseData : ');
+      console.dir(data);
+
       //musics
       this.serviceDataStorage.loadData('musics').then((musics) => {
+
         if(musics) musics.forEach((element : string) => {
-          if(!this.existsInHistoryList(element))
-            this.addMusicToHistoryList(new MusicItem(element));
+          if(!this.serviceMusicHistory.existsInHistoryList(element))
+            this.serviceMusicHistory.addMusicToHistoryList(new MusicItem(element));
         });
         callback();
       }).catch((e) => {
@@ -437,6 +458,8 @@ export default class App extends Vue {
         musics.push(this.musicHistoryList[i].fullPath);
       this.baseData = this.serviceTables.saveToJSONObject();
       this.serviceDataStorage.saveData('basedata', this.baseData).then(() => {
+        console.log('Data save check basedata : ');
+        console.dir(this.baseData);
         this.serviceDataStorage.saveData('musics', musics).then(() => {
           SettingsServices.saveSettings().then(() => resolve()).catch((e) => reject(e));
         }).catch((e) =>  reject(e))
@@ -445,7 +468,15 @@ export default class App extends Vue {
     
   }
 
+
+  //** 
+
+  onDayChange() {
+
+  }
+
   //** 界面控制
+
   switchCalendar() {
     this.calendarViaible = !this.calendarViaible;
   }
@@ -494,7 +525,7 @@ export default class App extends Vue {
       item.loopmode = true;
       item.play();
     } else if(mode == 'delete') {    
-      this.removeMusicFromHistoryList(item);
+      this.serviceMusicHistory.removeMusicFromHistoryList(item);
       item.stop();
       item.destroy();
     } 
@@ -503,7 +534,8 @@ export default class App extends Vue {
   onVolumeSoftChanged(newVolume : number) {
     let volume = newVolume / 100.0;
     SettingsServices.setSettingNumber('player.volume', volume);
-    
+    //声音图标
+    this.topToolbar[3].content = volume == 0 ? 'icon-shengyinguanbi' : 'icon-shengyin';
     //更新所有已加载的音乐音量
     for(var i = 0; i < this.musicHistoryList.length; i++){
       if(this.musicHistoryList[i].loaded) 
@@ -511,23 +543,13 @@ export default class App extends Vue {
     }
   }
   //音乐列表扩展
-  existsInHistoryList(musicPath : string) {
-    for(var i = 0; i < this.musicHistoryList.length; i++){
-      if(this.musicHistoryList[i].fullPath == musicPath) return true;
-    }
-    return false;
-  }
-  addMusicToHistoryList(music : MusicItem) { 
-    this.musicHistoryList.push(music); 
-  }
-  removeMusicFromHistoryList(music : MusicItem){ this.musicHistoryList.splice(this.musicHistoryList.indexOf(music), 1); }
+  
 
 
   //** 应用工作函数
 
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }
-  showHelpWindow(ar) { ipc.send('main-act-show-help-window', ar); }
   emptyAction() {}
   closeMointor() { Win32Helper.closeMointor(); }
   executeShutdownNow() { ipc.send("main-act-shutdown"); }
