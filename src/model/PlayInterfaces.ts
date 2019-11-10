@@ -1,7 +1,7 @@
 
 export type AutoPlayCheckType = 'full'|'minute'|'hour';
 
-export type AutoPlayStatus = 'unknow'|'playing'|'disabled'|'normal'|'error'|'played'
+export type AutoPlayStatus = 'unknow'|'playing'|'disabled'|'normal'|'error'|'played'|'norule'
 
 /**
  * 可执行自动时间判断项目

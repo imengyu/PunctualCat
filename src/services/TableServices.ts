@@ -6,7 +6,7 @@ import { AutoSaveable } from '../model/PlayInterfaces'
  */
 export default class TableServices implements AutoSaveable {
 
-  private tables: Array<PlayTable> = [];
+  public tables: Array<PlayTable> = [];
 
   /**
    * 获取数据数组

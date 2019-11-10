@@ -69,7 +69,9 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public musics : Array<MusicItem> = [];
   public commands : Array<string> = [];
 
-  public volume = 1.0;
+  public editing = false;
+
+  public volume = 100;
   public timeLimit = {
     hours: 0,
     minute: 0,
@@ -120,7 +122,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
           //设置一些初始参数
           let startSec = this.startPos.hours * 3600 + this.startPos.minute * 60 + this.startPos.second;
           if(startSec > 0) this.musics[this.currentPlayMusicIndex].seek(startSec);
-          this.musics[this.currentPlayMusicIndex].volume = this.volume;
+          this.musics[this.currentPlayMusicIndex].volume = this.volume / 100.0;
           this.musics[this.currentPlayMusicIndex].on('ended', () => { this.playerEnded(playerLoop) });
           this.musics[this.currentPlayMusicIndex].play(true, (success) => {
             if(!success)

@@ -131,3 +131,30 @@
     }
   }
 }
+
+.el-table {
+
+  td,th {
+    padding: 0;
+    font-size: 14px;
+  }
+  thead {
+    color: #909399;
+    font-weight: bold;
+    font-size: 13px;
+  }
+  .cell {
+    word-break: break-all;
+    line-height: 15px;
+    padding: 0 4px;
+  }
+}
+
+.el-button--mini, .el-button--small {
+  font-size: 12px;
+  border-radius: 3px;
+
+  i {
+    font-size: 12px;
+  }
+}
