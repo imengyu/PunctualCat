@@ -5,6 +5,8 @@ import { MusicItem } from './MusicItem'
 import { EventEmitter } from "events";
 import GlobalWorker from '../services/GlobalWorker'
 import { getMusicHistoryService, MusicHistoryService  } from '../services/MusicHistoryService'
+import SettingsServices from "../services/SettingsServices";
+import Win32Utils from '../utils/Win32Utils';
 
 export type PlayTaskType = 'music'|'command'|'shutdown'|'reboot'
 
@@ -140,8 +142,11 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
           this.musics[this.currentPlayMusicIndex].volume = this.volume / 100.0;
           this.musics[this.currentPlayMusicIndex].on('ended', () => { this.playerEnded(playerLoop) });
           this.musics[this.currentPlayMusicIndex].play(true, (success) => {
-            if(!success)
+            if(!success){
               this.stopPlayingMusic(false);
+              if(SettingsServices.getSettingBoolean('auto.playTipIfFail'))
+                Win32Utils.messageBeep(Win32Utils.messageBeepTypes.MB_ICONEXCLAMATION);
+            }
           });
         }else {
           this.currentPlayMusicCount++;

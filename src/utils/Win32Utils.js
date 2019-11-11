@@ -4,7 +4,14 @@ export default {
   getAutoStartEnabled,
   getIsUserLeave,
   closeMointor,
-  openMointor
+  openMointor,
+  messageBeep,
+  messageBeepTypes: {
+    MB_ICONHAND: 0x00000010,
+    MB_ICONQUESTION: 0x00000020,
+    MB_ICONEXCLAMATION: 0x00000030,
+    MB_ICONASTERISK: 0x00000040
+  }
 }
 
 /**
@@ -50,4 +57,12 @@ function closeMointor(){
  */
 function openMointor(){
   window.appWin32.openMointor();
+}
+/**
+ * 播放系统提示音
+ * @param {number} type 提示音类型 (messageBeepTypes)
+ * @returns {boolean} 操作是否成功
+ */
+function messageBeep(type){
+  window.appWin32.messageBeep(type);
 }

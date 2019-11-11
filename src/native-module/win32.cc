@@ -134,15 +134,31 @@ namespace bells {
 		v8::Local<v8::String> string = v8::String::NewFromUtf8(isolate, "v1.0", v8::NewStringType::kInternalized).ToLocalChecked();
 		args.GetReturnValue().Set(string);
 	}
+  void MethodMessageBeep(const FunctionCallbackInfo<Value>& args) {
+		if (args.Length() < 1) {
+			Nan::ThrowTypeError("Wrong number of arguments");
+			return;
+		}
+		if (!args[0]->IsNumber()) {
+			Nan::ThrowTypeError("Wrong arguments");
+			return;
+		}
+
+		double arg0 = args[0]->NumberValue();
+		bool result = MessageBeep((UINT)arg0);
+
+		args.GetReturnValue().Set(Nan::New(result));
+	}
 
 	void Initialize(Local<Object> exports) {
 		NODE_SET_METHOD(exports, "setPowerStateEnable", MethodSetPowerStateEnable);
 		NODE_SET_METHOD(exports, "setAutoStartEnable", MethodSetAutoStartEnable);
 		NODE_SET_METHOD(exports, "getAutoStartEnabled", MethodGetAutoStartEnabled);
 		NODE_SET_METHOD(exports, "getIsUserLeave", MethodGetIsUserLeave);
-        NODE_SET_METHOD(exports, "getLastInputTime", MethodGetLastInputTime);
+    NODE_SET_METHOD(exports, "getLastInputTime", MethodGetLastInputTime);
 		NODE_SET_METHOD(exports, "closeMointor", MethodCloseMointor);
 		NODE_SET_METHOD(exports, "openMointor", MethodOpenMointor);
+    NODE_SET_METHOD(exports, "messageBeep", MethodMessageBeep);
 		NODE_SET_METHOD(exports, "version", MethodGetVersion);
 	}
 

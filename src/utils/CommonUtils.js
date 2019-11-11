@@ -10,6 +10,7 @@ export default {
   clone,
   cloneValue,
   cloneValueForce,
+  cloneValueIfUndefined,
   getViewport,
   getPageArea,
   getElementWindowLeft,
@@ -75,8 +76,20 @@ function cloneValue(setObj, sourceObj) {
 function cloneValueForce(setObj, sourceObj) {
   if (!setObj || !sourceObj) return;
   Object.keys(sourceObj).forEach(function (key) {
-    if (isJSON(setObj[key])) cloneValue(setObj[key], sourceObj[key]);
+    if (isJSON(setObj[key])) cloneValueForce(setObj[key], sourceObj[key]);
     else setObj[key] = sourceObj[key];
+  });
+}
+/**
+ * 目标对象不存在的属性从源对象复制
+ * @param {*} setObj 
+ * @param {*} sourceObj 
+ */
+function cloneValueIfUndefined(setObj, sourceObj) {
+  if (!setObj || !sourceObj) return;
+  Object.keys(sourceObj).forEach(function (key) {
+    if(typeof setObj[key] == 'undefined')
+      setObj[key] = sourceObj[key];
   });
 }
 
@@ -98,7 +111,7 @@ function mergeJSON(minor, main) {
 }
 function isJSON(target) {
   if (!target) return false;
-  return typeof target == "object" && target.constructor && target.constructor == Object;
+  return target && typeof target == "object" && target.constructor && target.constructor == Object;
 }
 function isArray(o) {
   return Object.prototype.toString.call(o) == '[object Array]';

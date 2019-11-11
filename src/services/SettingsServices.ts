@@ -1,5 +1,6 @@
 import { DataStorageServices, createDataStorageServices } from './DataStorageServices'
 import { EventEmitter } from "events";
+import CommonUtils from '../utils/CommonUtils';
 
 class SettingsServices extends EventEmitter {
 
@@ -10,16 +11,48 @@ class SettingsServices extends EventEmitter {
       oldSize: {
         x: 900,
         y: 600
-      }
+      },
+      isMax: false,
+      title: '',
+      background: '',
+    },
+    security: {
+      preventAnymouseUse: false,
+      managerPassword: '',
+      autoLock: false,
+      autoLockMaxMinute: 5,
+      lockedNote: '系统已经锁定，请联系管理员获取更多信息',
+    },
+    system: {
+      autoUpdate: true,
+      autoHide: true,
+      autoHideMinute: 10,
+      preventSleep: true,
+    },
+    auto: {
+      playTipIfFail: true,
+      muteTime: {
+        enabled: false,
+        condition: null
+      },
     },
     player: {
       enableFade: true,
       volume: 0.5,
+      maxPlayingMusic: 6,
     }
   };
 
   public constructor() {
     super();
+  }
+
+  public getData() { return this.staticSettings }
+  public setData(data : any) { 
+    CommonUtils.cloneValue(this.staticSettings, data)
+  }
+  public resetDefault() { 
+    CommonUtils.cloneValue(this.staticSettings, this.staticSettingsTemplate)
   }
 
   /**
@@ -33,7 +66,10 @@ class SettingsServices extends EventEmitter {
    */
   public loadSettings() : Promise<any> {
     return this.staticDataStorageServices.loadData('settings').then((value) => {
-      if(value) this.staticSettings = value;
+      if(value) { 
+        this.staticSettings = value;
+        CommonUtils.cloneValueIfUndefined(this.staticSettings, this.staticSettingsTemplate);
+      }
       else this.staticSettings = this.staticSettingsTemplate;
       this.emit('load');
     }).catch(() => {
@@ -77,6 +113,21 @@ class SettingsServices extends EventEmitter {
    * @param key 设置的键值
    */
   public getSetting(key : string) : string {
+    return this.searchKeyInSettingObject(this.staticSettings, key);
+  }
+  /**
+   * 写入设置
+   * @param key 设置的键值
+   * @param value 设置值
+   */
+  public setSettingObject(key : string, value : object) {
+    this.searchAndSetKeyInSettingObject(this.staticSettings, key, value);
+  }
+  /**
+   * 获取设置
+   * @param key 设置的键值
+   */
+  public getSettingObject(key : string) : any {
     return this.searchKeyInSettingObject(this.staticSettings, key);
   }
   /**

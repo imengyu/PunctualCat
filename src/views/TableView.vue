@@ -219,7 +219,7 @@
     </div>
     <div class="bottom-area">
       <div v-if="currentShowTable" class="table-cursor" :style="'left:'+getCurrentTableCurLeft()+'px'"></div>
-      <table-list v-if="tables" lockAxis="x" axis="x" v-model="tables" :pressDelay="100" @add="addTable" @input="resortTableEnd">
+      <table-list v-if="tables" lockAxis="x" axis="x" v-model="tables" :distance="20" @add="addTable" @input="resortTableEnd">
         <table-item v-for="(table, index) in tables" :index="index" :key="index" :table="table"
           :class="(table==currentShowTable?'active':'')"
           @click="showTable(table)"

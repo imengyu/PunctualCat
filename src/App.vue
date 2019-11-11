@@ -261,6 +261,10 @@ export default class App extends Vue {
 
           setPlayingCountChangedCallback((count) => this.playingMusicCount = count);
 
+          //Appily settings
+          this.loadSystemSettings();
+          this.loadWindowSettings();
+
           //Menu
           this.initMenus();
           //IPCS
@@ -426,6 +430,7 @@ export default class App extends Vue {
   }
   uninit() : Promise<any> {
     return new Promise((resolve, reject) => {
+      this.saveWindowSettings();
       this.saveDatas().then(() => {
         this.autoPlayService.stop();
         this.serviceTables.destroy();
@@ -477,6 +482,35 @@ export default class App extends Vue {
       }).catch((e) =>  reject(e))
     })
     
+  }
+  loadWindowSettings() {
+    let oldSize = SettingsServices.getSettingObject('window.oldSize');
+    if(oldSize && oldSize.x != 900 && oldSize.y != 600) {
+      let screenSize = screen.getPrimaryDisplay().bounds;
+      let newPos = {
+        x: screenSize.width / 2 - oldSize.x,
+        y: screenSize.height / 2 - oldSize.y,
+      }
+      this.currentWindow.setBounds({
+        x: newPos.x,
+        y: newPos.y,
+        width: oldSize.xiaoxizhongxin,
+        height: oldSize.y
+      })
+    }
+    let title = SettingsServices.getSettingObject('window.title');
+    if(!CommonUtils.isNullOrEmpty(title)) this.currentWindow.setTitle(title);
+  }
+  loadSystemSettings() {
+    
+  }
+  saveWindowSettings() {
+    let bounds = this.currentWindow.getBounds();
+    SettingsServices.setSettingObject('window.oldSize', {
+      x: bounds.width,
+      y: bounds.height
+    });
+    SettingsServices.setSettingBoolean('window.isMax', this.currentWindow.isMaximized());
   }
 
 

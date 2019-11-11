@@ -15,7 +15,7 @@
       </div>
     </div>
     <div v-if="chooseMode=='none'">
-      <music-list v-if="items && items.length > 0" lockAxis="y" axis="y" v-model="items" :pressDelay="100" @input="resortMusicsEnd">
+      <music-list v-if="items && items.length > 0" lockAxis="y" axis="y" v-model="items" :distance="15" @input="resortMusicsEnd">
         <music-item v-for="(item, index) in items" :key="index" :index="index" @dblclick="itemClick(item, 'play');" @contextmenu="showMenu(item)" :class="item.status">
           
           <span :title="item.fullPath">{{ item.name }} </span>
