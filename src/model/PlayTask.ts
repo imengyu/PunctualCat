@@ -1,5 +1,6 @@
 import { AutoPlayable, AutoSaveable, AutoPlayCheckType, AutoPlayStatus } from './PlayInterfaces'
 import { PlayCondition } from './PlayCondition'
+import { PlayTable } from './PlayTable'
 import { MusicItem } from './MusicItem'
 import { EventEmitter } from "events";
 import GlobalWorker from '../services/GlobalWorker'
@@ -60,6 +61,8 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
 
   private musicHistoryService : MusicHistoryService =  null;
 
+  public parent : PlayTable = null;
+
   public name : string = '';
   public note : string = '';
   public condition: PlayCondition = null;
@@ -69,7 +72,16 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public musics : Array<MusicItem> = [];
   public commands : Array<string> = [];
 
+  /* 临时属性 */
+  public isNew = false;
+  public chooseMusic1 = false;
+  public chooseMusic2 = false;
+  public chooseMusic3 = false;
   public editing = false;
+  public editingTask = false;
+  public typeBackup: PlayTaskType;
+  public musicsBackup : Array<MusicItem>;
+  public commandsBackup : Array<string>;
 
   public volume = 100;
   public timeLimit = {
@@ -158,5 +170,31 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   private switchStatus(status : AutoPlayStatus) {
     this.status = status;
     this.emit('statuschanged', status);
+  }
+
+  public getPlayTaskString() {
+    if(this.type == 'music') {
+      let rs = '<span class="badge badge-pill badge-primary mr-2">播放音乐</span>';
+      if(this.musics.length == 0)
+        rs += '<span class="text-secondary">无音乐</span>';
+      else if(this.musics.length == 1)
+        rs += this.musics[0].name;
+      else if(this.musics.length > 1)
+        rs += this.musics[0].name + '<span class="text-secondary ml-2" style="font-size:12px">等'+ (this.musics.length-1) +'个音乐</span>';
+      return rs;
+    } else if(this.type == 'command') {
+      let rs = '<span class="badge badge-pill badge-info mr-2">执行 CMD 命令</span>';
+      if(this.commands.length == 0)
+        rs += '<i  class="text-secondary">无</i>';
+      else if(this.commands.length == 1)
+        rs += this.commands[0];
+      else if(this.commands.length > 1)
+        rs += this.commands.length + ' 个命令';
+      return rs;
+    } else if(this.type == 'reboot') 
+      return '<span class="badge badge-pill badge-warning">重启计算机</span>'
+    else if(this.type == 'shutdown')
+      return '<span class="badge badge-pill badge-danger">关闭计算机</span>'
+    return '<span class="text-secondary">未定义任务</span>';
   }
 }

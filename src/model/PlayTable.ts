@@ -66,4 +66,13 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   public isStoppingTime(type: AutoPlayCheckType) {
     return this.condition ? this.condition.isStoppingTime(type) : false;
   }
+
+  public addTask(task : PlayTask) {
+    task.parent = this;
+    this.tasks.push(task);
+  }
+  public delTask(task : PlayTask) {
+    task.parent = null;
+    this.tasks.remove(task);
+  }
 }

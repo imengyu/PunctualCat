@@ -30,13 +30,13 @@
     </div>
     <!--主区域-->
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <table-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='main-list'" :table-service="serviceTables" />
+      <table-view ref="tableView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='main-list'" :table-service="serviceTables" :app="app" />
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <radio-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" />
+      <radio-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" :app="app" />
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" />
+      <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" :app="app" />
     </transition>
     <!--音量弹出-->
     <transition enter-active-class="animated bounceInDown anim-fast" leave-active-class="animated fadeOutUp anim-fast">
@@ -47,8 +47,14 @@
       title="音乐列表"
       :visible.sync="isShowMusicList"
       size="38%"
-      direction="rtl">
-      <music-list :items="musicHistoryList" @item-click="onMusicItemClick" @add-music="onAddMusicToList" />
+      direction="rtl"
+      @closed="$refs['musicList'].endChoodeMusic()">
+      <music-list ref="musicList" 
+        :items="musicHistoryList"
+        @item-click="onMusicItemClick" 
+        @choosed="isShowMusicList=false"
+        @add-music="onAddMusicToList"
+        :app="app" />
     </el-drawer>
     <!--退出对话框-->
     <el-dialog
@@ -116,6 +122,7 @@ export default class App extends Vue {
   //Props
   //=====
 
+  app : App = this;
   //Dialog and menu visible control
   calendarViaible = false;
   isShowMusicList: boolean = false;
@@ -264,7 +271,7 @@ export default class App extends Vue {
           setTimeout(() => {
             this.hideIntro();
             this.topTabSelectItem = this.topToolbar[0];
-            //this.autoPlayService.start();
+            this.autoPlayService.start();
           }, 1000);   
         })
       }
@@ -289,10 +296,15 @@ export default class App extends Vue {
       if(arg.type=='chooseCommandMusic'){
         this.serviceMusicHistory.addMusicToHistoryList(new MusicItem(path[0]));
       }
-      if(arg.type=='openAndPlay'){
+      else if(arg.type=='openAndPlay'){
         this.serviceMusicHistory.addMusicToHistoryList(new MusicItem(path[0]));
       }
-      if(arg.type=='addMusicsToHistoryList'){
+      else if(arg.type=='chooseOneMusicAndCallback'){
+        let music = new MusicItem(path[0]);
+        this.serviceMusicHistory.addMusicToHistoryList(music);
+        this.chooseOneMusicCallback(music);
+      }
+      else if(arg.type=='addMusicsToHistoryList'){
         var index = 0;
         path.forEach(element => {
           if(element!=''){
@@ -544,6 +556,15 @@ export default class App extends Vue {
   }
   //音乐列表扩展
   
+
+  chooseOneMusicCallback : (music : MusicItem) => void = null;
+
+  chooseOneMusicAndCallback(type : 'file'|'history', callback : (music : MusicItem) => void) {
+    if(type == 'file'){
+      this.chooseOneMusicCallback = callback;
+      this.chooseMusic({ type: 'chooseOneMusicAndCallback' });
+    }else if(type == 'history') (<MusicView>this.$refs['musicList']).startChooseOneMusic(callback);
+  }
 
 
   //** 应用工作函数

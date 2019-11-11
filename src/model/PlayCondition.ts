@@ -506,7 +506,7 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    * @param conStr 条件的格式化字符串
    */
   public toConditionList(conStr : string) : boolean {
-    if(conStr == '') return;
+    if(conStr == '') return true;
     try{
       let fixConStr = '';
       if(conStr.startsWith('(') && conStr.endsWith(')')) fixConStr = conStr;
@@ -535,7 +535,7 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    * 将条件转为可读格式化字符串 HTML
    */
   public toConditionHtml() {
-    return this.conList && this.conList.convertToConStr ? this.conList.convertToConHtml() : '';
+    return this.conList && this.conList.convertToConStr ? this.conList.convertToConHtml() : ''
   }
   /**
    * 检测当前条件是否达到指定的播放时间

@@ -6,15 +6,19 @@
           class="table-tasks"
           :data="currentShowTable.tasks"
           border>
+          <div slot="empty" class="task-none">
+            <img src="../assets/images/empty-s.svg" />
+            <span>这个计划表还没有任务哦</span>
+            <el-button class="mt-3" type="primary" @click="addTask(currentShowTable)" round>添加任务</el-button>
+          </div>
           <el-table-column
             prop="name"
             label="任务名称"
             sortable
-            align="right"
-            width="150">
+            width="120">
             <template slot-scope="scope">
-              <el-input size="mini" class="text-right" placeholder="请输入任务名称" v-show="scope.row.editing" v-model="scope.row.name"></el-input>
-              <span class="text-right" v-show="!scope.row.editing">{{scope.row.name}}</span>
+              <el-input size="mini" placeholder="请输入任务名称" v-show="scope.row.editing" v-model="scope.row.name"></el-input>
+              <span v-show="!scope.row.editing">{{scope.row.name}}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -36,12 +40,85 @@
             label="播放条件"
             width="125">
             <template slot-scope="scope">
-              <el-input size="mini" placeholder="请输入任务名称" v-show="scope.row.editing" v-model="scope.row.name"></el-input>
-              <span v-show="!scope.row.editing">{{scope.row.name}}</span>
+              <condition-input size="mini" v-show="scope.row.editing" :condition="scope.row.condition"></condition-input>
+              <span v-show="!scope.row.editing" v-html="getTaskConHtml(scope.row)"></span>
             </template>
           </el-table-column>
           <el-table-column
             label="音乐或任务">
+            <template slot-scope="scope">
+              <el-popover
+                v-if="scope.row.editing"
+                placement="top"
+                width="400"
+                v-model="scope.row.editingTask">
+                任务类型：<el-radio-group v-model="scope.row.type" size="mini">
+                  <el-radio-button label="music">播放音乐</el-radio-button>
+                  <el-radio-button label="command">执行 CMD 命令</el-radio-button>
+                  <el-radio-button label="reboot">重启电脑</el-radio-button>
+                  <el-radio-button label="shutdown">关闭电脑</el-radio-button>
+                </el-radio-group>
+                <div v-if="scope.row.type=='music'">
+                  <div class="text-secondary">任务将会按顺序播放您设置的音乐</div>
+                  <command-list v-if="scope.row.musics" lockAxis="y" axis="y" v-model="scope.row.musics">
+                    <command-item v-for="(music, index) in scope.row.musics" :index="index" :key="index">
+                      <el-input size="mini" v-model="scope.row.musics[index].fullPath" :readonly="true">
+                        <el-popover
+                          placement="top"
+                          width="150"
+                          v-model="scope.row.chooseMusic2">
+                          <p>选择音乐来源：</p>
+                          <el-button size="mini" type="text" class="display-block" 
+                            @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'file',index)">选择文件</el-button>
+                          <el-button size="mini" type="text" class="display-block"
+                            @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'history',index)">从音乐库中选择</el-button>
+                          <el-button slot="append" icon="el-icon-close" title="更换音乐"></el-button>
+                        </el-popover>
+                        <el-popover
+                          placement="top"
+                          width="160"
+                          v-model="scope.row.chooseMusic3">
+                          <p>确定删除此音乐？</p>
+                          <div style="text-align: right; margin: 0">
+                            <el-button size="mini" type="text" @click="scope.row.chooseMusic3=false">取消</el-button>
+                            <el-button type="primary" size="mini" @click="scope.row.chooseMusic3=false;scope.row.musics.remove(index)">确定</el-button>
+                          </div>
+                          <el-button slot="append" icon="el-icon-close" title="删除此音乐"></el-button>
+                        </el-popover>
+                      </el-input>
+                    </command-item>
+                  </command-list>
+                  <el-popover
+                    placement="top"
+                    width="150"
+                    v-model="scope.row.chooseMusic1">
+                    <p>选择音乐来源：</p>
+                    <el-button size="mini" type="text" class="display-block" 
+                      @click="scope.row.chooseMusic1=false;chooseTaskMusic(scope.row,'file',-1)">选择文件</el-button>
+                    <el-button size="mini" type="text" class="display-block"
+                      @click="scope.row.chooseMusic1=false;chooseTaskMusic(scope.row,'history',-1)">从音乐库中选择</el-button>
+                    <el-button icon="el-icon-plus" slot="reference" title="添加音乐" circle></el-button>
+                  </el-popover>
+                </div>
+                <div v-else-if="scope.row.type=='command'">
+                  <div class="text-secondary">任务将会按顺序执行您设置的 CMD 命令，通常，您可以使用此功能来启动您自己的程序。</div>
+                  <command-list v-if="scope.row.commands" lockAxis="y" axis="y" v-model="scope.row.commands">
+                    <command-item v-for="(conmmand, index) in scope.row.commands" :index="index" :key="index">
+                      <el-input size="mini" v-model="scope.row.commands[index]">
+                        <el-button slot="append" icon="el-icon-close" title="删除此命令" @click="scope.row.commands.remove(index)"></el-button>
+                      </el-input>
+                    </command-item>
+                  </command-list>
+                  <el-button icon="el-icon-plus" title="添加命令" circle @click="scope.row.commands.push('')"></el-button>
+                </div>
+                <div style="text-align: right; margin: 0">
+                  <el-button size="mini" type="text" @click="editTaskCommandOrMusicFinish(scope.row, false)">取消</el-button>
+                  <el-button type="primary" size="mini" @click="editTaskCommandOrMusicFinish(scope.row, true)">确定</el-button>
+                </div>
+                <div slot="reference" class="no-select cursor-pointer" title="点击编辑" @click="editCommandOrMusicTask(scope.row)" v-html="scope.row.getPlayTaskString()"></div>
+              </el-popover>
+              <div v-show="!scope.row.editing" v-html="scope.row.getPlayTaskString()"></div>
+            </template>
           </el-table-column>
           <el-table-column
             prop="volume"
@@ -78,29 +155,37 @@
             align="center"
             width="100">
             <template slot-scope="scope">
-              <el-button v-show="!scope.row.editing" type="text" class="text-primary" title="编辑任务" @click="editTask(scope.row)">
-                <i class="iconfont icon-chuangzuo"></i>
-              </el-button>
-              <el-button v-show="scope.row.editing" type="text" class="text-success" title="保存任务修改" @click="editTaskFinish(scope.row, true)">
-                <i class="iconfont icon-duigou"></i>
-              </el-button>
-              <el-button v-show="scope.row.editing" type="text" class="text-danger" title="取消任务修改" @click="editTaskFinish(scope.row, false)">
-                <i class="iconfont icon-tiaojian-copy"></i>
-              </el-button>
+              <div class="controls text-center no-select" v-show="!scope.row.editing">
+                <el-button type="text" class="text-primary" title="编辑任务" @click="editTask(scope.row)">
+                  <i class="iconfont icon-chuangzuo"></i>
+                </el-button>
+                <el-button type="text" class="text-danger" title="删除任务" @click="delTask(scope.row)">
+                  <i class="iconfont icon-shanchu2"></i>
+                </el-button>
+              </div>
+              <div class="controls text-center no-select" v-show="scope.row.editing">
+                <el-button type="text" class="text-success" title="保存任务修改" @click="editTaskFinish(scope.row, true)">
+                  <i class="iconfont icon-duigou"></i>
+                </el-button>
+                <el-button type="text" class="text-danger" title="取消任务修改" @click="editTaskFinish(scope.row, false)">
+                  <i class="iconfont icon-tiaojian-copy"></i>
+                </el-button>
+              </div>
+              
             </template>
           </el-table-column>
         </el-table>
       </div>
       <div v-else class="table-none">
-        <svg t="1573387637231" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2498" width="128" height="128"><path d="M373.163 605.354c-11.864-2.373-29.063-2.373-33.216 10.093-2.371 7.716 10.082 8.313 21.353 11.277 8.899 2.374 13.645 7.123 13.051 8.307-2.374 2.971-16.016-2.373-27.879 1.783-11.864 4.155-9.489 14.838-2.371 17.805 7.116 2.378 18.386-0.593 44.485 3.562 13.047 2.376 21.352-2.374 23.134-10.09 2.368-18.4-21.949-39.172-38.557-42.737z m99.052 65.887c-23.724 0-42.704 18.401-42.704 42.141v0.593c0 4.75 3.559 8.31 8.304 8.31 4.743 0 8.302-3.56 8.302-8.31v-0.593c0-13.65 11.27-25.522 25.504-25.522 14.239 0 25.509 11.871 25.509 25.522v0.593c0 4.75 3.558 8.31 8.302 8.31 4.745 0 8.304-3.56 8.304-8.31v-0.593c1.186-22.556-18.388-42.141-41.521-42.141z m97.868-65.887c-17.199 3.565-41.52 24.338-38.554 43.333 1.782 7.715 8.898 12.461 23.132 10.089 26.099-4.156 37.369-1.189 44.487-3.562 7.117-2.373 8.898-13.651-2.372-17.805-11.864-4.156-24.914 1.187-27.879-1.783-1.777-2.373 3.56-7.122 13.051-8.902 11.27-2.376 23.724-3.562 21.352-11.277-3.561-12.466-20.759-13.06-33.217-10.093z m126.34-310.428c-2.965-2.373-7.119-4.155-12.458-4.155H259.281c-4.746 0-8.898 1.782-12.456 4.749L97.352 432.037c-3.559 3.562-5.93 8.31-5.93 13.654v334.168c0 29.088 23.728 52.827 52.79 52.827v-0.593H798.44c29.064 0 52.79-23.741 52.79-52.824V445.097c0-4.749-2.965-10.092-6.523-13.653L696.423 294.926z m-434.771 18.4h421.125L811.49 432.037H583.724c-4.745 0-8.893 4.156-8.893 9.499 0 54.606-46.861 100.901-102.022 100.901-55.161 0-102.018-46.295-102.018-100.901 0-4.749-4.152-9.499-8.898-9.499H131.755l129.897-118.711z m566.445 466.532c0 16.621-13.047 29.088-29.064 29.088H144.807c-16.61 0-30.251-13.06-30.251-29.088V451.032h237.848l1.185 7.122c4.151 26.711 16.61 51.044 36.183 68.854 22.536 21.367 52.193 33.238 83.037 33.238 30.846 0 59.908-11.871 83.041-33.238 19.571-19.587 32.028-43.33 36.181-68.854l1.187-7.122h234.88v328.826zM338.944 903.263c-19.274-0.513-39.105-7.076-57.201-14.524-12.246-5.049-17.085-4.239-24.554 6.804-13.278 19.634-27.551 39.127-44.29 55.781-26.078 25.941-58.7 39.137-96.571 39.591 32.868 16.83 67.561 26.85 103.918 29.477 7.121 0.509 17.025-6.562 21.909-12.974 8.142-10.69 16.597-11.797 28.442-8.869 13.7 3.382 27.762 6.037 41.799 6.993 7.133 0.477 15.231-2.2 21.759-5.606 43.943-22.997 73.264-59.784 96.44-102.952-31.766 2.459-61.781 7.073-91.651 6.279z m41.587 10.508c7.812-1.453 15.926-1.339 25.385-2.071-26.289 47.299-68.924 98.858-135.962 76.102-14.108-4.79-23.976-1.247-34.005 9.99-5.407 6.041-16.094 10.53-24.227 10.263-15.068-0.473-30.006-4.948-48.217-8.364 4.239-5.175 5.11-7.283 6.615-7.922 40.777-17.213 69.807-47.276 93.678-83.63 2.791-4.242 13.474-7.372 18.368-5.484 31.986 12.347 64.371 17.423 98.365 11.116zM166.33 223.708c0-1.923 0.66-4.01-0.101-5.013-32.761-43.248-41.884-93.277-40.728-145.817 0.306-13.901-2.163-23.797-13.433-33.419C101.194 30.183 93.766 16.845 83.5 3.583c-25.29 74.901-24.709 185.543 82.83 220.125zM91.864 32.643c8.344 11.923 22.004 22.508 22.209 33.335 0.805 42.828 5.161 84.576 22.875 127.28C86.543 180.726 68.25 76.511 91.864 32.643z m824.464 367.931c-13.342 6.227-29.17 7.147-45.402 10.72 4.061 11.405 8.712 24.481 13.33 37.477 33.692-6.881 58.29-33.423 69.92-76.119-13.202 10.045-24.302 21.605-37.848 27.922zM309.369 228.948c-2.877-10.419-9.671-19.695-13.141-30.012-3.37-9.996-4.618-20.708-7.355-33.772-13.569 24.454-6.458 59.546 17.277 86.516 1.55-9.529 4.854-16.815 3.219-22.732z" p-id="2499"></path></svg>
+        <img src="../assets/images/empty.svg" />
         <span v-if="tables && tables.length > 0">没有打开的列表<br />点击下方按钮来查看或编辑一个时间表</span>
         <span v-else>这里还没有计划表哦<br />点击下方 “<i class="iconfont icon-xinjiantuopu"></i>” 按钮新建一个计划表</span>
       </div>
     </div>
     <div class="bottom-area">
       <div v-if="currentShowTable" class="table-cursor" :style="'left:'+getCurrentTableCurLeft()+'px'"></div>
-      <SortableList v-if="tables" lockAxis="x" axis="x" v-model="tables" :pressDelay="100" @add="addTable" @input="resortTableEnd">
-        <SortableItem v-for="(table, index) in tables" :index="index" :key="index" :table="table"
+      <table-list v-if="tables" lockAxis="x" axis="x" v-model="tables" :pressDelay="100" @add="addTable" @input="resortTableEnd">
+        <table-item v-for="(table, index) in tables" :index="index" :key="index" :table="table"
           :class="(table==currentShowTable?'active':'')"
           @click="showTable(table)"
           @contextmenu="showTableRightMenu(table)"
@@ -108,13 +193,15 @@
           :id="'table_item_'+index" >
           <span class="status" :data-status="table.status" :title="getTableStatusString(table.status)" @click="showTableRightMenu(table)"></span>
           {{ table.name }}
-        </SortableItem>
-      </SortableList>
+        </table-item>
+      </table-list>
       <div class="bottom-right-area">
         <a v-if="currentShowTable" type="text" title="设置计划表属性" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
         <a v-if="currentShowTable" type="text" title="向计划表添加一个任务" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
       </div>
     </div>
+
+    <!--编辑计划表对话框-->
     <el-dialog
       :title="(currentIsNewTable?'添加':'编辑')+'计划表'"
       :visible.sync="currentIsEditTable"
@@ -153,6 +240,7 @@ import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-p
 import { PlayTable } from '../model/PlayTable'
 import ConditionInput from '../components/ConditionInput.vue'
 import TableServices from '../services/TableServices'
+import App from '../App.vue'
 import { Form } from 'element-ui'
 import CommonUtils from "../utils/CommonUtils";
 import $ from 'jquery';
@@ -164,7 +252,7 @@ const remote = electron.remote;
 const Menu = electron.remote.Menu;
 const MenuItem = electron.remote.MenuItem;
 
-const SortableList = {
+const SortableListTable = {
   mixins: [ContainerMixin],
   template: `
     <ul class="table-tables">
@@ -176,7 +264,7 @@ const SortableList = {
     onAddClick() { this.$emit('add'); }
   }
 };
-const SortableItem = {
+const SortableItemTable = {
   mixins: [ElementMixin],
   template: `
     <li 
@@ -195,16 +283,36 @@ const SortableItem = {
   }
 };
 
+const SortableListCommand = {
+  mixins: [ContainerMixin],
+  template: `
+    <ul class="command-list">
+      <slot />
+    </ul>
+  `
+};
+const SortableItemCommand = {
+  mixins: [ElementMixin],
+  template: `
+    <li class="command-items">
+      <slot />
+    </li>
+  `
+};
+
 @Component({
   components: {
     'condition-input': ConditionInput,
-    'SortableItem': <any>SortableItem,
-    'SortableList': <any>SortableList
+    'table-item': <any>SortableItemTable,
+    'table-list': <any>SortableListTable,
+    'command-item': <any>SortableItemCommand,
+    'command-list': <any>SortableListCommand
   }
 })
 export default class TableView extends Vue {
 
   @Prop({default:null}) tableService : TableServices;
+  @Prop({default:null}) app : App;
   
   tables : Array<PlayTable> = null;
   currentShowTable : PlayTable = null;
@@ -231,6 +339,7 @@ export default class TableView extends Vue {
   mounted() {
     this.tables = this.tableService.getData();
     this.createMenu();
+    setTimeout(this.autoSwitchCurrentView, 1300);
   }
 
   createMenu() {
@@ -266,6 +375,10 @@ export default class TableView extends Vue {
       roundButton: true,
       type: 'warning'
     }).then(() => {
+      if(table == this.currentShowTable){
+        this.currentShowTable = null;
+        this.autoSwitchCurrentView();
+      }
       this.tableService.delTable(table);
       this.$message({ type: 'success', message: '删除计划表成功!' });
     }).catch(() => {});
@@ -342,8 +455,9 @@ export default class TableView extends Vue {
   addTask(table : PlayTable) {
     let task = new PlayTask();
     task.editing = true;
+    task.isNew = true;
     task.name = '新任务 ' + (table.tasks.length + 1);
-    table.tasks.push(task);
+    table.addTask(task);
   }
   editTask(task : PlayTask) { 
     task.editing = true; 
@@ -357,17 +471,72 @@ export default class TableView extends Vue {
         roundButton: true,
         type: 'warning'
       }).then(() => {
-        task.editing = false;
-        CommonUtils.cloneValue(task, this.currentEditTaskBackUp);
+        if(task.isNew){
+          task.editing = false;
+          task.parent.delTask(task);
+        }else {
+          task.editing = false;
+          CommonUtils.cloneValue(task, this.currentEditTaskBackUp);
+        }
       }).catch(() => {});
-    }else task.editing = false;
+    }else {
+      task.editing = false;
+      task.isNew = false;
+    }
+  }
+  delTask(task : PlayTask) {
+    this.$confirm('确定永久删除该任务? 此操作不可恢复！', '提示', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      confirmButtonClass: 'el-button--danger',
+      roundButton: true,
+      type: 'warning'
+    }).then(() => {
+      task.parent.delTask(task);
+      this.$message({ type: 'success', message: '删除任务成功!' });
+    }).catch(() => {});
+  }
+  editCommandOrMusicTask(task : PlayTask) { 
+    task.typeBackup = task.type;
+    task.musicsBackup = CommonUtils.clone(task.musics);
+    task.commandsBackup = CommonUtils.clone(task.commands);
+    task.editingTask = true;
+  }
+  editTaskCommandOrMusicFinish(task : PlayTask, save : boolean) {
+    task.editing = false;
+    if(!save) {
+      task.type = task.typeBackup;
+      task.musics = task.musicsBackup;
+      task.commands = task.commandsBackup;
+    }
+  }
+  chooseTaskMusic(task : PlayTask, type : 'file'|'history', index : number) { 
+    this.app.chooseOneMusicAndCallback(type, (music) => {
+      if(index == -1) task.musics.push(music);
+      else task.musics[index] = music
+    });
   }
 
 
+
+  autoSwitchCurrentView() {
+    if(this.currentShowTable == null) {
+      for(var i=0;i<this.tables.length;i++){
+        if(this.tables[i].status == 'playing'){
+          this.currentShowTable = this.tables[i];
+          break;
+        }
+      }
+    }
+  }
+  getTaskConHtml(task : PlayTask) {
+    let b = task.condition.toConditionHtml();
+    return '<div style="padding:0 3px">' + (b == '' ? '<span style="font-size:12px;color:#888">未定义条件</span>' : b) + '</div>';
+  }
   getTableStatusString(type : string) {
     switch(type){
       case 'playing': return '此计划表正在自动播放';
-      case 'normal': return '此计划表未自动播放';
+      case 'normal': return '此计划表今日不播放';
       case 'disabled': return '此计划表已禁用';
       default: return '';
     }
@@ -439,27 +608,30 @@ export default class TableView extends Vue {
 }
 .table-tasks {
 
+  .el-table__empty-block {
+    height: 300px;
+    line-height: 15px;
+  }
+  .el-table__empty-text {
+    line-height: 15px;
+  }
   tr,td {
     height: 29px;
   }
-  .el-button {
+  .controls .el-button {
     padding: 0;
-  }
-  .el-table__empty-block {
-    height: auto;
-    min-height: 20px;
   }
   .el-input-number {
     width: 50px;
 
     .el-input-number__decrease,
     .el-input-number__increase {
-      width: 16px;
+      width: 15px;
     }
   }
   .el-input-number.is-controls-right .el-input__inner {
     padding: 0;
-    padding-right: 20px;
+    padding-right: 15px;
   }
   .el-input-number--mini {
     width: 50px;
@@ -469,6 +641,58 @@ export default class TableView extends Vue {
     border: none;
     padding: 0 3px;
     background-color: transparent;
+  }
+
+  td.el-table_1_column_3 .cell {
+    padding: 0;
+  }
+  .con-input {
+    height: 29px;
+
+    .el-input-group__append {
+      width: 36px;
+      padding: 0;
+      border: none;
+      
+      button {
+        padding: 0 2px;
+        line-height: 30px;
+        margin: 0;
+      }
+    }
+    .el-input-group__prepend {
+      width: 20px;
+      padding: 0;
+      border: none;
+
+      button {
+        padding: 0;
+        margin-left: 2px;
+        line-height: 30px;
+      }
+    }
+
+    .con-html-host {
+      height: 29px;
+      line-height: 29px;
+      border: none;
+
+      .con-html {
+        width: calc(100% - 30px);
+        padding: 0 2px;
+        margin-left: 18px;
+      }
+      .con-edit,
+      .con-stat {
+        width: 20px;
+        border-radius: 0;
+        border: none;
+
+        span {
+          line-height: 31px;
+        }
+      }
+    }
   }
 }
 .table-items, .table-tables li {
@@ -527,13 +751,13 @@ export default class TableView extends Vue {
       background-color: #b7b7b7;
     }
     &[data-status='normal']{
-      background-color: #2e583b;
+      background-color: #c3d8ca;
     }
     &[data-status='playing']{
       background-color: #1da546;
     }
     &[data-status='disabled']{
-      background-color: #e63600;
+      background-color: rgba(226, 63, 13, 0.588);
     }
   }
 
@@ -559,7 +783,24 @@ export default class TableView extends Vue {
     color: #aaa;
   }
 }
+.task-none {
+  display: flex;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
 
+  > span {
+    margin: 20px 0 15px 0;
+    line-height: 15px;
+    color: #aaa;
+  }
+}
 </style>
 
 

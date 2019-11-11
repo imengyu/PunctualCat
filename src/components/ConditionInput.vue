@@ -107,7 +107,6 @@ export default class ConditionInput extends Vue {
       this.conditionValidErr = this.condition.conConvertErr ? (this.condition.conConvertErr.message + ' 在：' + 
         this.condition.conConvertErr.currentConString + ' (位置：' + 
         this.condition.conConvertErr.currentIndex + ')') : '';
-
       this.conditionValid = false;
     }
   }

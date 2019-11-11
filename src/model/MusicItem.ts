@@ -333,6 +333,8 @@ export class MusicItem extends EventEmitter {
     _this.emit('ended');
   }
 
+  /* 临时属性 */
+  public choosed = false;
 }
 
 export type MusicStatus = 'notload'|'normal'|'playing'|'paused'|'lost'|'playerr';

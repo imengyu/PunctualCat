@@ -1,7 +1,9 @@
 import { EventEmitter } from "events";
 import { MusicItem } from "../model/MusicItem";
 
-
+/**
+ * 音乐历史记录服务
+ */
 export class MusicHistoryService extends EventEmitter {
 
   public constructor(musicHistoryList : Array<MusicItem>) {
@@ -23,7 +25,10 @@ export class MusicHistoryService extends EventEmitter {
     }
     return null;
   }
-  public addMusicToHistoryList(music : MusicItem) {  this.musicHistoryList.push(music);  }
+  public addMusicToHistoryList(music : MusicItem) { 
+    if(!this.existsInHistoryList(music.fullPath)) 
+      this.musicHistoryList.push(music);  
+  }
   public removeMusicFromHistoryList(music : MusicItem){ this.musicHistoryList.splice(this.musicHistoryList.indexOf(music), 1); }
 }
 

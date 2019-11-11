@@ -4,6 +4,8 @@
  * Copyright 2011-2019 Twitter, Inc.
  * Licensed under MIT (https://github.com/twbs/bootstrap/blob/master/LICENSE)
  */
+
+
 .align-baseline {
   vertical-align: baseline !important;
 }
@@ -1144,6 +1146,24 @@
 .rounded-left {
   border-bottom-left-radius: 0.25rem !important;
   border-top-left-radius: 0.25rem !important;
+}
+
+.no-select {
+  user-select: none;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.display-block {
+  display: block;
+}
+.display-inline {
+  display: inline;
+}
+.display-inline-block {
+  display: inline-block;
 }
 
 @media (min-width: 576px) {

@@ -73,11 +73,11 @@ export default class AutoPlayService extends EventEmitter {
         this.timerCorrectSec = null;
         this.timerSecCorrected = true;
         //时钟开始时运行一次检查，因为分钟和小时时钟没有启动，没有数据
-        this.taskTickLateUpdate();
+        this.taskTickLateUpdate(this);
         //运行秒时钟
         this.timerMinuteWkCurrent = this.timeNow.getMinutes();
-        this.timerTickSec();
-        this.timerSec = setInterval(this.timerTickSec, 1000);
+        this.timerTickSec(this);
+        this.timerSec = setInterval(() => this.timerTickSec(this), 1000);
         console.log('Timer second start at : ' + new Date().format('HH:ii:ss'));
         console.log('Correct timer second at : ' + new Date().format('HH:ii:ss'));
       }
@@ -112,117 +112,117 @@ export default class AutoPlayService extends EventEmitter {
 
   /*时钟主控*/
 
-  private timerTickSec() {
-    this.timeNow = new Date();
-    var seconds = this.timeNow.getSeconds();
-    var minute = this.timeNow.getMinutes();
-    if(!this.timerMinuteCorrected){
+  private timerTickSec(service : AutoPlayService) {
+    service.timeNow = new Date();
+    var seconds = service.timeNow.getSeconds();
+    var minute = service.timeNow.getMinutes();
+    if(!service.timerMinuteCorrected){
       if(seconds == 0){
-        clearInterval(this.timerSec);
-        this.timerSec = null;
-        this.timerMinuteCorrected = true;
+        clearInterval(service.timerSec);
+        service.timerSec = null;
+        service.timerMinuteCorrected = true;
         //启动分时钟
-        this.timerHourWkCurrent = this.timeNow.getHours();
-        this.timerTickMinute();
-        this.timerMinute = setInterval(this.timerTickMinute, 60000);
+        service.timerHourWkCurrent = service.timeNow.getHours();
+        service.timerTickMinute(service);
+        service.timerMinute = setInterval(() => service.timerTickMinute(service), 60000);
         console.log('Correct timer minute at : ' + new Date().format('HH:ii:ss'));
         console.log('Timer minute start at : ' + new Date().format('HH:ii:ss'));
       }
     }
-    if(minute == this.timerMinuteWkCurrent){
-      this.taskTick('second');
-    }else if(this.timerMinuteCorrected) {
-      clearInterval(this.timerSec);
-      this.timerSec = null;
+    if(minute == service.timerMinuteWkCurrent){
+      this.taskTick(service, 'second');
+    }else if(service.timerMinuteCorrected) {
+      clearInterval(service.timerSec);
+      service.timerSec = null;
       console.log('Timer second stop at : ' + new Date().format('HH:ii:ss'));
     }
   }
-  private timerTickMinute(){
-    this.timeNow = new Date();
+  private timerTickMinute(service : AutoPlayService){
+    service.timeNow = new Date();
 
-    var hour = this.timeNow.getHours();
-    var minute = this.timeNow.getMinutes();
-    if(!this.timerHourCorrected){
+    var hour = service.timeNow.getHours();
+    var minute = service.timeNow.getMinutes();
+    if(!service.timerHourCorrected){
       if(minute == 0){
-        clearInterval(this.timerSec);
-        this.timerSec = null;
-        this.timerMinuteCorrected = true;
+        clearInterval(service.timerSec);
+        service.timerSec = null;
+        service.timerMinuteCorrected = true;
 
-        this.timerTickHour();
-        this.timerHour = setInterval(this.timerTickHour, 3600000);
+        service.timerTickHour(service);
+        service.timerHour = setInterval(() => service.timerTickHour(service), 3600000);
         console.log('Correct timer hour at : ' + new Date().format('HH:ii:ss'));
         console.log('Timer hour start at : ' + new Date().format('HH:ii:ss'));
       }
       //0 点需要重新切换列表状态
       if(hour == 0 && minute == 0)
-        this.onDayChange();
+        service.onDayChange(service);
     }
-    if(hour == this.timerHourWkCurrent){
-      if(this.taskTick('minute')){
+    if(hour == service.timerHourWkCurrent){
+      if(service.taskTick(service, 'minute')){
         //当前分钟存在任务，启动秒时钟
 
-        this.timerMinuteWkCurrent = this.timeNow.getMinutes();
-        if(!this.timerSec){
-          this.timerTickSec();
-          this.timerSec = setInterval(this.timerTickSec, 1000);
+        service.timerMinuteWkCurrent = service.timeNow.getMinutes();
+        if(!service.timerSec){
+          service.timerTickSec(service);
+          service.timerSec = setInterval(() => service.timerTickSec(service), 1000);
         }
         console.log('Timer second start at : ' + new Date().format('HH:ii:ss'));
       }
-    }else if(this.timerHourCorrected) {
-      clearInterval(this.timerMinute);
+    }else if(service.timerHourCorrected) {
+      clearInterval(service.timerMinute);
       console.log('Timer minute stop at : ' + new Date().format('HH:ii:ss'));
-      this.timerMinute = null;
+      service.timerMinute = null;
     }
   }
-  private timerTickHour(){
-    this.timeNow = new Date();
+  private timerTickHour(service : AutoPlayService){
+    service.timeNow = new Date();
 
     var hour = this.timeNow.getHours();
-    if(this.taskTick('hour')){
+    if(service.taskTick(service, 'hour')){
       //当前小时存在任务，启动分钟时钟
 
-      this.timerHourWkCurrent = hour;
-      if(!this.timerMinute) {
-        this.timerTickMinute();
-        this.timerMinute = setInterval(this.timerTickMinute, 60000);
+      service.timerHourWkCurrent = hour;
+      if(!service.timerMinute) {
+        service.timerTickMinute(service);
+        service.timerMinute = setInterval(() => service.timerTickMinute(service), 60000);
       }
       console.log('Timer minute start at : ' + new Date().format('HH:ii:ss'));
     }
     //0 点需要重新切换列表状态，和执行数据保存任务
     if(hour == 0)
-      this.onDayChange();
+      service.onDayChange(service);
   }
 
   /*任务自动检测主控*/
 
-  private onDayChange() {
-    this.loopFlushTableStatus();
-    this.emit('daychange');
+  private onDayChange(service : AutoPlayService) {
+    service.loopFlushTableStatus(service);
+    service.emit('daychange');
   }
-  private loopFlushTableStatus() {
-    for (var j = 0, d = this.tables.length; j < d; j++) {
+  private loopFlushTableStatus(service : AutoPlayService) {
+    for (var j = 0, d = service.tables.length; j < d; j++) {
       //正在播放的时间表
-      var table = this.tables[j];
+      var table = service.tables[j];
       if(!table.enabled) table.status = 'disabled';
       else if(table.condition.isPlayingTime('full')) table.status = 'playing';
       else table.status = 'normal';
     }
   }
 
-  private taskTickHour() : boolean {
-    this.thisHourPlayTask = [];    
+  private taskTickHour(service : AutoPlayService) : boolean {
+    service.thisHourPlayTask = [];    
     let result = false;
-    for (var j = 0, d = this.tables.length; j < d; j++) {
+    for (var j = 0, d = service.tables.length; j < d; j++) {
       //正在播放的时间表
-      var table = this.tables[j];
+      var table = service.tables[j];
       if(table.status == 'playing'){
         for (var k = 0, f = table.tasks.length; k < f; k++){
           if(table.tasks[k].isPlayingTime('hour')){
-            this.thisHourPlayTask.push(table.tasks[k]);
+            service.thisHourPlayTask.push(table.tasks[k]);
             result = true;
           }
           else if(table.tasks[k].isStoppingTime('hour')){
-            this.thisHourPlayTask.push(table.tasks[k]);
+            service.thisHourPlayTask.push(table.tasks[k]);
             result = true;
           }
         }
@@ -230,40 +230,40 @@ export default class AutoPlayService extends EventEmitter {
     }    
     return result
   }
-  private taskTickMinute() : boolean {
-    this.thisMinutePlayTask = [];
+  private taskTickMinute(service : AutoPlayService) : boolean {
+    service.thisMinutePlayTask = [];
 
     var result = false;
     //搜索当前小时播放的任务
-    for (var k = 0, f = this.thisHourPlayTask.length; k < f; k++){
-      if(this.thisHourPlayTask[k].isPlayingTime('minute')){
-        this.thisMinutePlayTask.push(this.thisHourPlayTask[k]);
+    for (var k = 0, f = service.thisHourPlayTask.length; k < f; k++){
+      if(service.thisHourPlayTask[k].isPlayingTime('minute')){
+        service.thisMinutePlayTask.push(service.thisHourPlayTask[k]);
         result = true;
       }
-      else if(this.thisHourPlayTask[k].isStoppingTime('minute')){
-        this.thisMinutePlayTask.push(this.thisHourPlayTask[k]);
+      else if(service.thisHourPlayTask[k].isStoppingTime('minute')){
+        service.thisMinutePlayTask.push(service.thisHourPlayTask[k]);
         result = true;
       }
     }
     return result
   }
-  private taskTick(type : AutoPlayTickType) : boolean {
+  private taskTick(service : AutoPlayService, type : AutoPlayTickType) : boolean {
 
     var rs = false;
     
     //小时， 全局检索
     if(type == 'hour')
-      rs = this.taskTickHour();
+      rs = service.taskTickHour(service);
     else if(type == 'minute')
-      rs = this.taskTickMinute();
+      rs = service.taskTickMinute(service);
     else if(type == 'second') {
-      for (var k = 0, f = this.thisMinutePlayTask.length; k < f; k++){
-        if(this.thisMinutePlayTask[k].isPlayingTime('full')){
-          this.thisMinutePlayTask[k].play();
+      for (var k = 0, f = service.thisMinutePlayTask.length; k < f; k++){
+        if(service.thisMinutePlayTask[k].isPlayingTime('full')){
+          service.thisMinutePlayTask[k].play();
           rs = true;
         }
-        if(this.thisMinutePlayTask[k].isStoppingTime('full')){
-          this.thisMinutePlayTask[k].stop();
+        if(service.thisMinutePlayTask[k].isStoppingTime('full')){
+          service.thisMinutePlayTask[k].stop();
           rs = true;
         }
       }
@@ -273,26 +273,26 @@ export default class AutoPlayService extends EventEmitter {
 
     return rs;
   } 
-  private taskTickLateUpdate() {
+  private taskTickLateUpdate(service : AutoPlayService) {
 
     //刷新所有列表的状态
-    this.loopFlushTableStatus();
+    service.loopFlushTableStatus(service);
 
     var needStartSec = false;
-    if(this.taskTick('hour')){
+    if(service.taskTick(service, 'hour')){
       //认为修改数据，导致时钟需要重新启动
-      if(this.timerMinuteCorrected && !this.timerMinute==null){
-        this.timerMinuteCorrected = false;
+      if(service.timerMinuteCorrected && !service.timerMinute==null){
+        service.timerMinuteCorrected = false;
         needStartSec = true;
       }
     }
-    if(this.taskTick('minute'))
+    if(service.taskTick(service, 'minute'))
       needStartSec = true;
 
     if(needStartSec){
-      this.timerMinuteWkCurrent = this.timeNow.getMinutes();
-      this.timerTickSec();
-      this.timerSec = setInterval(this.timerTickSec, 1000);
+      service.timerMinuteWkCurrent = service.timeNow.getMinutes();
+      service.timerTickSec(service);
+      service.timerSec = setInterval(service.timerTickSec, 1000);
       console.log('Timer second start at : ' + new Date().format('HH:ii:ss'));
     }
   }
