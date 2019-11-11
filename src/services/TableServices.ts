@@ -28,12 +28,15 @@ export default class TableServices implements AutoSaveable {
    */
   public delTable(table : PlayTable) {
     this.tables.remove(table);
+    table.destroy();
   }
 
   /**
    * 释放所有资源
    */
   public destroy() {
+    for(var i=0;i<this.tables.length;i++)
+      this.tables[i].destroy();
     this.tables = [];
   }
 

@@ -121,10 +121,6 @@ export default class ConditionInput extends Vue {
 
 .con-input {
 
-  .el-input {
-    
-  }
-
   .con-stat {
     display: inline-block;
     width: 40px;

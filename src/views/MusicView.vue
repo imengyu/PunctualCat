@@ -15,8 +15,9 @@
       </div>
     </div>
     <div v-if="chooseMode=='none'">
-      <ul v-if="items && items.length > 0" class="music-list">
-        <li v-for="(item, index) in items" :key="index" @dblclick="itemClick(item, 'play');" :class="item.status">
+      <music-list v-if="items && items.length > 0" lockAxis="y" axis="y" v-model="items" :pressDelay="100" @input="resortMusicsEnd">
+        <music-item v-for="(item, index) in items" :key="index" :index="index" @dblclick="itemClick(item, 'play');" @contextmenu="showMenu(item)" :class="item.status">
+          
           <span :title="item.fullPath">{{ item.name }} </span>
           <div class="btn-round icon-delete" title="删除" @click="itemClick(item, 'delete')"></div>
           
@@ -49,8 +50,8 @@
               <a slot="reference" href="javascript:;" title="设置音乐的音量"><i :class="'fa ' + (item.volume == 0 ? 'fa-volume-off' : (item.volume == 1 ? 'fa-volume-up' : 'fa-volume-down'))" aria-hidden="true"></i></a>
             </el-popover>
           </div>
-        </li>
-      </ul>
+        </music-item>
+      </music-list>
       <div v-else class="music-none-view">
         <label>空空如也~ (‾◡‾)<br>这里一首音乐都没有</label>
         <el-button class="mt-3" type="primary" @click="addMusicsToHistoryList()" round>添加音乐</el-button>
@@ -74,12 +75,53 @@
 <script lang="ts">
 import { Component, Prop, Vue } from "vue-property-decorator";
 import { MusicItem, MusicAction } from '../model/MusicItem'
+import { ContainerMixin, ElementMixin } from 'vue-slicksort';
+import { getMusicHistoryService, MusicHistoryService } from '../services/MusicHistoryService'
 
-@Component
+const electron = require('electron');
+const { shell } = require('electron');
+const remote = electron.remote;
+const clipboard = electron.clipboard;
+const Menu = electron.remote.Menu;
+const MenuItem = electron.remote.MenuItem;
+
+const SortableListTable = {
+  mixins: [ContainerMixin],
+  template: `
+    <ul class="music-list">
+      <slot />
+    </ul>
+  `
+};
+const SortableItemTable = {
+  mixins: [ElementMixin],
+  template: `
+    <li 
+      class="music-item"
+      @click="onClick"
+      @contextmenu="onContextmenu"
+      @dblclick="onDblclick"
+      >
+      <slot />
+    </li>
+  `,
+  methods: {
+    onClick() { this.$emit('click') },
+    onContextmenu() { this.$emit('contextmenu') },
+    onDblclick() { this.$emit('dblclick') }
+  }
+};
+
+@Component({
+  components: {
+    'music-item': <any>SortableItemTable,
+    'music-list': <any>SortableListTable,
+  }
+})
 export default class MusicView extends Vue {
 
-  @Prop({default:null})
-  items : Array<MusicItem>;
+  items : Array<MusicItem> = [];
+  musicHistoryService : MusicHistoryService = null;
 
   itemClick(item : MusicItem, mode : MusicAction) {
     this.$emit('item-click', item, mode);
@@ -92,6 +134,55 @@ export default class MusicView extends Vue {
     item.tracking = false;
     item.seek(item.playtime);
     if(item.status == 'paused') item.play();
+  }
+
+  mounted() {
+    this.createMenu();
+    setTimeout(() => {
+      this.musicHistoryService = getMusicHistoryService()
+      this.items = this.musicHistoryService.musicHistoryList;
+    }, 500)
+  }
+
+  musicMenu : Electron.Menu;
+  currentRightClickItem : MusicItem;
+
+  createMenu() {
+    this.musicMenu = new Menu();
+    this.musicMenu.append(new MenuItem({ label: '播放' }));
+    this.musicMenu.append(new MenuItem({ label: '停止播放', click: () => this.itemClick(this.currentRightClickItem, 'stop') }));
+    this.musicMenu.append(new MenuItem({ label: '循环播放', click: () => this.itemClick(this.currentRightClickItem, 'looplay') }));
+    this.musicMenu.append(new MenuItem({ label: '删除音乐', click: () => this.itemClick(this.currentRightClickItem, 'delete') }));
+    this.musicMenu.append(new MenuItem({ type: 'separator' }));
+    this.musicMenu.append(new MenuItem({ label: '打开所在文件夹', click: () => this.showMusicFolder(this.currentRightClickItem) }));
+    this.musicMenu.append(new MenuItem({ label: '复制完整路径', click: () => this.copyMusicPath(this.currentRightClickItem) }));
+  }
+  showMenu(item : MusicItem) {
+    this.currentRightClickItem = item;
+    if(item.status == 'playing'){
+      this.musicMenu.items[0].label = '暂停';
+      this.musicMenu.items[0].click = () => this.itemClick(this.currentRightClickItem, 'pause');
+      this.musicMenu.items[1].visible = true;
+      this.musicMenu.items[2].visible = false;
+    } else {
+      this.musicMenu.items[0].label = '播放';
+      this.musicMenu.items[0].click = () => this.itemClick(this.currentRightClickItem, 'play');
+      this.musicMenu.items[1].visible = false;
+      this.musicMenu.items[2].visible = true;
+    }
+    this.musicMenu.popup();
+  }
+  showMusicFolder(item : MusicItem) { shell.showItemInFolder(item.fullPath); }
+  copyMusicPath(item : MusicItem) {
+    clipboard.writeText(item.fullPath);
+    this.$message({ message: '音乐完整路径已复制到剪贴板', type: 'success' });
+  }
+
+  resortMusicsEnd(arr : Array<any>) {
+    for(let i = 0; i < arr.length; i++){
+      this.items[i] = arr[i];
+      this.musicHistoryService.musicHistoryList[i] = arr[i];
+    }
   }
 
   chooseMode : 'none'|'one'|'multiple' = 'none';

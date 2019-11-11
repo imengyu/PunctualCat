@@ -308,6 +308,7 @@ export class PlayConditionActuator implements AutoPlayable {
         return '<span class="con-span con-span-' + this.type + '">' + this.convertToConStr() + '</span>';
       case 'date-range':
       case 'week-range': 
+      case 'time-range': 
         return '<span class="con-span con-span-' + this.type + '">' + this.convertToConStr().replace(' 至 ', '<span class="con-span-to">至</span>') + '</span>';
       case 'group': {
         let resultStr = '', i = 0;
@@ -360,6 +361,11 @@ export class PlayConditionActuator implements AutoPlayable {
         resultStr += ')';
         return resultStr;
       }
+      case 'time-range': 
+        return (this.timeValueRange.start.hours == -1 ? '*' : CommonUtils.pad(this.timeValueRange.start.hours, 2)) + ':' + 
+        CommonUtils.pad(this.timeValueRange.start.minute, 2) + ':' + CommonUtils.pad(this.timeValueRange.start.second, 2) + ' 至 ' + 
+        (this.timeValueRange.end.hours == -1 ? '*' : CommonUtils.pad(this.timeValueRange.end.hours, 2)) + ':' + 
+        CommonUtils.pad(this.timeValueRange.end.minute, 2) + ':' + CommonUtils.pad(this.timeValueRange.end.second, 2);
       case 'time': 
         return (this.timeValue.hours == -1 ? '*' : CommonUtils.pad(this.timeValue.hours, 2)) + ':' + 
         CommonUtils.pad(this.timeValue.minute, 2) + ':' + CommonUtils.pad(this.timeValue.second, 2);
@@ -515,7 +521,10 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    * @param conStr 条件的格式化字符串
    */
   public toConditionList(conStr : string) : boolean {
-    if(conStr == '') return true;
+    if(conStr == '') {
+      this.conList = null;
+      return true;
+    }
     try{
       let fixConStr = '';
       if(conStr.startsWith('(') && conStr.endsWith(')')) fixConStr = conStr;

@@ -114,9 +114,12 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public stop() {
     if(this.type == 'music') this.stopPlayingMusic(true);
   }
+  public destroy() {
+
+  }
 
   private runCommands() {
-
+    GlobalWorker.executeGlobalAction('runcommands', this.commands)
     this.switchStatus('played');
   }
 
@@ -177,7 +180,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
 
   public getPlayTaskString() {
     if(this.type == 'music') {
-      let rs = '<span class="badge badge-pill badge-primary mr-2">播放音乐</span>';
+      let rs = '<span class="badge badge-pill badge-primary mr-2">音乐</span>';
       if(this.musics.length == 0)
         rs += '<i class="text-secondary">无音乐</i>';
       else if(this.musics.length == 1)
@@ -186,7 +189,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
         rs += this.musics[0].name + '<span class="text-secondary ml-2" style="font-size:12px">等'+ (this.musics.length-1) +'个音乐</span>';
       return rs;
     } else if(this.type == 'command') {
-      let rs = '<span class="badge badge-pill badge-info mr-2">执行 CMD 命令</span>';
+      let rs = '<span class="badge badge-pill badge-info mr-2">命令</span>';
       if(this.commands.length == 0)
         rs += '<i class="text-secondary">无</i>';
       else if(this.commands.length == 1)

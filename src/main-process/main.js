@@ -73,6 +73,11 @@ function createWindow () {
       }, 10000);*/
     }
   });
+  
+  mainWindow.webContents.on('devtools-reload-page', () => {
+    if(!mainWindow.isMinimized()) mainWindow.restore();
+    if(!mainWindow.isFocused()) mainWindow.focus();
+  });
   mainWindow.on('closed', function () {
     if(helpWindow != null) {      
       helpWindow.close();

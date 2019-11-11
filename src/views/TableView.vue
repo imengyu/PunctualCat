@@ -28,12 +28,12 @@
             <template slot-scope="scope">
               <div class="text-center">
                 <i v-if="scope.row.status == 'normal'" class="iconfont icon-dengdaiqueren" title="任务就绪，等待播放"></i>
-                <i v-else-if="scope.row.status == 'played'" class="iconfont icon-wancheng text-success" title="任务已经播放"></i>
+                <i v-else-if="scope.row.status == 'played'" class="iconfont icon-wancheng text-success" title="任务已播放"></i>
                 <i v-else-if="scope.row.status == 'disabled'" class="iconfont icon-dengdaizhihang" title="任务已禁用，不会自动播放"></i>
-                <i v-else-if="scope.row.status == 'error'" class="iconfont icon-hj1 text-danger" title="任务播放出现错误"></i>
+                <i v-else-if="scope.row.status == 'error'" class="iconfont icon-hj1 text-danger" title="任务播放时出现错误"></i>
                 <i v-else-if="scope.row.status == 'playing'" class="iconfont icon-yanchu text-success" title="任务正在播放"></i>
                 <i v-else-if="scope.row.status == 'norule'" class="iconfont icon-hj1 text-warning" title="由于您没有设置任务的播放条件，因此不会自动播放"></i>
-                <i v-else-if="scope.row.status == 'norule'" class="iconfont icon-zhihangzhong" title="当前计划表今日不播放"></i>
+                <i v-else-if="scope.row.status == 'notplay'" class="iconfont icon-zhihangzhong" title="当前计划表今日不播放"></i>
                 <i v-else-if="scope.row.status == 'parent-disabled'" class="iconfont icon-dengdaizhihang text-secondary" title="当前计划表已禁用"></i>
               </div>
             </template>
@@ -76,7 +76,7 @@
                         width="150"
                         trigger="click"
                         v-model="scope.row.chooseMusic2">
-                        <p style="mt-0">选择音乐来源：</p>
+                        <p class="mt-0">选择音乐来源：</p>
                         <el-button size="mini" type="text" class="display-block m-0" 
                           @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'file',index)">选择文件</el-button>
                         <el-button size="mini" type="text" class="display-block m-0"
@@ -89,7 +89,7 @@
                         width="160"
                         trigger="click"
                         v-model="scope.row.chooseMusic3">
-                        <p style="mt-0">确定删除此音乐？</p>
+                        <p class="mt-0">确定删除此音乐？</p>
                         <div style="text-align: right; margin: 0">
                           <el-button size="mini" type="text" @click="scope.row.chooseMusic3=false">取消</el-button>
                           <el-button type="primary" size="mini" @click="scope.row.chooseMusic3=false;scope.row.musics.remove(index)">确定</el-button>
@@ -104,7 +104,7 @@
                     width="150"
                     trigger="click"
                     v-model="scope.row.chooseMusic1">
-                    <p style="mt-0">选择音乐来源：</p>
+                    <p class="mt-0">选择音乐来源：</p>
                     <el-button size="mini" type="text" class="display-block m-0" 
                       @click="scope.row.chooseMusic1=false;chooseTaskMusic(scope.row,'file',-1)">选择文件</el-button>
                     <el-button size="mini" type="text" class="display-block m-0"
@@ -147,7 +147,7 @@
           </el-table-column>
           <el-table-column
             prop="volume"
-            label="音量"
+            label="音量%"
             align="center"
             :min="0"
             :max="100"
@@ -188,14 +188,14 @@
                 <el-button type="text" class="text-primary" title="编辑任务" @click="editTask(scope.row)">
                   <i class="iconfont icon-chuangzuo"></i>
                 </el-button>
-                <el-button type="text" class="text-danger" title="删除任务" @click="delTask(scope.row)">
-                  <i class="iconfont icon-shanchu2"></i>
-                </el-button>
                 <el-button v-if="scope.row.status != 'playing' && scope.row.status != 'disabled'" type="text" class="text-success" title="立即开始播放任务" @click="playTask(scope.row)">
                   <i class="iconfont icon-bofang1"></i>
                 </el-button>
                 <el-button v-if="scope.row.status == 'playing'" type="text" class="text-danger" title="停止播放任务" @click="stopTask(scope.row)">
                   <i class="iconfont icon-guanbi-copy"></i>
+                </el-button>
+                <el-button type="text" class="text-danger" title="删除任务" @click="delTask(scope.row)">
+                  <i class="iconfont icon-shanchu2"></i>
                 </el-button>
               </div>
               <div class="controls text-center no-select" v-show="scope.row.editing">
@@ -281,6 +281,7 @@ import CommonUtils from "../utils/CommonUtils";
 import $ from 'jquery';
 import { ContainerMixin, ElementMixin } from 'vue-slicksort';
 import { PlayTask } from "../model/PlayTask";
+import AutoPlayService from "../services/AutoPlayService";
 
 const electron = require('electron');
 const remote = electron.remote;
@@ -347,6 +348,7 @@ const SortableItemCommand = {
 export default class TableView extends Vue {
 
   @Prop({default:null}) tableService : TableServices;
+  @Prop({default:null}) autoPlayService : AutoPlayService;
   @Prop({default:null}) app : App;
   
   tables : Array<PlayTable> = null;
@@ -403,7 +405,8 @@ export default class TableView extends Vue {
     this.currentIsEditTable = true;
   }
   delTable(table : PlayTable) {
-    this.$confirm('确定永久删除该计划表? 此操作不可恢复！', '提示', {
+    this.$confirm('确定永久删除该计划表? 此操作将会删除其下所有任务，并且<b style="color:red">不可恢复</b>！', '提示', {
+      dangerouslyUseHTMLString: true,
       confirmButtonText: '确定删除',
       cancelButtonText: '取消',
       confirmButtonClass: 'el-button--danger',
@@ -415,6 +418,7 @@ export default class TableView extends Vue {
         this.autoSwitchCurrentView();
       }
       this.tableService.delTable(table);
+      this.autoPlayService.flush();
       this.$message({ type: 'success', message: '删除计划表成功!' });
     }).catch(() => {});
   } 
@@ -426,6 +430,7 @@ export default class TableView extends Vue {
       type: 'warning'
     }).then(() => {
       table.enabled = enable;
+      this.autoPlayService.flushTable(table);
       this.$message({ type: 'success', message: (enable ? '启用' : '禁用') + '计划表成功!' });
     }).catch(() => {});
   } 
@@ -443,6 +448,7 @@ export default class TableView extends Vue {
             if(this.currentIsNewTable)
               this.tableService.addTable(this.currentEditTable);
             this.currentIsEditTable = false;
+            this.autoPlayService.flushTable(this.currentEditTable);
           }
         });
       };
@@ -493,6 +499,7 @@ export default class TableView extends Vue {
     task.isNew = true;
     task.name = '新任务 ' + (table.tasks.length + 1);
     table.addTask(task);
+    this.autoPlayService.flushTable(table);
   }
   editTask(task : PlayTask) { 
     task.editing = true; 
@@ -519,6 +526,7 @@ export default class TableView extends Vue {
     }else {
       task.editing = false;
       task.isNew = false;
+      this.autoPlayService.flushTable(task.parent);
     }
   }
   delTask(task : PlayTask) {
@@ -530,6 +538,7 @@ export default class TableView extends Vue {
       type: 'warning'
     }).then(() => {
       task.parent.delTask(task);
+      this.autoPlayService.flushTable(task.parent);
       this.$message({ type: 'success', message: '删除任务成功!' });
     }).catch(() => {});
   }
@@ -574,8 +583,6 @@ export default class TableView extends Vue {
     });
   }
 
-
-
   autoSwitchCurrentView() {
     if(this.currentShowTable == null) {
       for(var i=0;i<this.tables.length;i++){
@@ -588,7 +595,7 @@ export default class TableView extends Vue {
   }
   getTaskConHtml(task : PlayTask) {
     let b = task.condition.toConditionHtml();
-    return '<div style="padding:0 3px">' + (b == '' ? '<span style="font-size:12px;color:#888">未定义条件</span>' : b) + '</div>';
+    return '<div style="padding:0 3px;line-height: 29px;">' + (b == '' ? '<span style="font-size:12px;color:#888">未定义条件</span>' : b) + '</div>';
   }
   getTableStatusString(type : string) {
     switch(type){

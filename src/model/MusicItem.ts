@@ -173,9 +173,16 @@ export class MusicItem extends EventEmitter {
    */
   public play(fromStart : boolean = false, callback? : (success: boolean) => void) {
 
-    let playInternal = () => {
+    let callBackWithErr = (e ?: any) => {
+      if(e) this.playError = e;
+      this.updateStatus('playerr');
+      clearInterval(this.audioUpdateInterval);
+      if(typeof callback == 'function') callback(false);
+    }
+    let playInternal = (success : boolean) => {
 
-      if(this.audio && this.loaded){
+      if(!success) callBackWithErr();
+      else if(this.audio && this.loaded){
 
         if(fromStart) this.audio.currentTime = 0;//从头开始
   
@@ -187,17 +194,12 @@ export class MusicItem extends EventEmitter {
           });
           this.updateStatus('playing');
   
-        }).catch((e) => {
-          this.playError = e;
-          this.updateStatus('playerr');
-          clearInterval(this.audioUpdateInterval);
-          if(typeof callback == 'function') callback(false);
-        });
-      }
+        }).catch((e) => callBackWithErr(e));
+      }else callBackWithErr();
     };
 
-    if(!this.loaded) this.load(() =>  playInternal());
-    else playInternal();
+    if(!this.loaded) this.load(playInternal);
+    else playInternal(true);
     
   }
   /**

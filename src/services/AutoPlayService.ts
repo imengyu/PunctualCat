@@ -45,6 +45,15 @@ export default class AutoPlayService extends EventEmitter {
 
   }
 
+  public flushTable(table : PlayTable) {
+    this.loopFlushTaskStatus(table);
+    this.taskTickLateUpdate(this);
+  }
+  public flush() {
+    this.loopFlushTableStatus(this);
+    this.taskTickLateUpdate(this);
+  }
+
   private timerSecCorrected = false;
   private timerMinuteCorrected = false;
   private timerHourCorrected = false;

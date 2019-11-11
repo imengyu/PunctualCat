@@ -30,7 +30,7 @@
     </div>
     <!--主区域-->
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <table-view ref="tableView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='main-list'" :table-service="serviceTables" :app="app" />
+      <table-view ref="tableView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='main-list'" :table-service="serviceTables" :auto-play-service="autoPlayService" :app="app" />
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
       <radio-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" :app="app" />
@@ -50,7 +50,6 @@
       direction="rtl"
       @closed="$refs['musicList'].endChoodeMusic()">
       <music-list ref="musicList" 
-        :items="musicHistoryList"
         @item-click="onMusicItemClick" 
         @choosed="isShowMusicList=false"
         @add-music="onAddMusicToList"
