@@ -1,20 +1,20 @@
 <template>
   <div class="music-container scroll-fix">
           
-    <div v-if="choodeMode=='none'" class="music-title">
+    <div v-if="chooseMode=='none'" class="music-title">
       <span class="text-secondary">您可以添加一些常用的音乐在此列表中快速进行播放</span>
       <el-tooltip effect="dark" content="添加音乐" placement="right" :visible-arrow="false">
         <div v-if="items && items.length > 0" class="btn-add round" @click="addMusicsToHistoryList()"></div>
       </el-tooltip>
     </div>
-    <div v-else-if="choodeMode=='one'||choodeMode=='multiple'" class="music-title">
+    <div v-else-if="chooseMode=='one'||chooseMode=='multiple'" class="music-title">
       <span class="text-secondary">在这里选择你需要的音乐</span>
-      <div v-if="choodeMode=='multiple'" style="text-align: center; margin: 0">
+      <div v-if="chooseMode=='multiple'" style="text-align: center; margin: 0">
         <el-button size="mini" type="text" @click="chooseMultipleMusicEnd(false)">取消</el-button>
         <el-button type="primary" size="mini" @click="chooseMultipleMusicEnd(true)">确定</el-button>
       </div>
     </div>
-    <div v-if="choodeMode=='none'">
+    <div v-if="chooseMode=='none'">
       <ul v-if="items && items.length > 0" class="music-list">
         <li v-for="(item, index) in items" :key="index" @dblclick="itemClick(item, 'play');" :class="item.status">
           <span :title="item.fullPath">{{ item.name }} </span>
@@ -57,7 +57,7 @@
       </div>
     </div>
     <div v-else>
-      <ul v-if="items && items.length > 0" class="music-list">
+      <ul v-if="items && items.length > 0" class="music-list choose">
         <li v-for="(item, index) in items" :key="index" @click="itemChoose(item)" :class="item.status">
           <span :title="item.fullPath">{{ item.name }} </span>
           <el-checkbox v-model="item.choosed" class="round single" title="选择" @click="itemChoose(item)"></el-checkbox>

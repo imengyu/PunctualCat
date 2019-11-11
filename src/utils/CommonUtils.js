@@ -15,9 +15,24 @@ export default {
   getElementWindowLeft,
   getElementWindowTop,
   getTimeStringSec,
-  deleteSpaceInStringArray
+  deleteSpaceInStringArray,
+  pad
 }
 
+/**
+ * 转数字为指定位数字符串
+ * @param {number} num 数字
+ * @param {number} n 位数，不足补 0
+ * @return {string} 返回字符串
+ */
+function pad(num, n) {
+  var len = num.toString().length;
+  while (len < n) {
+    num = "0" + num;
+    len++;
+  }
+  return num;
+}
 /**
  * 克隆对象
  * @param {Object} obj 要克隆对象

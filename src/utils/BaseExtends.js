@@ -1,4 +1,5 @@
 import { isNumber } from "util";
+import CommonUtils from "./CommonUtils";
 
 //Date format
 
@@ -6,14 +7,7 @@ import { isNumber } from "util";
  * 日期格式化
  */
 Date.prototype.format = function (formatStr) {
-  var pad = function(num, n){
-    var len = num.toString().length;
-    while (len < n) {
-      num = "0" + num;
-      len++;
-    }
-    return num;
-  }
+  var pad = CommonUtils.pad;
   var str = formatStr;
   str = str.replace(/yyyy|YYYY/, this.getFullYear());
   str = str.replace(/MM/, pad(this.getMonth() + 1, 2));

@@ -5,6 +5,7 @@
     <el-input 
       v-if="isInputMode"
       size="small"
+      placeholder="请输入条件"
       v-model="conditionInputBuffer"
       @focus="isInputMode=true"
     >

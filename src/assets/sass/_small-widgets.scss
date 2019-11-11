@@ -311,4 +311,34 @@
     }
   }
 
+  &.choose {
+
+    li {
+
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      
+      span {
+        width: calc(100% - 40px);
+        margin: 0;
+      }
+      .el-checkbox {
+      }
+    }
+
+  }
+}
+
+.updown-drag {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+  text-align: center;
+  background-color: #2977df;
+  vertical-align: middle;
 }

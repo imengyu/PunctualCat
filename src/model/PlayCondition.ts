@@ -47,8 +47,11 @@ export class PlayConditionActuator implements AutoPlayable {
       //Loop for group (xxx)
       newActyator = new PlayConditionActuator('group');
       let conStrArr = newActyator.splitContStrToArr(conStrFix.substr(1, conStrFix.length - 2));
-      for(let i = 0; i < conStrArr.length; i++)
-        newActyator.childList.push(PlayConditionActuator.tryConvertConStrToActuator(conStrArr[i], fullConStr, conStr.indexOf(conStrArr[i])));
+      for(let i = 0; i < conStrArr.length; i++){
+        let childActyator = PlayConditionActuator.tryConvertConStrToActuator(conStrArr[i], fullConStr, conStr.indexOf(conStrArr[i]))
+        childActyator.parent = newActyator;
+        newActyator.childList.push(childActyator);
+      }
     }else {  
 
       newActyator = new PlayConditionActuator('unknow');
@@ -243,10 +246,12 @@ export class PlayConditionActuator implements AutoPlayable {
     
   }
 
+  public isTopLevel() { return this.parent == null }
   public type : PlayConditionActuatorType = 'unknow'
   public logicType : PlayConditionActuatorLogicType = 'unknow';
   public logicNot = false;
   public childList : Array<PlayConditionActuator> = [];
+  public parent : PlayConditionActuator = null;
 
   public timeValue = {
     hours: 0,
@@ -291,6 +296,10 @@ export class PlayConditionActuator implements AutoPlayable {
   private getLogicEvalStr() {
     return (this.logicNot ? '!' : '') + (this.logicType == 'and' ? '&&' : (this.logicType == 'or' ? '||' : ''));
   }
+
+  public isEmpty() {
+    return this.childList.length == 0
+  }
   public convertToConHtml() : string {
     switch(this.type) {
       case 'date':
@@ -301,7 +310,7 @@ export class PlayConditionActuator implements AutoPlayable {
       case 'week-range': 
         return '<span class="con-span con-span-' + this.type + '">' + this.convertToConStr().replace(' 至 ', '<span class="con-span-to">至</span>') + '</span>';
       case 'group': {
-        let resultStr = '<span class="con-group">', i = 0;
+        let resultStr = '', i = 0;
         if(this.childList.length == 0){
           resultStr += '<span class="con-none">未定义条件</span>';
         }else for(; i < this.childList.length; i++) {
@@ -315,8 +324,8 @@ export class PlayConditionActuator implements AutoPlayable {
             resultStr += '<span class="con-span con-span-logic con-not">非</span>';
           resultStr += this.childList[i].convertToConHtml();
         }
-        resultStr += '</span>';
-        return resultStr;
+        if(this.isTopLevel()) return resultStr;
+        else return '<span class="con-group">' + resultStr + '</span>';
       }
       
     }
@@ -352,8 +361,8 @@ export class PlayConditionActuator implements AutoPlayable {
         return resultStr;
       }
       case 'time': 
-        return (this.timeValue.hours == -1 ? '*' : this.timeValue.hours.toString()) + ':' + 
-          this.timeValue.minute.toString() + ':' + this.timeValue.second.toString();
+        return (this.timeValue.hours == -1 ? '*' : CommonUtils.pad(this.timeValue.hours, 2)) + ':' + 
+        CommonUtils.pad(this.timeValue.minute, 2) + ':' + CommonUtils.pad(this.timeValue.second, 2);
       case 'week': 
         return DateUtils.getWeekStr(this.weekValue);
       case 'week-range': {
@@ -536,6 +545,12 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    */
   public toConditionHtml() {
     return this.conList && this.conList.convertToConStr ? this.conList.convertToConHtml() : ''
+  }
+  /**
+   * 判断条件是否为空
+   */
+  public isEmpty() {
+    return this.conList && this.conList.isEmpty ? this.conList.isEmpty() : true;
   }
   /**
    * 检测当前条件是否达到指定的播放时间

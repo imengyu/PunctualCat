@@ -18,7 +18,7 @@
             width="120">
             <template slot-scope="scope">
               <el-input size="mini" placeholder="请输入任务名称" v-show="scope.row.editing" v-model="scope.row.name"></el-input>
-              <span v-show="!scope.row.editing">{{scope.row.name}}</span>
+              <span class="no-warp-span-full" v-show="!scope.row.editing" :title="scope.row.name">{{scope.row.name}}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -26,12 +26,16 @@
             label="状态"
             width="38">
             <template slot-scope="scope">
-              <i v-if="scope.row.status == 'normal'" class="iconfont icon-dengdaiqueren" title="任务就绪，等待播放"></i>
-              <i v-else-if="scope.row.status == 'played'" class="iconfont icon-wancheng text-success" title="任务已经播放"></i>
-              <i v-else-if="scope.row.status == 'disabled'" class="iconfont icon-dengdaizhihang" title="任务已禁用，不会自动播放"></i>
-              <i v-else-if="scope.row.status == 'error'" class="iconfont icon-hj1 text-danger" title="任务播放出现错误"></i>
-              <i v-else-if="scope.row.status == 'playing'" class="iconfont icon-zhihangzhong text-success" title="任务正在播放"></i>
-              <i v-else-if="scope.row.status == 'norule'" class="iconfont icon-hj1 text-warning" title="由于您没有设置任务的播放条件，因此不会自动播放"></i>
+              <div class="text-center">
+                <i v-if="scope.row.status == 'normal'" class="iconfont icon-dengdaiqueren" title="任务就绪，等待播放"></i>
+                <i v-else-if="scope.row.status == 'played'" class="iconfont icon-wancheng text-success" title="任务已经播放"></i>
+                <i v-else-if="scope.row.status == 'disabled'" class="iconfont icon-dengdaizhihang" title="任务已禁用，不会自动播放"></i>
+                <i v-else-if="scope.row.status == 'error'" class="iconfont icon-hj1 text-danger" title="任务播放出现错误"></i>
+                <i v-else-if="scope.row.status == 'playing'" class="iconfont icon-yanchu text-success" title="任务正在播放"></i>
+                <i v-else-if="scope.row.status == 'norule'" class="iconfont icon-hj1 text-warning" title="由于您没有设置任务的播放条件，因此不会自动播放"></i>
+                <i v-else-if="scope.row.status == 'norule'" class="iconfont icon-zhihangzhong" title="当前计划表今日不播放"></i>
+                <i v-else-if="scope.row.status == 'parent-disabled'" class="iconfont icon-dengdaizhihang text-secondary" title="当前计划表已禁用"></i>
+              </div>
             </template>
           </el-table-column>
           <el-table-column
@@ -41,7 +45,7 @@
             width="125">
             <template slot-scope="scope">
               <condition-input size="mini" v-show="scope.row.editing" :condition="scope.row.condition"></condition-input>
-              <span v-show="!scope.row.editing" v-html="getTaskConHtml(scope.row)"></span>
+              <span class="no-warp-span-full" v-show="!scope.row.editing" v-html="getTaskConHtml(scope.row)"></span>
             </template>
           </el-table-column>
           <el-table-column
@@ -50,80 +54,103 @@
               <el-popover
                 v-if="scope.row.editing"
                 placement="top"
+                trigger="manual"
                 width="400"
                 v-model="scope.row.editingTask">
-                任务类型：<el-radio-group v-model="scope.row.type" size="mini">
+                <el-radio-group v-model="scope.row.type" size="mini">
                   <el-radio-button label="music">播放音乐</el-radio-button>
                   <el-radio-button label="command">执行 CMD 命令</el-radio-button>
                   <el-radio-button label="reboot">重启电脑</el-radio-button>
                   <el-radio-button label="shutdown">关闭电脑</el-radio-button>
                 </el-radio-group>
-                <div v-if="scope.row.type=='music'">
-                  <div class="text-secondary">任务将会按顺序播放您设置的音乐</div>
-                  <command-list v-if="scope.row.musics" lockAxis="y" axis="y" v-model="scope.row.musics">
+                <div v-if="scope.row.type=='music'" style="padding: 10px 2px;">
+                  <div class="text-secondary">任务将会按您设置的音乐顺序播放</div>
+                  <command-list v-if="scope.row.musics && scope.row.musics.length > 0" lockAxis="y" axis="y" v-model="scope.row.musics">
                     <command-item v-for="(music, index) in scope.row.musics" :index="index" :key="index">
-                      <el-input size="mini" v-model="scope.row.musics[index].fullPath" :readonly="true">
-                        <el-popover
-                          placement="top"
-                          width="150"
-                          v-model="scope.row.chooseMusic2">
-                          <p>选择音乐来源：</p>
-                          <el-button size="mini" type="text" class="display-block" 
-                            @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'file',index)">选择文件</el-button>
-                          <el-button size="mini" type="text" class="display-block"
-                            @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'history',index)">从音乐库中选择</el-button>
-                          <el-button slot="append" icon="el-icon-close" title="更换音乐"></el-button>
-                        </el-popover>
-                        <el-popover
-                          placement="top"
-                          width="160"
-                          v-model="scope.row.chooseMusic3">
-                          <p>确定删除此音乐？</p>
-                          <div style="text-align: right; margin: 0">
-                            <el-button size="mini" type="text" @click="scope.row.chooseMusic3=false">取消</el-button>
-                            <el-button type="primary" size="mini" @click="scope.row.chooseMusic3=false;scope.row.musics.remove(index)">确定</el-button>
-                          </div>
-                          <el-button slot="append" icon="el-icon-close" title="删除此音乐"></el-button>
-                        </el-popover>
-                      </el-input>
+                      <div class="updown-drag">
+                        <svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="12" height="12"><path d="M814.17307 634.253637H163.708909c-32.045196 0-51.26956 20.829002-35.246962 36.846594C152.491463 696.734385 439.276067 996.332311 453.694027 1010.75653c17.622229 19.224364 56.075964 16.017591 72.093556 0C537.003777 999.540336 831.796551 688.726215 849.421284 671.100231c16.021346-17.620978-4.805152-35.248214-35.248214-36.846594zM163.708909 390.726669H814.17307c30.44181 0 51.26956-19.225616 35.248214-36.846594C831.796551 336.254091 537.003777 25.439971 524.189203 12.625397c-14.419212-16.022598-52.872946-17.627236-72.098562 0C439.276067 28.646743 152.491463 328.245921 128.461947 353.880075c-16.022598 16.022598 3.201766 36.846593 35.246962 36.846594z m0 0" fill="#fff"></path></svg>
+                      </div>
+                      <el-input style="display: inline-block;width: calc(100% - 100px);" size="mini" v-model="scope.row.musics[index].fullPath" :readonly="true"></el-input>
+                      <el-popover
+                        placement="top"
+                        width="150"
+                        trigger="click"
+                        v-model="scope.row.chooseMusic2">
+                        <p style="mt-0">选择音乐来源：</p>
+                        <el-button size="mini" type="text" class="display-block m-0" 
+                          @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'file',index)">选择文件</el-button>
+                        <el-button size="mini" type="text" class="display-block m-0"
+                          @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'history',index)">从音乐库中选择</el-button>
+                        <el-button size="mini" type="text" class="display-block m-0" @click="scope.row.chooseMusic2=false;">取消</el-button>
+                        <el-button slot="reference" type="primary" size="mini" icon="el-icon-refresh-right" title="更换音乐" circle></el-button>
+                      </el-popover>
+                      <el-popover
+                        placement="top"
+                        width="160"
+                        trigger="click"
+                        v-model="scope.row.chooseMusic3">
+                        <p style="mt-0">确定删除此音乐？</p>
+                        <div style="text-align: right; margin: 0">
+                          <el-button size="mini" type="text" @click="scope.row.chooseMusic3=false">取消</el-button>
+                          <el-button type="primary" size="mini" @click="scope.row.chooseMusic3=false;scope.row.musics.remove(index)">确定</el-button>
+                        </div>
+                        <el-button slot="reference" type="danger" size="mini" icon="el-icon-close" title="删除此音乐" circle></el-button>
+                      </el-popover>
                     </command-item>
                   </command-list>
+                  <div v-else class="text-secondary text-center mt-3 mb-3">当前任务没有音乐</div>
                   <el-popover
                     placement="top"
                     width="150"
+                    trigger="click"
                     v-model="scope.row.chooseMusic1">
-                    <p>选择音乐来源：</p>
-                    <el-button size="mini" type="text" class="display-block" 
+                    <p style="mt-0">选择音乐来源：</p>
+                    <el-button size="mini" type="text" class="display-block m-0" 
                       @click="scope.row.chooseMusic1=false;chooseTaskMusic(scope.row,'file',-1)">选择文件</el-button>
-                    <el-button size="mini" type="text" class="display-block"
+                    <el-button size="mini" type="text" class="display-block m-0"
                       @click="scope.row.chooseMusic1=false;chooseTaskMusic(scope.row,'history',-1)">从音乐库中选择</el-button>
-                    <el-button icon="el-icon-plus" slot="reference" title="添加音乐" circle></el-button>
+                    <el-button size="mini" type="text" class="display-block m-0" @click="scope.row.chooseMusic1=false;">取消</el-button>
+                    <el-button slot="reference" size="mini" round><i class="iconfont icon-tianjiaxiao mr-2"></i>添加音乐</el-button>
                   </el-popover>
                 </div>
-                <div v-else-if="scope.row.type=='command'">
-                  <div class="text-secondary">任务将会按顺序执行您设置的 CMD 命令，通常，您可以使用此功能来启动您自己的程序。</div>
-                  <command-list v-if="scope.row.commands" lockAxis="y" axis="y" v-model="scope.row.commands">
+                <div v-else-if="scope.row.type=='command'" style="padding: 10px 2px;">
+                  <div class="text-secondary">任务将会按您设置的 CMD 命令顺序执行，通常，您可以使用此功能来启动您自己的程序。</div>
+                  <command-list v-if="scope.row.commands && scope.row.commands.length > 0" lockAxis="y" axis="y" v-model="scope.row.commands">
                     <command-item v-for="(conmmand, index) in scope.row.commands" :index="index" :key="index">
-                      <el-input size="mini" v-model="scope.row.commands[index]">
+                      <el-input size="mini" v-model="scope.row.commands[index]" placeholder="输入您要执行 CMD 命令">
                         <el-button slot="append" icon="el-icon-close" title="删除此命令" @click="scope.row.commands.remove(index)"></el-button>
                       </el-input>
                     </command-item>
                   </command-list>
-                  <el-button icon="el-icon-plus" title="添加命令" circle @click="scope.row.commands.push('')"></el-button>
+                  <div v-else class="text-secondary text-center mt-3 mb-3">当前任务没有命令</div>
+                  <el-button size="mini" round @click="scope.row.commands.push('')"><i class="iconfont icon-tianjiaxiao mr-2"></i>添加命令</el-button>
                 </div>
-                <div style="text-align: right; margin: 0">
+                <div v-else-if="scope.row.type=='shutdown'" style="padding: 10px 2px;display: inline-block;">
+                  <div class="text-secondary">此任务将会关闭计算机</div>
+                </div>
+                <div v-else-if="scope.row.type=='reboot'" style="padding: 10px 2px;display: inline-block;">
+                  <div class="text-secondary">此任务将会重启计算机</div>
+                </div>
+
+                <div class="propever-buttons">
                   <el-button size="mini" type="text" @click="editTaskCommandOrMusicFinish(scope.row, false)">取消</el-button>
                   <el-button type="primary" size="mini" @click="editTaskCommandOrMusicFinish(scope.row, true)">确定</el-button>
                 </div>
-                <div slot="reference" class="no-select cursor-pointer" title="点击编辑" @click="editCommandOrMusicTask(scope.row)" v-html="scope.row.getPlayTaskString()"></div>
+                <div slot="reference" class="no-select"
+                  @click="editCommandOrMusicTask(scope.row)">
+                  <span class="no-warp-span" v-html="scope.row.getPlayTaskString()"></span>
+                  <a class="float-right" style="margin-top: 3px;" href="javascript:;" @click="editCommandOrMusicTask(scope.row)" title="编辑音乐或任务"><i class="iconfont icon-chuangzuo"></i></a>
+                </div>
               </el-popover>
-              <div v-show="!scope.row.editing" v-html="scope.row.getPlayTaskString()"></div>
+              <div class="no-warp-span" v-show="!scope.row.editing" v-html="scope.row.getPlayTaskString()"></div>
             </template>
           </el-table-column>
           <el-table-column
             prop="volume"
             label="音量"
             align="center"
+            :min="0"
+            :max="100"
             width="55">
             <template slot-scope="scope">
               <el-input-number size="mini" controls-position="right" v-show="scope.row.editing" v-model="scope.row.volume"></el-input-number>
@@ -134,6 +161,8 @@
             prop="loopCount"
             label="循环"
             align="center"
+            :min="1"
+            :max="50"
             width="55">
             <template slot-scope="scope">
               <el-input-number size="mini" controls-position="right" v-show="scope.row.editing" v-model="scope.row.loopCount"></el-input-number>
@@ -161,6 +190,12 @@
                 </el-button>
                 <el-button type="text" class="text-danger" title="删除任务" @click="delTask(scope.row)">
                   <i class="iconfont icon-shanchu2"></i>
+                </el-button>
+                <el-button v-if="scope.row.status != 'playing' && scope.row.status != 'disabled'" type="text" class="text-success" title="立即开始播放任务" @click="playTask(scope.row)">
+                  <i class="iconfont icon-bofang1"></i>
+                </el-button>
+                <el-button v-if="scope.row.status == 'playing'" type="text" class="text-danger" title="停止播放任务" @click="stopTask(scope.row)">
+                  <i class="iconfont icon-guanbi-copy"></i>
                 </el-button>
               </div>
               <div class="controls text-center no-select" v-show="scope.row.editing">
@@ -475,10 +510,12 @@ export default class TableView extends Vue {
           task.editing = false;
           task.parent.delTask(task);
         }else {
-          task.editing = false;
           CommonUtils.cloneValue(task, this.currentEditTaskBackUp);
+          task.editing = false;
         }
-      }).catch(() => {});
+      }).catch((e) => {
+        console.log(e);
+      });
     }else {
       task.editing = false;
       task.isNew = false;
@@ -496,6 +533,26 @@ export default class TableView extends Vue {
       this.$message({ type: 'success', message: '删除任务成功!' });
     }).catch(() => {});
   }
+  playTask(task : PlayTask) {
+    this.$confirm('确定开始播放此任务？', '提示', {
+      confirmButtonText: '开始',
+      cancelButtonText: '取消',
+      roundButton: true,
+      type: 'warning'
+    }).then(() => {
+      task.play();
+    }).catch(() => {});
+  }
+  stopTask(task : PlayTask) {
+    this.$confirm('确定停止播放此任务？', '提示', {
+      confirmButtonText: '开始',
+      cancelButtonText: '取消',
+      roundButton: true,
+      type: 'warning'
+    }).then(() => {
+      task.stop();
+    }).catch(() => {});
+  }
   editCommandOrMusicTask(task : PlayTask) { 
     task.typeBackup = task.type;
     task.musicsBackup = CommonUtils.clone(task.musics);
@@ -503,7 +560,7 @@ export default class TableView extends Vue {
     task.editingTask = true;
   }
   editTaskCommandOrMusicFinish(task : PlayTask, save : boolean) {
-    task.editing = false;
+    task.editingTask = false;
     if(!save) {
       task.type = task.typeBackup;
       task.musics = task.musicsBackup;
@@ -618,78 +675,87 @@ export default class TableView extends Vue {
   tr,td {
     height: 29px;
   }
-  .controls .el-button {
-    padding: 0;
-  }
-  .el-input-number {
-    width: 50px;
-
-    .el-input-number__decrease,
-    .el-input-number__increase {
-      width: 15px;
-    }
-  }
-  .el-input-number.is-controls-right .el-input__inner {
-    padding: 0;
-    padding-right: 15px;
-  }
-  .el-input-number--mini {
-    width: 50px;
-    line-height: 26px;
-  }
-  .el-input__inner {
-    border: none;
-    padding: 0 3px;
-    background-color: transparent;
-  }
-
   td.el-table_1_column_3 .cell {
     padding: 0;
   }
-  .con-input {
-    height: 29px;
+  .el-table_1_column_2 .cell > div {
+    font-size: 18px;
+    line-height: 20px;
+    text-align: center;
+  }
 
-    .el-input-group__append {
-      width: 36px;
+  .cell {
+
+    .controls .el-button {
       padding: 0;
-      border: none;
-      
-      button {
-        padding: 0 2px;
-        line-height: 30px;
-        margin: 0;
+    }
+    .el-input-number {
+      width: 50px;
+
+      .el-input-number__decrease,
+      .el-input-number__increase {
+        width: 15px;
       }
     }
-    .el-input-group__prepend {
-      width: 20px;
+    .el-input-number.is-controls-right .el-input__inner {
       padding: 0;
-      border: none;
-
-      button {
-        padding: 0;
-        margin-left: 2px;
-        line-height: 30px;
-      }
+      padding-right: 15px;
     }
-
-    .con-html-host {
+    .el-input-number--mini {
+      width: 50px;
+      line-height: 26px;
+    }
+    .el-input__inner {
+      border: none;
+      padding: 0 3px;
+      background-color: transparent;
+    }
+    
+    .con-input {
       height: 29px;
-      line-height: 29px;
-      border: none;
 
-      .con-html {
-        width: calc(100% - 30px);
-        padding: 0 2px;
-        margin-left: 18px;
+      .el-input-group__append {
+        width: 36px;
+        padding: 0;
+        border: none;
+        
+        button {
+          padding: 0 2px;
+          line-height: 30px;
+          margin: 0;
+        }
       }
-      .con-edit,
-      .con-stat {
+      .el-input-group__prepend {
         width: 20px;
-        border-radius: 0;
+        padding: 0;
         border: none;
 
-        span {
-          line-height: 31px;
+        button {
+          padding: 0;
+          margin-left: 2px;
+          line-height: 30px;
+        }
+      }
+
+      .con-html-host {
+        height: 29px;
+        line-height: 29px;
+        border: none;
+
+        .con-html {
+          width: calc(100% - 30px);
+          padding: 0 8px 0 6px;
+          margin-left: 18px;
+        }
+        .con-edit,
+        .con-stat {
+          width: 20px;
+          border-radius: 0;
+          border: none;
+
+          span {
+            line-height: 31px;
+          }
         }
       }
     }
@@ -800,6 +866,37 @@ export default class TableView extends Vue {
     line-height: 15px;
     color: #aaa;
   }
+}
+.propever-buttons {
+  float: right;
+  display: inline;
+  text-align: right;
+  margin: 0px;
+  margin-top: -26px;
+}
+.command-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;  
+}
+.command-items {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+  z-index: 3000;
+}
+.no-warp-span-full {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.no-warp-span {
+  width: calc(100% - 20px);
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
 

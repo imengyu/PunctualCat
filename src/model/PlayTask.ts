@@ -142,7 +142,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
           });
         }else {
           this.currentPlayMusicCount++;
-          if(this.currentPlayMusicCount > this.loopCount)
+          if(this.currentPlayMusicCount >= this.loopCount)
             this.stopPlayingMusic(true);//循环次数超过，停止
           else {
             this.currentPlayMusicIndex = 0;
@@ -155,14 +155,17 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   }
   private playerEnded(playerLoop ?: () => void) {
 
-    //停止，index+1
-    this.musics[this.currentPlayMusicIndex].stop();
-    this.musics[this.currentPlayMusicIndex].volume = 1.0;
-    this.musics[this.currentPlayMusicIndex].off('ended', this.playerEnded);
-    this.currentPlayMusicIndex++;
-    
-    if(playerLoop) playerLoop();
-  };
+    if(this.currentPlayMusicIndex < this.musics.length) {
+      
+      //停止，index+1
+      this.musics[this.currentPlayMusicIndex].stop();
+      this.musics[this.currentPlayMusicIndex].volume = 1.0;
+      this.musics[this.currentPlayMusicIndex].off('ended', () => { this.playerEnded(playerLoop) });
+      this.currentPlayMusicIndex++;
+
+      if(playerLoop) playerLoop();
+    }
+  }
   private stopPlayingMusic(success : boolean) {
     this.playerEnded();
     this.switchStatus(success ? 'played' : 'error');
@@ -176,7 +179,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     if(this.type == 'music') {
       let rs = '<span class="badge badge-pill badge-primary mr-2">播放音乐</span>';
       if(this.musics.length == 0)
-        rs += '<span class="text-secondary">无音乐</span>';
+        rs += '<i class="text-secondary">无音乐</i>';
       else if(this.musics.length == 1)
         rs += this.musics[0].name;
       else if(this.musics.length > 1)
@@ -185,7 +188,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     } else if(this.type == 'command') {
       let rs = '<span class="badge badge-pill badge-info mr-2">执行 CMD 命令</span>';
       if(this.commands.length == 0)
-        rs += '<i  class="text-secondary">无</i>';
+        rs += '<i class="text-secondary">无</i>';
       else if(this.commands.length == 1)
         rs += this.commands[0];
       else if(this.commands.length > 1)

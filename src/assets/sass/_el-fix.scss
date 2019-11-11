@@ -170,11 +170,20 @@
 
 .el-checkbox.round {
 
+  width: 20px;
+  height: 20px;
+
+  .el-checkbox__input {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+  }
   .el-checkbox__inner {
     border: 2px solid #dcdfe6;
     width: 20px;
     height: 20px;
     border-radius: 50%;
+    margin: 0;
 
     &:after {
       border: 2px solid #fff;

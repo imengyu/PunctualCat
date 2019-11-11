@@ -73,6 +73,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   }
   public delTask(task : PlayTask) {
     task.parent = null;
+    if(task.status == 'playing') task.stop();
     this.tasks.remove(task);
   }
 }

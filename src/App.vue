@@ -563,7 +563,10 @@ export default class App extends Vue {
     if(type == 'file'){
       this.chooseOneMusicCallback = callback;
       this.chooseMusic({ type: 'chooseOneMusicAndCallback' });
-    }else if(type == 'history') (<MusicView>this.$refs['musicList']).startChooseOneMusic(callback);
+    }else if(type == 'history') { 
+      this.isShowMusicList = true;
+      setTimeout(() => (<MusicView>this.$refs['musicList']).startChooseOneMusic(callback), 300);
+    }
   }
 
 

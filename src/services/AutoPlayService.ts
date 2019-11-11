@@ -2,6 +2,7 @@ import { PlayTable } from '../model/PlayTable'
 import { PlayTask } from '../model/PlayTask'
 import TableServices from './TableServices'
 import { EventEmitter } from "events";
+import { AutoPlayStatus } from '../model/PlayInterfaces';
 
 export type AutoPlayTickType = 'hour'|'minute'|'second';
 
@@ -203,9 +204,30 @@ export default class AutoPlayService extends EventEmitter {
     for (var j = 0, d = service.tables.length; j < d; j++) {
       //正在播放的时间表
       var table = service.tables[j];
-      if(!table.enabled) table.status = 'disabled';
-      else if(table.condition.isPlayingTime('full')) table.status = 'playing';
-      else table.status = 'normal';
+      if(!table.enabled) {
+        table.status = 'disabled';
+        service.loopFlushTaskStatus(table, 'parent-disabled');
+      }
+      else if(table.condition.isPlayingTime('full')) { 
+        table.status = 'playing';
+        service.loopFlushTaskStatus(table);
+      }
+      else {
+        table.status = 'normal';
+        service.loopFlushTaskStatus(table, 'notplay');
+      }
+    }
+  }
+  private loopFlushTaskStatus(table : PlayTable, setStatus ?: AutoPlayStatus) {
+    if(setStatus){
+      for (var j = 0, d = table.tasks.length; j < d; j++) 
+        table.tasks[j].status = setStatus;
+    }
+    else for (var j = 0, d = table.tasks.length; j < d; j++) {
+      var task = table.tasks[j];
+      if(!task.enabled) task.status = 'disabled';
+      else if(task.condition.isEmpty()) task.status = 'norule';
+      else task.status = 'normal';
     }
   }
 
