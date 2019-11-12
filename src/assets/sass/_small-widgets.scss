@@ -357,3 +357,110 @@
   background-color: #2977df;
   vertical-align: middle;
 }
+
+.full-locker {
+
+  position: absolute;
+  top: -100%;
+  height: 100%;
+  width: 100%;
+  transition: top ease-in-out .3s;
+  text-align: center;
+  z-index: 1000;
+  background-color: #fff;
+  background-size: cover;
+  background-position: center;
+
+  &.show {
+    top: 0;
+  }
+
+  .login-area {
+
+    position: absolute;
+    left: 60px;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    background-color: rgba(255,255,255,.8);
+
+    border-bottom-left-radius: 20px;
+    border-top-left-radius: 20px;
+    z-index: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+
+    h3 {
+      position: absolute;
+      font-size: 28px;
+      font-weight: 300;
+      top: 20px;
+    }
+
+    .login {
+      position: relative;
+      height: 60%;
+      width: 50%;
+      padding: 25px;
+      background-color: rgba(255,255,255, .7);
+      border-radius: 15px;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+
+      .info-box {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        top: 100px;
+        bottom: 200px;
+        left: 25px;
+        right: 25px;
+        overflow: hidden;
+      }
+
+      .password-box {
+        position: absolute;
+        margin-top: 10px;
+        max-width: 350px;
+        bottom: 90px;
+        width: 280px;
+
+        .el-button {
+          width: 100%;
+        }
+        input{
+
+          width: calc(100% - 30px);
+          border-radius: 50px;
+          background: rgba(192, 192, 192, 0.3);
+          border: none;
+          padding: 13px 15px;
+
+          &:hover {
+            background: rgba(211, 211, 211, 0.5);
+          }
+          &:active, &:focus{
+            border: none;
+            outline: none;
+          }
+
+        }
+      }
+    }
+
+    .ver-text{
+      text-align: center;
+      color: #8f8f8f;
+      position: absolute;
+      bottom: 20px;
+      font-size: 12px;
+    }
+
+  }
+}

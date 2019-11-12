@@ -50,9 +50,11 @@ class SettingsServices extends EventEmitter {
   public getData() { return this.staticSettings }
   public setData(data : any) { 
     CommonUtils.cloneValue(this.staticSettings, data)
+    this.emit('update');
   }
   public resetDefault() { 
-    CommonUtils.cloneValue(this.staticSettings, this.staticSettingsTemplate)
+    CommonUtils.cloneValue(this.staticSettings, this.staticSettingsTemplate);
+    this.emit('update');
   }
 
   /**

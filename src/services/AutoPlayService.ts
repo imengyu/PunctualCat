@@ -45,14 +45,8 @@ export default class AutoPlayService extends EventEmitter {
 
   }
 
-  public flushTable(table : PlayTable) {
-    this.loopFlushTaskStatus(table);
-    this.taskTickLateUpdate(this);
-  }
-  public flush() {
-    this.loopFlushTableStatus(this);
-    this.taskTickLateUpdate(this);
-  }
+  public flushTable(table : PlayTable) { this.taskTickLateUpdate(this); }
+  public flush() { this.taskTickLateUpdate(this); }
 
   private timerSecCorrected = false;
   private timerMinuteCorrected = false;
@@ -323,7 +317,7 @@ export default class AutoPlayService extends EventEmitter {
     if(needStartSec){
       service.timerMinuteWkCurrent = service.timeNow.getMinutes();
       service.timerTickSec(service);
-      service.timerSec = setInterval(service.timerTickSec, 1000);
+      service.timerSec = setInterval(() => service.timerTickSec(service), 1000);
       console.log('Timer second start at : ' + new Date().format('HH:ii:ss'));
     }
   }

@@ -91,7 +91,7 @@
 </template>
 
 <script>
-import calendar from "./calendar.js";
+import calendar from "./Calendar.js";
 export default {
   props: {
     // 多选模式
@@ -816,6 +816,9 @@ export default {
     // 日期补零
     zeroPad(n) {
       return String(n < 10 ? "0" + n : n);
+    },
+    forceUpdate() {
+      this.init();
     }
   }
 };

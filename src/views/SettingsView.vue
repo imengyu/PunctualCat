@@ -7,7 +7,7 @@
         <el-tab-pane name="global">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-shezhi"></i>全局设置</span>
 
-          <el-form ref="formSettings" :model="appSettingsBackup" label-position="top">
+          <el-form ref="formSettings" :model="appSettingsBackup" label-width="140px">
             <el-form-item label="软件主窗口标题">
               <el-input v-model="appSettingsBackup.window.title" size="small" placeholder="软件主窗口标题，为空使用默认"></el-input>
             </el-form-item>
@@ -25,7 +25,7 @@
             
             <el-form-item label="本软件长时间无操作时自动隐藏">
               <el-switch v-model="appSettingsBackup.system.autoHide" style="margin: 10px 0;"></el-switch><br>
-              <el-input-number v-model="appSettingsBackup.system.maxPlayingMusic" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
+              <el-input-number v-model="appSettingsBackup.system.autoHideMinute" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
               分钟后无操作隐藏
             </el-form-item>
             <el-form-item label="主窗口背景图片">
@@ -40,7 +40,7 @@
         </el-tab-pane>
         <el-tab-pane name="player">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-yanchu"></i>播放设置</span>
-          <el-form ref="formSettings" :model="appSettingsBackup" label-position="top">
+          <el-form ref="formSettings" :model="appSettingsBackup" label-width="140px">
             <el-form-item label="开启音乐播放淡出淡入">
               <el-switch v-model="appSettingsBackup.player.enableFade" style="margin: 10px 0;"></el-switch><br>
             </el-form-item>
@@ -56,7 +56,7 @@
         </el-tab-pane>
         <el-tab-pane name="security">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-anquan"></i>安全设置</span>
-          <el-form ref="formSettings" :model="appSettingsBackup" label-position="top">
+          <el-form ref="formSettings" :model="appSettingsBackup" label-width="140px">
 
             <el-form-item label="开启密码保护">
               <el-switch v-model="appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
@@ -178,6 +178,7 @@ export default class SettingsView extends Vue {
     this.appVesrsion = (<any>window).appVesrsion;
     this.appBuildDate = (<any>window).appBuildDate;
     this.appSettingsBackup = CommonUtils.clone(SettingsServices.getData());
+    this.getAutoStartStatus();
   }
 
   saveSettings() {

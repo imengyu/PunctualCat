@@ -1,3 +1,5 @@
+@import "scroll";
+
 /*Intro*/
 #intro {
   display: flex;
@@ -44,10 +46,10 @@
   z-index: 1000;
   background: #fff;
   padding: 30px 20px 50px 20px;
+  overflow: hidden;
+  overflow-y: scroll!important;
 
-  div {
-    text-align: center;
-  }
+  @include pc-fix-scrollbar-white();
 
   .erricon {
     font-size: 38px;
@@ -55,9 +57,24 @@
     margin-bottom: 10px;
   }
 
-  span {
+  > span {
     text-align: center;
     display: block;
     color: #8f8f8f;
+  }
+  > div {
+    position: relative;
+    text-align: center;
+    width: 100%;
+  }
+
+  #global-error-info-content {
+    padding: 20px;
+    text-align: left;
+    background-color: #f8f8f8;
+    margin: 20px;
+    overflow: scroll;
+
+    @include pc-fix-scrollbar-white();
   }
 }

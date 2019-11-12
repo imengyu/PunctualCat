@@ -30,6 +30,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
     for(var i = 0; i < obj.tasks.length; i++){
       let newTask = new PlayTask();
       newTask.loadFromJsonObject(obj.tasks[i]);
+      newTask.parent = this;
       this.tasks.push(newTask);
     }
     this.condition = new PlayCondition(null, obj.condition);

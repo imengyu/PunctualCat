@@ -26,8 +26,9 @@
   ],
   "exclude": [
     "node_modules",
-    "src/app.js",
     "src/main-process",
+    "src/**/*.js",
+    "src/*.js",
     "dist",
   ],
 }

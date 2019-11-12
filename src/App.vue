@@ -1,13 +1,27 @@
 <template>
   <div class="window-container">
+    <!--登录-->
+    <div :class="'full-locker' + (lockUIViaible ? ' show' : '')">
+      <div class="login">
+        <h3>登录系统</h3>
+        <div class="info-box">
+          <h5 class="m-0" id="login-app-title">PunctualCat</h5>
+          <h5 class="m-0 mb-1">{{ lockedNote }}</h5>
+        </div>
+        <div class="password-box">
+          <input placeholder="请输入密码" type="password" v-model="systemLockEnterPassword" @keyup="loginInputKeyDown($event)" />
+          <el-button class="mt-4" type="primary" @click="doUnLock" round>登录系统</el-button>
+        </div>
+      </div>
+    </div>
     <!--日历弹出区-->
     <transition enter-active-class="animated fadeInLeft anim-fast delay-300ms" leave-active-class="animated bounceOutLeft anim-fast">
       <div v-show="calendarViaible" class="calendar-host">
         <div class="place-holder-top">
-          <text-time @date-click="switchCalendar" />
+          <text-time ref="textTime1" @date-click="switchCalendar" />
         </div>
         <div class="place-holder-center">
-          <calendar :lunar="true" />
+          <calendar ref="calendar" :lunar="true" />
         </div>
         <div class="place-holder-bottom">
           <el-button @click="calendarViaible=false" round>收起日历</el-button>
@@ -21,7 +35,7 @@
     <!--顶栏-->
     <div class="top-bar">
       <transition enter-active-class="animated bounceIn anim-fast delay-400ms" leave-active-class="animated fadeOut anim-fast">
-        <text-time v-show="!calendarViaible" @date-click="switchCalendar" />
+        <text-time ref="textTime2" v-show="!calendarViaible" @date-click="switchCalendar" />
       </transition>
       <div v-show="calendarViaible"></div>
       <div class="top-menu">
@@ -97,11 +111,12 @@ import { MusicHistoryService, createMusicHistoryService } from "./services/Music
 import { DataStorageServices, createDataStorageServices, destroyDataStorageServices } from "./services/DataStorageServices";
 import GlobalWorker from "./services/GlobalWorker";
 
-import electron, { BrowserWindow, screen } from "electron";
+import electron, { BrowserWindow, Rectangle } from "electron";
 import { Menu, MenuItem } from "electron";
 
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
+const screen = remote.screen;
 
 @Component({
   components: {
@@ -121,15 +136,20 @@ export default class App extends Vue {
   //Props
   //=====
 
+  inited = false;
   app : App = this;
   //Dialog and menu visible control
   calendarViaible = false;
-  isShowMusicList: boolean = false;
-  menuVisible: boolean = false;
-  voiceProverVisible: boolean = false;
-  quitDialog: boolean = false;
-  shutdownNowDialog: boolean = false;
-  rebootNowDialog: boolean = false;
+  isShowMusicList : boolean = false;
+  menuVisible : boolean = false;
+  voiceProverVisible : boolean = false;
+  quitDialog : boolean = false;
+  shutdownNowDialog : boolean = false;
+  rebootNowDialog : boolean = false;
+  lockUIViaible = false;
+  systemLockEnterPassword = '';
+  lockedNote = '';
+  background = '';
 
   //Toolbar and menu
   topToolbar: Array<IconToolItem> = [
@@ -218,9 +238,10 @@ export default class App extends Vue {
       $("#intro").addClass('hidden');
     }, 1000);
   }
-  showStartUpError(e) {
+  showStartUpError(message : string, e) {
     $("#global-error-info").show();
-    $("#global-error-info-content").text(e);
+    $("#global-error-info-content").html('<span class="display-block text-important">' + message + '</span><span class="display-block font-monospace">' + e + '</span>');
+    $("#intro").hide();
   }
   exitHide(callback) {
     $("html,body").addClass(["animated", "zoomOut"]);
@@ -242,7 +263,7 @@ export default class App extends Vue {
       
       SettingsServices.initSettings();
       SettingsServices.loadSettings().then(() => initInternal()).catch((e) => {
-        console.error('loadSettings failed ! ' + e);
+        this.showStartUpError('加载设置失败 ', e)
         initInternal();
       })
 
@@ -256,29 +277,33 @@ export default class App extends Vue {
 
         this.loadAllDatas(() => {
 
-          //Core services
-          this.initCoreServices();
+          try {
+            //Core services
+            this.initCoreServices();
 
-          setPlayingCountChangedCallback((count) => this.playingMusicCount = count);
+            setPlayingCountChangedCallback((count) => this.playingMusicCount = count);
 
-          //Appily settings
-          this.loadSystemSettings();
-          this.loadWindowSettings();
+            //Appily settings
+            this.appilySettings(true);
 
-          //Menu
-          this.initMenus();
-          //IPCS
-          this.initIpcs();
+            //Menu
+            this.initMenus();
+            //IPCS
+            this.initIpcs();
 
-          //hide intro
-          setTimeout(() => {
-            this.hideIntro();
-            this.topTabSelectItem = this.topToolbar[0];
-            this.autoPlayService.start();
-          }, 1000);   
+            //hide intro
+            setTimeout(() => {
+              this.hideIntro();
+              this.topTabSelectItem = this.topToolbar[0];
+              this.autoPlayService.start();
+              this.inited = true;
+            }, 1000);   
+          }catch(e){
+            this.showStartUpError('初始化失败 ', e)
+          }
         })
       }
-    }).catch((e) =>  this.showStartUpError('初始化数据失败 ' + e))
+    }).catch((e) =>  this.showStartUpError('初始化数据失败 ', e))
   }
   initIpcs() {
     ipc.on("main-window-act", (event, arg) => {
@@ -327,9 +352,9 @@ export default class App extends Vue {
     this.menuSettings = new electron.remote.Menu();
     
 
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => {  } }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => this.lock() }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '数据导出与导入', click: () => {  } }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '数据导出与导入', click: () => this.goToSettingsPage('datas') }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '手动保存数据', accelerator: 'CmdOrCtrl+S', click: () => {  
       this.saveDatas().then(() => this.$message({ message: '手动保存数据成功', type: 'success' }))
         .catch((e) => this.$alert('保存数据失败，错误信息：' + e, '保存数据失败', { type: 'error', roundButton: true, }))
@@ -379,10 +404,10 @@ export default class App extends Vue {
     powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭计算机', click: () => { /*this.shutdownByUser();*/ } }));
     powerSubMenu.append(new electron.remote.MenuItem({ label: '重启计算机', click: () => { /*this.rebootByUser();*/ } }));
     powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭显示器', click: () => this.closeMointor() }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => { this.topTabSelectItem = this.getTopTabByName('settings') } }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global') }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '系统电源', submenu: powerSubMenu }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '关于软件', click: () => { this.topTabSelectItem = this.getTopTabByName('settings'); (<SettingsView>this.$refs['settingsView']).showPage('about') } }));    
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '关于软件', click: () => this.goToSettingsPage('about') }));    
     this.menuSettings.append(new electron.remote.MenuItem({ label: '退出程序', click: () => this.exitAppWithAsk() }));
 
     this.menuInput = new electron.remote.Menu();
@@ -427,6 +452,8 @@ export default class App extends Vue {
     }
     this.autoPlayService = new AutoPlayService(this.serviceTables);
     this.autoPlayService.on('daychange', this.onDayChange);
+
+    SettingsServices.on('update', this.onSettingsUpdate);
   }
   uninit() : Promise<any> {
     return new Promise((resolve, reject) => {
@@ -446,8 +473,8 @@ export default class App extends Vue {
     this.serviceDataStorage.loadData('basedata').then((data) => {
       this.baseData = data;
 
-      console.log('Data load check baseData : ');
-      console.dir(data);
+      //console.log('Data load check baseData : ');
+      //console.dir(data);
 
       //musics
       this.serviceDataStorage.loadData('musics').then((musics) => {
@@ -458,11 +485,11 @@ export default class App extends Vue {
         });
         callback();
       }).catch((e) => {
-        console.error('loadAllDatas for musics failed ! ' + e);
+        console.warn('loadAllDatas for musics failed ! ' + e);
         callback();
       })
     }).catch((e) => {
-      console.error('loadAllDatas for base data failed ! ' + e);
+      console.warn('loadAllDatas for base data failed ! ' + e);
       callback();
     })
   }
@@ -474,35 +501,54 @@ export default class App extends Vue {
         musics.push(this.musicHistoryList[i].fullPath);
       this.baseData = this.serviceTables.saveToJSONObject();
       this.serviceDataStorage.saveData('basedata', this.baseData).then(() => {
-        console.log('Data save check basedata : ');
-        console.dir(this.baseData);
         this.serviceDataStorage.saveData('musics', musics).then(() => {
           SettingsServices.saveSettings().then(() => resolve()).catch((e) => reject(e));
         }).catch((e) =>  reject(e))
       }).catch((e) =>  reject(e))
-    })
-    
+    })  
   }
-  loadWindowSettings() {
-    let oldSize = SettingsServices.getSettingObject('window.oldSize');
-    if(oldSize && oldSize.x != 900 && oldSize.y != 600) {
-      let screenSize = screen.getPrimaryDisplay().bounds;
-      let newPos = {
-        x: screenSize.width / 2 - oldSize.x,
-        y: screenSize.height / 2 - oldSize.y,
+  appilySettings(bySystem : boolean) {
+    this.loadSecuritySettings(bySystem);
+    this.loadSystemSettings();
+    this.loadWindowSettings(bySystem);
+  }
+  loadWindowSettings(bySystem : boolean) {
+    let window = SettingsServices.getSettingObject('window');
+    if(bySystem) {
+      let oldSize = window.oldSize;
+      if(oldSize && oldSize.x != 900 && oldSize.y != 600) {
+        let screenSize = screen.getPrimaryDisplay().bounds;
+        let newPos = {
+          x: (screenSize.width - oldSize.x) / 2,
+          y: (screenSize.height - oldSize.y) / 2 - 50,
+        }
+        if(newPos.x<0)newPos.x=0;
+        if(newPos.y<0)newPos.y=0;
+        let rect = {
+          x: Math.floor(newPos.x),
+          y: Math.floor(newPos.y),
+          width: Math.floor(oldSize.x),
+          height: Math.floor(oldSize.y)
+        };
+        this.currentWindow.setBounds(rect);
       }
-      this.currentWindow.setBounds({
-        x: newPos.x,
-        y: newPos.y,
-        width: oldSize.xiaoxizhongxin,
-        height: oldSize.y
-      })
     }
-    let title = SettingsServices.getSettingObject('window.title');
-    if(!CommonUtils.isNullOrEmpty(title)) this.currentWindow.setTitle(title);
+    if(!CommonUtils.isNullOrEmpty(window.title)) this.currentWindow.setTitle(window.title);
+    if(!CommonUtils.isNullOrEmpty(window.background)) this.background = window.background;
   }
   loadSystemSettings() {
-    
+    let system = SettingsServices.getSettingObject('system');
+    if(system) {
+      
+    }
+  }
+  loadSecuritySettings(bySystem : boolean) {
+    let security = SettingsServices.getSettingObject('security');
+    if(security) {
+      this.lockedNote = CommonUtils.isNullOrEmpty(security.lockedNote) ? '系统已锁定，联系管理员获得更多信息' : security.lockedNote;
+      if(!bySystem && security.preventAnymouseUse && !CommonUtils.isNullOrEmpty(security.managerPassword))
+        this.lock(true);
+    }
   }
   saveWindowSettings() {
     let bounds = this.currentWindow.getBounds();
@@ -512,12 +558,15 @@ export default class App extends Vue {
     });
     SettingsServices.setSettingBoolean('window.isMax', this.currentWindow.isMaximized());
   }
+  
 
+  //** 中央事件回调
 
-  //** 
-
+  onSettingsUpdate() { this.appilySettings(false); }
   onDayChange() {
-
+    (<any>this.$refs['calendar']).forceUpdate();
+    (<TextTime>this.$refs['textTime1']).update();
+    (<TextTime>this.$refs['textTime2']).update();
   }
 
   //** 界面控制
@@ -556,8 +605,50 @@ export default class App extends Vue {
         this.voiceProverVisible = true;
     }
   }
+  goToSettingsPage(page : string) {
+    this.topTabSelectItem = this.getTopTabByName('settings'); 
+    (<SettingsView>this.$refs['settingsView']).showPage(page)
+  }
 
+  //** 锁定控制
+
+  lock(bySystem : boolean = false) {
+    let security = SettingsServices.getSettingObject('security');
+    let h = this.$createElement;
+    if(security && security.preventAnymouseUse) {
+      if(CommonUtils.isNullOrEmpty(security.managerPassword)){
+        if(!bySystem) this.$msgbox({
+          title: '提示', message: h('p', null, [
+            h('span', null, '您没有设置管理员密码，无法开启密码保护，设置管理员密码以后才能使用锁定功能。'),
+            h('a', { on: { click: () => this.goToSettingsPage('security') } }, '立即设置管理员密码')
+          ]), confirmButtonText: '确定',
+        }).then();
+      } else this.lockUIViaible = true;
+    } else {
+      if(!bySystem) this.$msgbox({
+        title: '提示', message: h('p', null, [
+          h('span', null, '您没有开启密码保护，必须开启密码保护以后才能使用锁定功能。'),
+          h('a', { on: { click: () => this.goToSettingsPage('security') } }, '立即开启')
+        ]), confirmButtonText: '确定',
+      }).then();
+    }
+  }
+  doUnLock() {
+    let security = SettingsServices.getSettingObject('security');
+    if(this.systemLockEnterPassword == security.managerPassword)  this.lockUIViaible = false;
+    else {
+      this.$message({
+        message: '登录失败，密码错误',
+        type: 'error'
+      })
+    }
+  }
+  loginInputKeyDown(ev : KeyboardEvent) {
+    if(ev.keyCode == 13) this.doUnLock();
+  }
   
+  //** 音乐列表控制
+
   //音乐列表事件
   onMusicItemClick(item : MusicItem, mode : MusicAction) {
     if(mode == 'play') {
@@ -588,10 +679,7 @@ export default class App extends Vue {
     }
   }
   //音乐列表扩展
-  
-
   chooseOneMusicCallback : (music : MusicItem) => void = null;
-
   chooseOneMusicAndCallback(type : 'file'|'history', callback : (music : MusicItem) => void) {
     if(type == 'file'){
       this.chooseOneMusicCallback = callback;
@@ -601,7 +689,6 @@ export default class App extends Vue {
       setTimeout(() => (<MusicView>this.$refs['musicList']).startChooseOneMusic(callback), 300);
     }
   }
-
 
   //** 应用工作函数
 
