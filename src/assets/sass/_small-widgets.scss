@@ -358,6 +358,18 @@
   vertical-align: middle;
 }
 
+.full-background {
+
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 1;
+}
 .full-locker {
 
   position: absolute;
@@ -378,7 +390,7 @@
   .login-area {
 
     position: absolute;
-    left: 60px;
+    left: 0;
     top: 0;
     bottom: 0;
     right: 0;
@@ -436,18 +448,22 @@
         }
         input{
 
-          width: calc(100% - 30px);
+          width: 100%;
           border-radius: 50px;
           background: rgba(192, 192, 192, 0.3);
-          border: none;
-          padding: 13px 15px;
+          border: 2px solid #63acff;
+          padding: 11px 15px;
 
           &:hover {
             background: rgba(211, 211, 211, 0.5);
           }
           &:active, &:focus{
-            border: none;
+            border: 2px solid #006de9;
             outline: none;
+          }
+          &.error {
+            border: 2px solid #e64100;
+            background-color: #ffeded;
           }
 
         }

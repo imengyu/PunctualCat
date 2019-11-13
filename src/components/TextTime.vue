@@ -35,13 +35,9 @@ export default class TextTime extends Vue {
   @Prop({ default: false }) expanded : boolean;
 
   mounted() {
-    window.addEventListener('focus', this.addUpdateTick);
-    window.addEventListener('blur', this.removeUpdateTick);
     this.updateTimeText('all');
   }
   beforeDestroy() {
-    window.removeEventListener('focus', this.addUpdateTick);
-    window.addEventListener('blur', this.removeUpdateTick);
     this.removeUpdateTick();
   }
 

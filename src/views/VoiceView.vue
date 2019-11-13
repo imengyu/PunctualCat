@@ -4,6 +4,10 @@
       <span class="demonstration">软件音量</span>
       <el-slider v-model="volumeSoft"></el-slider>
     </div>
+    <div class="block">
+      <span class="demonstration">静音时段</span>
+      
+    </div>
   </div>
 </template>
 

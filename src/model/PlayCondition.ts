@@ -246,7 +246,9 @@ export class PlayConditionActuator implements AutoPlayable {
     
   }
 
-  public isTopLevel() { return this.parent == null }
+  public isTopLevel() { 
+    return CommonUtils.isNullObject(this.parent)
+  }
   public type : PlayConditionActuatorType = 'unknow'
   public logicType : PlayConditionActuatorLogicType = 'unknow';
   public logicNot = false;
@@ -346,7 +348,7 @@ export class PlayConditionActuator implements AutoPlayable {
         (this.dateRangeValue.end.month == 0 ? '每' : this.dateRangeValue.end.month.toString()) +  '月' +
         (this.dateRangeValue.end.day == 0 ? '每' : this.dateRangeValue.end.day.toString()) +  '日';
       case 'group': {
-        let resultStr = '(', i = 0;
+        let resultStr = '', i = 0;
         for(; i < this.childList.length; i++) {
           if(i > 0){
             switch(this.childList[i].logicType){
@@ -358,8 +360,8 @@ export class PlayConditionActuator implements AutoPlayable {
             resultStr += '非 ';
           resultStr += this.childList[i].convertToConStr();
         }
-        resultStr += ')';
-        return resultStr;
+        if(this.isTopLevel()) return resultStr;
+        else return '(' + resultStr + ')';
       }
       case 'time-range': 
         return (this.timeValueRange.start.hours == -1 ? '*' : CommonUtils.pad(this.timeValueRange.start.hours, 2)) + ':' + 
@@ -542,7 +544,7 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    * 将条件转为可读格式化字符串
    */
   public toConditionString(withBrackets = true) {
-    let b = this.conList && this.conList.convertToConStr ? this.conList.convertToConStr() : '';
+    let b = CommonUtils.isNullObject(this.conList) ? '' : this.conList.convertToConStr();
     if(!withBrackets) {
       if(b.startsWith('(') && b.endsWith(')'))
         b = b.substr(1, b.length - 2);
@@ -553,22 +555,22 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    * 将条件转为可读格式化字符串 HTML
    */
   public toConditionHtml() {
-    return this.conList && this.conList.convertToConStr ? this.conList.convertToConHtml() : ''
+    return CommonUtils.isNullObject(this.conList) ? '' : this.conList.convertToConHtml()
   }
   /**
    * 判断条件是否为空
    */
   public isEmpty() {
-    return this.conList && this.conList.isEmpty ? this.conList.isEmpty() : true;
+    return CommonUtils.isNullObject(this.conList) ? true : this.conList.isEmpty();
   }
   /**
    * 检测当前条件是否达到指定的播放时间
    * @param type 检测类型
    */
   public isPlayingTime(type: AutoPlayCheckType) {
-    return this.conList && this.conList.isPlayingTime ? this.conList.isPlayingTime(type) : false;
+    return CommonUtils.isNullObject(this.conList) ? false : this.conList.isPlayingTime(type);
   }
   public isStoppingTime(type: AutoPlayCheckType) {
-    return this.conList && this.conList.isStoppingTime ? this.conList.isStoppingTime(type) : false;
+    return CommonUtils.isNullObject(this.conList) ? false : this.conList.isStoppingTime(type);
   }
 }

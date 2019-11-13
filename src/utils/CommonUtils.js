@@ -1,6 +1,7 @@
 export default {
   isEleEditable,
   isNullOrEmpty,
+  isNullObject,
   isBase64,
   isNumber,
   isJSON,
@@ -20,6 +21,14 @@ export default {
   pad
 }
 
+/**
+ * 判断指定对象是否为空或是只有 __ob__ 的对象
+ * @param {*} object 指定对象
+ * @returns {boolean} 对象是否为空
+ */
+function isNullObject(object) {
+  return !object || Object.keys(object) == 0
+}
 /**
  * 转数字为指定位数字符串
  * @param {number} num 数字

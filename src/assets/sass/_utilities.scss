@@ -3656,6 +3656,14 @@ a.text-dark:hover, a.text-dark:focus {
   visibility: hidden !important;
 }
 
+$anim-ms: 300ms, 400ms, 500ms, 600ms, 700ms, 800ms, 900ms, 1s, 1500ms, 2s, 2500ms, 3s, 3500ms, 5s;
+
+@each $time in $anim-ms {
+  .anim-#{$time} {
+    animation-duration: $time;
+  }
+}
+
 .anim-fast {
   animation-duration: 300ms;
 }
@@ -3665,24 +3673,11 @@ a.text-dark:hover, a.text-dark:focus {
 .anim-slow {
   animation-duration: 3s;
 }
-.delay-300ms {
-  animation-delay: 0.3s;
-}
-.delay-400ms {
-  animation-delay: 0.4s;
-}
-.delay-500ms {
-  animation-delay: 0.5s;
-}
-.delay-600ms {
-  animation-delay: 0.6s;
-}
-.delay-700ms {
-  animation-delay: 0.6s;
-}
-.delay-800ms {
-  animation-delay: 0.8s;
-}
-.delay-900ms {
-  animation-delay: 0.9s;
+
+$delay-ms: 300ms, 400ms, 500ms, 600ms, 700ms, 800ms, 900ms, 1s;
+
+@each $delay in $delay-ms {
+  .delay-#{$delay} {
+    animation-delay: $delay;
+  }
 }

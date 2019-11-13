@@ -2,6 +2,7 @@ import { getFileName } from '../utils/FileUtils'
 import SettingsServices from "../services/SettingsServices";
 import CommonUtils from "../utils/CommonUtils";
 import { EventEmitter } from "events";
+import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from 'constants';
 
 let staticPlayingCount = 0;
 let staticPlayingCountChangedCallback : (count : number) => void = null;
@@ -199,8 +200,7 @@ export class MusicItem extends EventEmitter {
     };
 
     if(!this.loaded) this.load(playInternal);
-    else playInternal(true);
-    
+    else playInternal(true);   
   }
   /**
    * 暂停音乐
@@ -284,6 +284,17 @@ export class MusicItem extends EventEmitter {
     if(item.audio) 
       item.audio.volume = SettingsServices.getSettingNumber('player.volume') * vol;
   }
+
+  private testAndCloseMoreMusic() {
+    if(staticPlayingCount > SettingsServices.getSettingNumber('player.maxPlayingMusic')) {
+      for(var i = 0; i < staticMusicPool.length; i++){
+        if(staticMusicPool[i].status == 'paused' || staticMusicPool[i].status == 'playing'){
+          staticMusicPool[i].stop();
+          break;
+        }
+      }
+    }
+  }
   //更新状态
   private updateStatus(newStatus : MusicStatus) {
     let oldStatus = this.status;
@@ -292,6 +303,7 @@ export class MusicItem extends EventEmitter {
 
     if((oldStatus == 'normal' || oldStatus == 'notload') && newStatus == 'playing'){
       staticPlayingCount ++;
+      this.testAndCloseMoreMusic();
       if(typeof staticPlayingCountChangedCallback == 'function') staticPlayingCountChangedCallback(staticPlayingCount);
     }
     if((oldStatus == 'playing' || oldStatus == 'paused') && (newStatus == 'normal' || newStatus == 'playerr' || newStatus == 'lost'))

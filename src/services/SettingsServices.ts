@@ -15,6 +15,7 @@ class SettingsServices extends EventEmitter {
       isMax: false,
       title: '',
       background: '',
+      backgroundOpacity: 60,
     },
     security: {
       preventAnymouseUse: false,
@@ -49,11 +50,11 @@ class SettingsServices extends EventEmitter {
 
   public getData() { return this.staticSettings }
   public setData(data : any) { 
-    CommonUtils.cloneValue(this.staticSettings, data)
+    CommonUtils.cloneValueForce(this.staticSettings, data)
     this.emit('update');
   }
   public resetDefault() { 
-    CommonUtils.cloneValue(this.staticSettings, this.staticSettingsTemplate);
+    CommonUtils.cloneValueForce(this.staticSettings, this.staticSettingsTemplate);
     this.emit('update');
   }
 
@@ -72,10 +73,10 @@ class SettingsServices extends EventEmitter {
         this.staticSettings = value;
         CommonUtils.cloneValueIfUndefined(this.staticSettings, this.staticSettingsTemplate);
       }
-      else this.staticSettings = this.staticSettingsTemplate;
+      else this.staticSettings = CommonUtils.clone(this.staticSettingsTemplate);
       this.emit('load');
     }).catch(() => {
-      this.staticSettings = this.staticSettingsTemplate;
+      this.staticSettings = CommonUtils.clone(this.staticSettingsTemplate);
     });
   }
   /**

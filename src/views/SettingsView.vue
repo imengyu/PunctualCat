@@ -6,8 +6,7 @@
       <el-tabs v-if="appSettingsBackup" tab-position="left" v-model="currentPage">
         <el-tab-pane name="global">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-shezhi"></i>全局设置</span>
-
-          <el-form ref="formSettings" :model="appSettingsBackup" label-width="140px">
+          <el-form :model="appSettingsBackup" label-width="140px">
             <el-form-item label="软件主窗口标题">
               <el-input v-model="appSettingsBackup.window.title" size="small" placeholder="软件主窗口标题，为空使用默认"></el-input>
             </el-form-item>
@@ -32,15 +31,20 @@
               <el-input laceholder="输入背景图片文件的路径" v-model="appSettingsBackup.window.background" size="small">
                 <template slot="append">
                   <el-button size="mini" icon="el-icon-folder" @click="chooseImage({type:'chooseBackground'})">选择文件</el-button>
-                  <el-button size="mini" icon="el-icon-delete" @click="appSettingsBackup.window.background=''" title="清空背景"></el-button>
+                  <el-button size="mini" icon="el-icon-delete" @click="appSettingsBackup.window.background='';updateBackground()" title="清空背景"></el-button>
                 </template>
               </el-input>
+            </el-form-item>
+            <el-form-item label="主窗口背景图片不透明度">
+              <div style="padding: 10px 20px">
+                <el-slider v-model="appSettingsBackup.window.backgroundOpacity" :format-tooltip="formatBackgroundOpacityTooltip" @change="updateBackground" :min="20" :max="100"></el-slider>
+              </div>
             </el-form-item>
           </el-form>
         </el-tab-pane>
         <el-tab-pane name="player">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-yanchu"></i>播放设置</span>
-          <el-form ref="formSettings" :model="appSettingsBackup" label-width="140px">
+          <el-form :model="appSettingsBackup" label-width="140px">
             <el-form-item label="开启音乐播放淡出淡入">
               <el-switch v-model="appSettingsBackup.player.enableFade" style="margin: 10px 0;"></el-switch><br>
             </el-form-item>
@@ -56,20 +60,22 @@
         </el-tab-pane>
         <el-tab-pane name="security">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-anquan"></i>安全设置</span>
-          <el-form ref="formSettings" :model="appSettingsBackup" label-width="140px">
+          <el-form :model="appSettingsBackup" label-width="140px">
 
             <el-form-item label="开启密码保护">
               <el-switch v-model="appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
               <span class="text-secondary el-form-span">您可以开启此选项来使用密码保护系统，这样，只有输入正确的密码才能使用本软件。</span>
             </el-form-item>
             <el-form-item label="长时间无操作时自动锁定软件">
-              <el-switch v-model="appSettingsBackup.security.autoLock" style="margin: 10px 0;"></el-switch><br>
-              <el-input-number v-model="appSettingsBackup.security.autoLockMaxMinute" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
+              <el-switch v-model="appSettingsBackup.security.autoLock" :disabled="!appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
+              <el-input-number v-model="appSettingsBackup.security.autoLockMaxMinute" 
+                :disabled="!appSettingsBackup.security.preventAnymouseUse || !appSettingsBackup.security.autoLock" 
+                size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
               分钟后无操作自动锁定软件
             </el-form-item>
             <el-form-item label="管理员密码">
-              <div v-if="appSettingsBackup.security.managerPassword==''">您未设置管理员密码，<a href="javascript:;">设置管理员密码</a></div>
-              <div v-else><a href="javascript:;">修改管理员密码</a></div>
+              <div v-if="appSettingsBackup.security.managerPassword==''">您未设置管理员密码，<a href="javascript:;" @click="editManagerPassword(true)">设置管理员密码</a></div>
+              <div v-else><a href="javascript:;" @click="editManagerPassword(false)">修改管理员密码</a> | <a href="javascript:;" @click="clearManagerPassword">删除管理员密码</a></div>
             </el-form-item>
             <el-form-item label="登录界面的说明文字">
               <span class="text-secondary">此说明文字将会被显示在登录界面上，您可以告知别人关于登录的信息。</span>
@@ -88,8 +94,21 @@
         </el-tab-pane>
         <el-tab-pane name="datas">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-shuju"></i>数据管理</span>
+          <el-form :model="appSettingsBackup" label-width="140px">
 
+            <el-form-item label="自动保存数据">
+              <el-switch v-model="appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
+              <span class="text-secondary el-form-span">软件可以自动为您保存数据。</span>
+            </el-form-item>
+            <el-form-item label="数据备份">
+              <span class="text-secondary el-form-span">您可以使用本功能备份数据，以便在数据被意外修改或丢失时将其还原。</span>
+              <el-button size="mini" type="primary" @click="exportData" round>导出数据</el-button>
+              <el-button size="mini" @click="importData" round>导入数据</el-button>
+              <br>
+              <span class="text-secondary el-form-span"><i class="fa fa-exclamation-triangle mr-2" style="color: #db9411"></i> 注意，导入数据时将会强制覆盖当前数据，并且<b>不可恢复</b>，请谨慎操作。</span>
+            </el-form-item>
 
+          </el-form>
         </el-tab-pane>
         <el-tab-pane name="about">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-bangzhu"></i>关于软件</span>
@@ -146,25 +165,81 @@
       <el-button size="small" @click="unsaveSettings" round>取消修改设置</el-button>
       <el-button size="small" @click="defaultSettings" round>恢复默认设置</el-button>
     </div>
+    <!--导出数据对话框-->
+    <el-dialog :title="(currentIsImportData ? '导入' : '导出') + '数据'" 
+      :visible.sync="showImportOrExportDialog" 
+      :close-on-click-modal="false"
+      :close-on-press-escape="false" 
+      :append-to-body="true"
+      width="50%">
+      <span class="text-secondary display-block mb-2">选择您需要 {{ (currentIsImportData ? '导入' : '导出') }} 的数据：</span>
+      <div v-if="!currentIsImportData">
+        <el-checkbox v-model="dataExportConfig.includeData">所有计划表数据</el-checkbox><br />
+        <el-checkbox v-model="dataExportConfig.includeSettings">软件设置</el-checkbox><br />
+        <el-checkbox v-model="dataExportConfig.includeMusicHistory">最近音乐列表</el-checkbox>
+      </div>
+      <div v-else-if="dataImport">
+        <el-checkbox v-model="dataImportConfig.includeData" :disabled="!dataImport.dataConfig.includeData">所有计划表数据</el-checkbox><br />
+        <el-checkbox v-model="dataImportConfig.includeSettings" :disabled="!dataImport.dataConfig.includeSettings">软件设置</el-checkbox><br />
+        <el-checkbox v-model="dataImportConfig.includeMusicHistory" :disabled="!dataImport.dataConfig.includeMusicHistory">最近音乐列表</el-checkbox>
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button v-if="currentIsImportData" type="primary" 
+          :disabled="!dataImportConfig.includeData&&!dataImportConfig.includeSettings&&!dataImportConfig.includeMusicHistory"
+          @click="doImportDataSure" round>导入</el-button>
+        <el-button v-if="!currentIsImportData" type="primary" 
+          :disabled="!dataExportConfig.includeData&&!dataExportConfig.includeSettings&&!dataExportConfig.includeMusicHistory"
+          @click="exportDataShowSaveDialog" round>导出</el-button>
+        <el-button @click="showImportOrExportDialog=false" round>取消</el-button>
+      </span>
+    </el-dialog>
+    <!--设置管理员密码对话框-->
+    <el-dialog :title="currentIsAddManagerPassword ? '添加管理员密码' : '设置管理员密码'" 
+      :visible.sync="showEditManagerPasswordDialog" 
+      :close-on-click-modal="false"
+      :close-on-press-escape="false" 
+      :append-to-body="true"
+      width="50%">
+      <el-form ref="formPassword" :rules="currentIsAddManagerPassword ? managerPasswordAddRules : managerPasswordChangeRules" :model="managerPasswordEditor" label-width="80px">
+        <el-form-item v-if="!currentIsAddManagerPassword" label="旧密码" prop="old">
+          <el-input v-model="managerPasswordEditor.old" placeholder="请输入旧密码" show-password></el-input>
+        </el-form-item>
+        <el-form-item v-else>
+          <span class="text-secondary el-form-span">该密码为以后您登录本软件、修改数据所必须的密码，丢失以后无法找回，请保存好密码</span>
+        </el-form-item>
+        <el-form-item label="新密码" prop="new">
+          <el-input v-model="managerPasswordEditor.new" placeholder="请输入新密码" show-password></el-input>
+        </el-form-item>
+        <el-form-item label="确认密码" prop="newCheck">
+          <el-input v-model="managerPasswordEditor.newCheck" placeholder="请再输入一次新密码" show-password></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="editManagerFinish(true)" round>保存</el-button>
+        <el-button @click="editManagerFinish(false)" round>取消</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-property-decorator";
+import { Form } from "element-ui";
+import { MessageBoxInputData } from "element-ui/types/message-box";
+import App from '../App.vue'
 import electron, { BrowserWindow, screen } from "electron";
 import CommonUtils from "../utils/CommonUtils";
 import SettingsServices from '../services/SettingsServices'
 import Win32Utils from "../utils/Win32Utils";
 
+const fs = require('fs');
 const ipc = electron.ipcRenderer;
 const process = require('process');
 
-@Component({
-  components: {
-
-  }
-})
+@Component
 export default class SettingsView extends Vue {
+
+  @Prop({default:null}) app : App;
 
   currentPage = 'global';
   process = null;
@@ -173,13 +248,81 @@ export default class SettingsView extends Vue {
   appSettingsBackup = null;
   autoStartStatus = '';
 
+  showEditManagerPasswordDialog = false;
+  showImportOrExportDialog = false;
+
+  currentIsImportData = false;
+  currentIsAddManagerPassword = false;
+
+  dataExportConfig = {
+    includeSettings: true,
+    includeData: true,
+    includeMusicHistory: true,
+  };
+  dataImportConfig = {
+    includeSettings: true,
+    includeData: true,
+    includeMusicHistory: true,
+  };
+  dataImport = null;
+
+  /* 修改密码 */
+  validatePass2 = (rule, value, callback) => {
+    if (value === '') {
+      callback(new Error('请再次输入密码'));
+    } else if (value !== this.managerPasswordEditor.new) {
+      callback(new Error('两次输入密码不一致!'));
+    } else {
+      callback();
+    }
+  };
+  managerPasswordAddRules = {
+    new: [
+      { required: true, message: '请输入新密码', trigger: 'blur' },
+      { min: 6, max: 16, message: '长度在 6 到 16 个字符', trigger: 'blur' }
+    ],
+    newCheck: [
+      { validator: this.validatePass2, trigger: 'blur' }
+    ],
+  };
+  managerPasswordChangeRules = {
+    old: [
+      { required: true, message: '请输入旧密码', trigger: 'blur' },
+      { min: 6, max: 16, message: '长度在 6 到 16 个字符', trigger: 'blur' }
+    ],
+    new: [
+      { required: true, message: '请输入新密码', trigger: 'blur' },
+      { min: 6, max: 16, message: '长度在 6 到 16 个字符', trigger: 'blur' }
+    ],
+    newCheck: [
+      { validator: this.validatePass2, trigger: 'blur' }
+    ],
+  };
+  managerPasswordEditor = {
+    old: '',
+    new: '',
+    newCheck: '',
+  };
+
+
   mounted() {
     this.process = process;
     this.appVesrsion = (<any>window).appVesrsion;
     this.appBuildDate = (<any>window).appBuildDate;
     this.appSettingsBackup = CommonUtils.clone(SettingsServices.getData());
-    this.getAutoStartStatus();
+    this.autoStartStatus = this.getAutoStartStatus();
+
+    ipc.on('selected-json', function (event, arg, path) {
+      if(!path || path.length == 0) 
+        return;
+      if(arg.type=='chooseData'){
+        if(arg.isSave) this.doExportData(path);
+        else this.doImportData(path[0]);
+      }
+    });
   }
+
+  //保存、恢复默认按钮
 
   saveSettings() {
     SettingsServices.setData(this.appSettingsBackup);
@@ -208,6 +351,89 @@ export default class SettingsView extends Vue {
     }).catch(() => {});
   }
 
+  //管理员密码
+
+  editManagerPassword(isAdd : boolean){
+    this.currentIsAddManagerPassword = isAdd;
+    this.showEditManagerPasswordDialog = true;
+  }
+  editManagerFinish(save : boolean){
+    if(save){
+      (<Form>this.$refs['formPassword']).validate((valid) => {
+        if (valid) {
+          if(this.currentIsAddManagerPassword){
+            this.appSettingsBackup.security.managerPassword = this.managerPasswordEditor.new;
+            SettingsServices.setSetting('security.managerPassword', this.managerPasswordEditor.new);
+            this.managerPasswordEditor.old = '';
+            this.managerPasswordEditor.new = '';
+            this.managerPasswordEditor.newCheck = '';
+            this.showEditManagerPasswordDialog = false;
+            this.$message({ message: '修改管理员密码成功 !', type: 'success' });
+            if(!this.appSettingsBackup.security.preventAnymouseUse) {
+              this.$confirm('您真已经成功设置管理员密码，现在是否要开启安全保护功能? ', '提示', {
+                confirmButtonText: '开启',
+                cancelButtonText: '取消',
+                roundButton: true,
+                type: 'warning'
+              }).then(() => {
+                this.appSettingsBackup.security.preventAnymouseUse = true;
+                SettingsServices.setSettingBoolean('security.preventAnymouseUse', true)}
+              ).catch(() => {});
+            }
+          }else {
+            if(this.appSettingsBackup.security.managerPassword == this.managerPasswordEditor.old){
+              this.appSettingsBackup.security.managerPassword = this.managerPasswordEditor.new;
+              SettingsServices.setSetting('security.managerPassword', this.managerPasswordEditor.new);
+              this.managerPasswordEditor.old = '';
+              this.managerPasswordEditor.new = '';
+              this.managerPasswordEditor.newCheck = '';
+              this.$message({ message: '修改管理员密码成功 !', type: 'success' })
+              this.showEditManagerPasswordDialog = false;
+            }else{
+              this.$message({ message: '无法修改管理员密码，旧密码错误', type: 'error' })
+            }
+          }
+        } else {
+          this.$message({ message: '请完善信息 !', type: 'warning' })
+          return false;
+        }
+      });
+    }else this.showEditManagerPasswordDialog = false;
+  }
+  clearManagerPassword(){
+    this.$confirm('您真的要删除已设置的管理员密码? 删除管理员密码以后将不能使用锁定功能！', '提示', {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      confirmButtonClass: 'el-button--danger',
+      roundButton: true,
+      type: 'warning'
+    }).then(() => {
+      this.$prompt('请输入原密码', '提示', {
+        inputType: 'password',
+        roundButton: true,
+        inputValidator: function(t){
+          if(t=='') return '请输入密码'
+          else if(t.length < 6) return '密码长度必须大于等于 6 位'
+          return true
+        },
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+      }).then((data : MessageBoxInputData) => {
+        if(data.value == this.appSettingsBackup.security.managerPassword){
+
+          SettingsServices.setSetting('security.managerPassword', '')
+          this.appSettingsBackup.security.managerPassword = '';
+
+          this.$message({ type: 'success', message: '删除管理员密码成功！ ' });
+        }else {
+          this.$alert('管理员密码不正确', '修改密码提示', { type: 'error' })
+        }
+      }).catch(() => {});
+    }).catch(() => {});
+  }
+
+  //开机启动
+
   switchAutoStart(enable){
     var rs = Win32Utils.setAutoStartEnable(enable);
     this.autoStartStatus = this.getAutoStartStatus();
@@ -223,6 +449,71 @@ export default class SettingsView extends Vue {
       return '未知';
     }
   }
+
+  //背景
+
+  formatBackgroundOpacityTooltip(val) {
+    return '不透明度 ' + val + ' %';
+  }
+  updateBackground() {
+    SettingsServices.setSettingNumber('window.backgroundOpacity', this.appSettingsBackup.window.backgroundOpacity);
+    this.app.loadWindowSettings(false);
+  }
+  chooseImage(arg) {
+    this.app.chooseOneImageAndCallback((imagePath) => {
+      imagePath = imagePath.replace(/\\/g, '/');
+      this.appSettingsBackup.window.background = imagePath;
+      SettingsServices.setSetting('window.background', imagePath);
+      this.updateBackground();
+      this.$message({ message: '更换背景图片成功！', type: 'success' })
+    });
+  }
+
+  //数据
+
+  exportData() { this.currentIsImportData = false; this.showImportOrExportDialog = true; } 
+  exportDataShowSaveDialog() { ipc.send('main-save-file-dialog-json', { type:'chooseData' }); }
+  doExportData(path : string) { 
+
+  } 
+  doImportData(path : string) { 
+    fs.exists(path, (b)=>{
+      if(!b) this.$alert('数据文件不存在！', '导入失败', { type: 'error' });
+      else{
+        fs.readFile(path, (err, data) => {
+          if(err) {
+            this.$alert('读取文件失败！<br>错误信息：' + err, '导入失败', {
+              type: 'error',
+              dangerouslyUseHTMLString: true,
+              confirmButtonText: '确定'
+            });
+          }else {
+            this.dataImport = data;
+            this.dataImportConfig.includeSettings = this.dataImport.dataConfig.includeSettings;
+            this.dataImportConfig.includeData = this.dataImport.dataConfig.includeData;
+            this.dataImportConfig.includeMusicHistory = this.dataImport.dataConfig.includeMusicHistory;
+            this.currentIsImportData = true;
+            this.showImportOrExportDialog = true;
+          }
+        })
+      }
+    });
+  } 
+  doImportDataSure() { 
+    
+  } 
+  importData() {
+    this.$confirm('您确定要导入数据吗? 导入数据功能是为了方便您在系统数据被篡改或数据丢失时使用的，导入后当前原有数据将会被覆盖，并且<b class="text-important">不可恢复</b>，请谨慎操作。', '重要提示', {
+      dangerouslyUseHTMLString: true,
+      confirmButtonText: '确定丢弃当前数据，并继续导入',
+      cancelButtonText: '取消',
+      confirmButtonClass: 'el-button--danger',
+      roundButton: true,
+      type: 'warning'
+    }).then(() => ipc.send('main-open-file-dialog-json', { type:'chooseData' })).catch(() => {});
+  }
+
+  //关于
 
   showHelpWindow(arg) { ipc.send('main-act-show-help-window', arg); }
   toggleDeveloperMode() {

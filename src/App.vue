@@ -1,16 +1,22 @@
 <template>
   <div class="window-container">
+    <div v-if="background && background != ''" class="full-background"
+      :style="'background-image: url(file:///' + background + ');opacity:' + (backgroundOpacity/100)"
+    ></div>
     <!--登录-->
-    <div :class="'full-locker' + (lockUIViaible ? ' show' : '')">
-      <div class="login">
-        <h3>登录系统</h3>
-        <div class="info-box">
-          <h5 class="m-0" id="login-app-title">PunctualCat</h5>
-          <h5 class="m-0 mb-1">{{ lockedNote }}</h5>
-        </div>
-        <div class="password-box">
-          <input placeholder="请输入密码" type="password" v-model="systemLockEnterPassword" @keyup="loginInputKeyDown($event)" />
-          <el-button class="mt-4" type="primary" @click="doUnLock" round>登录系统</el-button>
+    <div :class="'full-locker' + (locked ? ' show' : '')">
+      <div class="login-area">
+        <div class="login">
+          <h3>登录系统</h3>
+          <div class="info-box">
+            <h5 class="m-0" id="login-app-title">PunctualCat</h5>
+            <h5 class="m-0 mb-1">{{ lockedNote }}</h5>
+            <h5 v-if="lockedLasswordErr && lockedLasswordErr != ''" class="m-0 mb-1 text-danger">{{ lockedLasswordErr }}</h5>
+          </div>
+          <div class="password-box">
+            <input id="password-input" placeholder="请输入密码" type="password" v-model="lockedEnterPassword" @focus="inputUnLockClick" @keyup="loginInputKeyDown($event)" />
+            <el-button class="mt-4" type="primary" @click="doUnLock" round>登录系统</el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -113,6 +119,7 @@ import GlobalWorker from "./services/GlobalWorker";
 
 import electron, { BrowserWindow, Rectangle } from "electron";
 import { Menu, MenuItem } from "electron";
+import Win32Utils from "./utils/Win32Utils";
 
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
@@ -146,10 +153,15 @@ export default class App extends Vue {
   quitDialog : boolean = false;
   shutdownNowDialog : boolean = false;
   rebootNowDialog : boolean = false;
-  lockUIViaible = false;
-  systemLockEnterPassword = '';
+  locked = false;
+  lockedLasswordErr = '';
+  lockedEnterPassword = '';
   lockedNote = '';
   background = '';
+  backgroundOpacity = 0;
+  lockAutoTimer = null;
+  autoHideMinute = 0;
+  autoLockMinute = 0;
 
   //Toolbar and menu
   topToolbar: Array<IconToolItem> = [
@@ -199,7 +211,6 @@ export default class App extends Vue {
   serviceDataStorage : DataStorageServices = null;
   serviceMusicHistory : MusicHistoryService = null;
 
-  autoWorkerOn = true;
 
   mounted() {
     this.init();
@@ -258,6 +269,8 @@ export default class App extends Vue {
     //初始化所有服务
     this.currentWindow = remote.getCurrentWindow();
     this.serviceDataStorage = createDataStorageServices();
+    this.initWindowTime();
+    this.initAutoLockTimer();
 
     this.serviceDataStorage.init().then(() => {
       
@@ -314,8 +327,8 @@ export default class App extends Vue {
     ipc.on('selected-image', (event, arg, path) => {
       if(!path || path.length == 0) 
         return;
-      if(arg.type=='chooseBackground'){
-        
+      if(arg.type=='chooseOneImageAndCallback'){
+        this.chooseOneImageCallback(path[0]);
       }
     });
     ipc.on('selected-music', (event, arg, path) => {
@@ -347,6 +360,7 @@ export default class App extends Vue {
         });
       }
     });
+    
   }
   initMenus() {
     this.menuSettings = new electron.remote.Menu();
@@ -443,6 +457,14 @@ export default class App extends Vue {
     this.currentWindow.setMenu(this.menuSettings);
     this.currentWindow.setMenuBarVisibility(false);
   }
+  initWindowTime() {
+    this.switchTimeRun(true);
+    this.currentWindow.on('hide', () => this.switchTimeRun(false));
+    this.currentWindow.on('minimize', () => this.switchTimeRun(false));
+    this.currentWindow.on('restore', () => this.switchTimeRun(true));
+    this.currentWindow.on('show', () => this.switchTimeRun(true));
+  }
+  
   initCoreServices() {
     this.serviceTables = new TableServices();
     if(this.baseData) this.serviceTables.loadFromJsonObject(this.baseData);
@@ -456,6 +478,7 @@ export default class App extends Vue {
     SettingsServices.on('update', this.onSettingsUpdate);
   }
   uninit() : Promise<any> {
+    clearInterval(this.lockAutoTimer);
     return new Promise((resolve, reject) => {
       this.saveWindowSettings();
       this.saveDatas().then(() => {
@@ -534,20 +557,28 @@ export default class App extends Vue {
       }
     }
     if(!CommonUtils.isNullOrEmpty(window.title)) this.currentWindow.setTitle(window.title);
-    if(!CommonUtils.isNullOrEmpty(window.background)) this.background = window.background;
+    this.background = window.background;
+    this.backgroundOpacity = window.backgroundOpacity;
   }
   loadSystemSettings() {
     let system = SettingsServices.getSettingObject('system');
     if(system) {
-      
+      Win32Utils.setPowerStateEnable(system.preventSleep);
+      if(system.autoHide && system.autoHideMinute > 0) this.autoHideMinute = system.autoHideMinute; else this.autoHideMinute = 0;
+      if(system.autoUpdate) {
+        
+      }
     }
   }
   loadSecuritySettings(bySystem : boolean) {
     let security = SettingsServices.getSettingObject('security');
     if(security) {
       this.lockedNote = CommonUtils.isNullOrEmpty(security.lockedNote) ? '系统已锁定，联系管理员获得更多信息' : security.lockedNote;
-      if(!bySystem && security.preventAnymouseUse && !CommonUtils.isNullOrEmpty(security.managerPassword))
+      if(bySystem && security.preventAnymouseUse && !CommonUtils.isNullOrEmpty(security.managerPassword))
         this.lock(true);
+      if(security.preventAnymouseUse && !CommonUtils.isNullOrEmpty(security.managerPassword) && 
+        security.autoLock && security.autoLockMaxMinute > 0) this.autoLockMinute = security.autoLockMaxMinute;
+      else this.autoLockMinute = 0;
     }
   }
   saveWindowSettings() {
@@ -567,12 +598,30 @@ export default class App extends Vue {
     (<any>this.$refs['calendar']).forceUpdate();
     (<TextTime>this.$refs['textTime1']).update();
     (<TextTime>this.$refs['textTime2']).update();
+
+    //Auto save data
+    this.saveDatas().then(() => {
+      console.log('Auto save data at : ' + new Date);
+    }).catch((e) => {
+      console.warn('Auto save data failed : ' + e);
+    });
+
   }
+
 
   //** 界面控制
 
   switchCalendar() {
     this.calendarViaible = !this.calendarViaible;
+  }
+  switchTimeRun(on : boolean) {
+    if(on){
+      (<TextTime>this.$refs['textTime1']).addUpdateTick();
+      (<TextTime>this.$refs['textTime2']).addUpdateTick();
+    }else {
+      (<TextTime>this.$refs['textTime1']).removeUpdateTick();
+      (<TextTime>this.$refs['textTime2']).removeUpdateTick();
+    }
   }
   //主tab
   onMainTabChanged(item : IconToolItem) {
@@ -610,42 +659,73 @@ export default class App extends Vue {
     (<SettingsView>this.$refs['settingsView']).showPage(page)
   }
 
+
   //** 锁定控制
 
   lock(bySystem : boolean = false) {
     let security = SettingsServices.getSettingObject('security');
-    let h = this.$createElement;
     if(security && security.preventAnymouseUse) {
       if(CommonUtils.isNullOrEmpty(security.managerPassword)){
         if(!bySystem) this.$msgbox({
-          title: '提示', message: h('p', null, [
-            h('span', null, '您没有设置管理员密码，无法开启密码保护，设置管理员密码以后才能使用锁定功能。'),
-            h('a', { on: { click: () => this.goToSettingsPage('security') } }, '立即设置管理员密码')
-          ]), confirmButtonText: '确定',
-        }).then();
-      } else this.lockUIViaible = true;
+          title: '提示', 
+          message: '您没有设置管理员密码，无法开启密码保护，设置管理员密码以后才能使用锁定功能。', 
+          showCancelButton: true,
+          cancelButtonText: '暂不设置',
+          confirmButtonText: '立即设置',
+        }).then(() => this.goToSettingsPage('security')).catch(() => {});
+      } else this.locked = true;
     } else {
-      if(!bySystem) this.$msgbox({
-        title: '提示', message: h('p', null, [
-          h('span', null, '您没有开启密码保护，必须开启密码保护以后才能使用锁定功能。'),
-          h('a', { on: { click: () => this.goToSettingsPage('security') } }, '立即开启')
-        ]), confirmButtonText: '确定',
-      }).then();
+      if(!bySystem) 
+        this.$msgbox({
+          title: '提示', 
+          message: '您没有开启密码保护，必须开启密码保护以后才能使用锁定功能。', 
+          showCancelButton: true,
+          cancelButtonText: '暂不设置',
+          confirmButtonText: '立即设置',
+        }).then(() => this.goToSettingsPage('security')).catch(() => {});
     }
   }
   doUnLock() {
     let security = SettingsServices.getSettingObject('security');
-    if(this.systemLockEnterPassword == security.managerPassword)  this.lockUIViaible = false;
-    else {
-      this.$message({
-        message: '登录失败，密码错误',
-        type: 'error'
-      })
+    if(this.lockedEnterPassword == security.managerPassword) { 
+      this.locked = false;
+      this.lockedEnterPassword = '';
+      this.lockedLasswordErr = '';
     }
+    else {
+      this.lockedLasswordErr = this.lockedEnterPassword == '' ? '请输入密码！' : '密码不正确，请检查';
+      $('#password-input').prop('class', 'shake animated error anim-500ms');
+      setTimeout(() => {
+        $('#password-input').prop('class', 'error');
+      }, 400);
+    }
+  }
+  inputUnLockClick() {
+    if($('#password-input').hasClass('error'))
+      $('#password-input').removeClass('error');
   }
   loginInputKeyDown(ev : KeyboardEvent) {
     if(ev.keyCode == 13) this.doUnLock();
   }
+
+  lastUserInputTime : Date = null;
+
+  initAutoLockTimer() {
+    this.clearAutoLockCount();
+    this.currentWindow.on('focus', () => this.clearAutoLockCount());
+    window.addEventListener('click', () => this.clearAutoLockCount());
+    window.addEventListener('keydown', () => this.clearAutoLockCount());
+    this.lockAutoTimer = setInterval(this.autoLockTimerTick, 60000);
+  }
+  autoLockTimerTick() {
+    let leaveMinute = (new Date().getTime() - this.lastUserInputTime.getTime()) / 60000;
+    if(this.autoHideMinute > 0 && leaveMinute > this.autoHideMinute) {
+      if(this.currentWindow.isVisible()) 
+        this.currentWindow.hide();
+    }
+    if(this.autoLockMinute > 0 && leaveMinute > this.autoLockMinute && !this.locked) this.lock(true);
+  }
+  clearAutoLockCount() { this.lastUserInputTime = new Date(); }
   
   //** 音乐列表控制
 
@@ -678,8 +758,11 @@ export default class App extends Vue {
         this.musicHistoryList[i].setVolume(volume);
     }
   }
-  //音乐列表扩展
+  //选择文件扩展
+
   chooseOneMusicCallback : (music : MusicItem) => void = null;
+  chooseOneImageCallback : (imgPath : string) => void = null;
+
   chooseOneMusicAndCallback(type : 'file'|'history', callback : (music : MusicItem) => void) {
     if(type == 'file'){
       this.chooseOneMusicCallback = callback;
@@ -688,6 +771,10 @@ export default class App extends Vue {
       this.isShowMusicList = true;
       setTimeout(() => (<MusicView>this.$refs['musicList']).startChooseOneMusic(callback), 300);
     }
+  }
+  chooseOneImageAndCallback(callback : (imgPath : string) => void) {
+    this.chooseOneImageCallback = callback;
+    this.chooseImage({ type: 'chooseOneImageAndCallback' });
   }
 
   //** 应用工作函数
