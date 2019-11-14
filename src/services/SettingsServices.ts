@@ -1,6 +1,7 @@
 import { DataStorageServices, createDataStorageServices } from './DataStorageServices'
 import { EventEmitter } from "events";
 import CommonUtils from '../utils/CommonUtils';
+import { PlayCondition } from '../model/PlayCondition';
 
 class SettingsServices extends EventEmitter {
 
@@ -25,6 +26,7 @@ class SettingsServices extends EventEmitter {
       lockedNote: '系统已经锁定，请联系管理员获取更多信息',
     },
     system: {
+      developerMode: false,
       autoUpdate: true,
       autoHide: true,
       autoHideMinute: 10,
@@ -32,10 +34,9 @@ class SettingsServices extends EventEmitter {
     },
     auto: {
       playTipIfFail: true,
-      muteTime: {
-        enabled: false,
-        condition: null
-      },
+      enableMuteTime: false,
+      setSystemMuteAtMuteTime: false,
+      muteTimes: []
     },
     player: {
       enableFade: true,
@@ -48,6 +49,7 @@ class SettingsServices extends EventEmitter {
     super();
   }
 
+  public sendUpdated() { this.emit('update'); }
   public getData() { return this.staticSettings }
   public setData(data : any) { 
     CommonUtils.cloneValueForce(this.staticSettings, data)
@@ -72,6 +74,9 @@ class SettingsServices extends EventEmitter {
       if(value) { 
         this.staticSettings = value;
         CommonUtils.cloneValueIfUndefined(this.staticSettings, this.staticSettingsTemplate);
+        //Prealloc
+        let arr = this.staticSettings.auto.muteTimes; this.staticSettings.auto.muteTimes = [];
+        arr.forEach(element => this.staticSettings.auto.muteTimes.push(new PlayCondition(null, element)));
       }
       else this.staticSettings = CommonUtils.clone(this.staticSettingsTemplate);
       this.emit('load');
@@ -83,6 +88,10 @@ class SettingsServices extends EventEmitter {
    * 保存设置至磁盘
    */
   public saveSettings() : Promise<any> {
+    //Prealloc
+    let arr : Array<PlayCondition> = this.staticSettings.auto.muteTimes; this.staticSettings.auto.muteTimes = [];
+    for(var i=0;i<arr.length;i++)this.staticSettings.auto.muteTimes.push(arr[i].saveToJSONObject());
+    //Save
     return this.staticDataStorageServices.saveData('settings', this.staticSettings);
   }
 

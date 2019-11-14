@@ -30,6 +30,19 @@ export class MusicHistoryService extends EventEmitter {
       this.musicHistoryList.push(music);  
   }
   public removeMusicFromHistoryList(music : MusicItem){ this.musicHistoryList.splice(this.musicHistoryList.indexOf(music), 1); }
+
+  public saveToMusicPathArray() : string[] {
+    let arr : string[] = [];
+    for(var i = 0, c = this.musicHistoryList.length; i < c; i++)
+      arr.push(this.musicHistoryList[i].fullPath);
+    return arr;
+  }
+  public loadFromPathArray(musics : string[]) {
+    if(musics) musics.forEach((element : string) => {
+      if(!this.existsInHistoryList(element))
+        this.addMusicToHistoryList(new MusicItem(element));
+    });
+  }
 }
 
 let staticMusicHistoryService = null;

@@ -24,7 +24,7 @@
             
             <el-form-item label="本软件长时间无操作时自动隐藏">
               <el-switch v-model="appSettingsBackup.system.autoHide" style="margin: 10px 0;"></el-switch><br>
-              <el-input-number v-model="appSettingsBackup.system.autoHideMinute" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
+              <el-input-number v-model="appSettingsBackup.system.autoHideMinute" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="60"></el-input-number>
               分钟后无操作隐藏
             </el-form-item>
             <el-form-item label="主窗口背景图片">
@@ -55,7 +55,38 @@
             <el-form-item label="任务播放失败时播放错误提示音">
               <el-switch v-model="appSettingsBackup.auto.playTipIfFail" style="margin: 10px 0;"></el-switch><br>
             </el-form-item>
-
+            <el-form-item label="开启静音时段">
+              <el-switch v-model="appSettingsBackup.auto.enableMuteTime" style="margin: 10px 0;"></el-switch>
+              <span class="text-secondary el-form-span">您可以开启此选项来开启静音时段，当处于您定义的静音时段时，不会自动播放任务和音乐。</span>
+            </el-form-item>
+            <el-form-item label="静音时段">
+              <span class="text-secondary el-form-span">您可以设置一些条件表示静音的时段，例如 “22:00 至 5:50”、“周六 至 周日”、“7/1 至 8/31” 等等。</span>
+              <div class="mute-con-list" v-if="appSettingsBackup.auto.muteTimes && appSettingsBackup.auto.muteTimes.length > 0">
+                <div v-for="(item, index) in appSettingsBackup.auto.muteTimes" :index="index" :key="index">
+                  <condition-input :condition="item"></condition-input>
+                  <el-popover
+                    placement="top"
+                    width="160"
+                    trigger="click"
+                    v-model="item.tempBvar1">
+                    <p class="mt-0">确定删除此条件？</p>
+                    <div style="text-align: right; margin: 0">
+                      <el-button size="mini" type="text" @click="item.tempBvar1=false">取消</el-button>
+                      <el-button type="primary" size="mini" @click="item.tempBvar1=false;appSettingsBackup.auto.muteTimes.remove(index)">确定</el-button>
+                    </div>
+                    <el-button slot="reference" type="danger" size="mini" icon="el-icon-close" title="删除此音乐" circle></el-button>
+                  </el-popover>
+                </div>
+              </div>
+              <div style="padding: 10px 0">
+                <el-button @click="addMuteTime" size="mini" round><i class="iconfont icon-tianjiaxiao mr-2"></i>添加条件</el-button>
+              </div>
+             
+            </el-form-item>
+            <el-form-item label="静音时段时设置电脑静音">
+              <el-switch v-model="appSettingsBackup.auto.setSystemMuteAtMuteTime" style="margin: 10px 0;"></el-switch>
+              <span class="text-secondary el-form-span">开启此选项以后在静音时段还会设置电脑声音为静音，防止其他软件发出声音。</span>
+            </el-form-item>
           </el-form>
         </el-tab-pane>
         <el-tab-pane name="security">
@@ -70,7 +101,7 @@
               <el-switch v-model="appSettingsBackup.security.autoLock" :disabled="!appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
               <el-input-number v-model="appSettingsBackup.security.autoLockMaxMinute" 
                 :disabled="!appSettingsBackup.security.preventAnymouseUse || !appSettingsBackup.security.autoLock" 
-                size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
+                size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="30"></el-input-number>
               分钟后无操作自动锁定软件
             </el-form-item>
             <el-form-item label="管理员密码">
@@ -94,13 +125,9 @@
         </el-tab-pane>
         <el-tab-pane name="datas">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-shuju"></i>数据管理</span>
-          <el-form :model="appSettingsBackup" label-width="140px">
-
-            <el-form-item label="自动保存数据">
-              <el-switch v-model="appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
-              <span class="text-secondary el-form-span">软件可以自动为您保存数据。</span>
-            </el-form-item>
-            <el-form-item label="数据备份">
+          <el-form :model="appSettingsBackup" label-width="110px">
+            
+            <el-form-item label="数据备份与还原">
               <span class="text-secondary el-form-span">您可以使用本功能备份数据，以便在数据被意外修改或丢失时将其还原。</span>
               <el-button size="mini" type="primary" @click="exportData" round>导出数据</el-button>
               <el-button size="mini" @click="importData" round>导入数据</el-button>
@@ -189,7 +216,7 @@
           @click="doImportDataSure" round>导入</el-button>
         <el-button v-if="!currentIsImportData" type="primary" 
           :disabled="!dataExportConfig.includeData&&!dataExportConfig.includeSettings&&!dataExportConfig.includeMusicHistory"
-          @click="exportDataShowSaveDialog" round>导出</el-button>
+          @click="exportDataShowSaveDialog" round><i v-if="dataExporting" class="el-icon-loading"></i>{{ dataExporting ? '正在导出中...' : '导出' }}</el-button>
         <el-button @click="showImportOrExportDialog=false" round>取消</el-button>
       </span>
     </el-dialog>
@@ -226,20 +253,29 @@
 import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-property-decorator";
 import { Form } from "element-ui";
 import { MessageBoxInputData } from "element-ui/types/message-box";
+import { getMusicHistoryService, MusicHistoryService } from '../services/MusicHistoryService'
+import { ElMessageComponent } from "element-ui/types/message";
 import App from '../App.vue'
-import electron, { BrowserWindow, screen } from "electron";
+import ConditionInput from '../components/ConditionInput.vue'
+import electron, { BrowserWindow, screen, shell } from "electron";
 import CommonUtils from "../utils/CommonUtils";
 import SettingsServices from '../services/SettingsServices'
 import Win32Utils from "../utils/Win32Utils";
+import fs from 'fs';
+import { PlayCondition } from "../model/PlayCondition";
 
-const fs = require('fs');
 const ipc = electron.ipcRenderer;
 const process = require('process');
 
-@Component
+@Component({
+  components: {
+    'condition-input': ConditionInput,
+  }
+})
 export default class SettingsView extends Vue {
 
   @Prop({default:null}) app : App;
+  musicHistoryService : MusicHistoryService = null;
 
   currentPage = 'global';
   process = null;
@@ -254,6 +290,7 @@ export default class SettingsView extends Vue {
   currentIsImportData = false;
   currentIsAddManagerPassword = false;
 
+  dataExporting = false;
   dataExportConfig = {
     includeSettings: true,
     includeData: true,
@@ -310,6 +347,7 @@ export default class SettingsView extends Vue {
     this.appVesrsion = (<any>window).appVesrsion;
     this.appBuildDate = (<any>window).appBuildDate;
     this.appSettingsBackup = CommonUtils.clone(SettingsServices.getData());
+    this.musicHistoryService = getMusicHistoryService();
     this.autoStartStatus = this.getAutoStartStatus();
 
     ipc.on('selected-json', function (event, arg, path) {
@@ -432,6 +470,11 @@ export default class SettingsView extends Vue {
     }).catch(() => {});
   }
 
+  //静音
+  addMuteTime() {
+    this.appSettingsBackup.auto.muteTimes.push(new PlayCondition(''))
+  }
+
   //开机启动
 
   switchAutoStart(enable){
@@ -472,9 +515,41 @@ export default class SettingsView extends Vue {
   //数据
 
   exportData() { this.currentIsImportData = false; this.showImportOrExportDialog = true; } 
-  exportDataShowSaveDialog() { ipc.send('main-save-file-dialog-json', { type:'chooseData' }); }
+  exportDataShowSaveDialog() { ipc.send('main-save-file-dialog-json', { type:'chooseData', name: new Date().format('YYYY-MM-DD HH:ii:ss') + ' 导出的数据.json' }); }
   doExportData(path : string) { 
+    this.dataExporting = true;
 
+    let json = {
+      dataConfig: {
+        includeSettings: this.dataExportConfig.includeSettings,
+        includeData: this.dataExportConfig.includeData,
+        includeMusicHistory: this.dataExportConfig.includeMusicHistory,
+      },
+      datas: {
+        baseData: null,
+        setings: null,
+        musicList: null,
+      }
+    }
+    if(this.dataExportConfig.includeSettings) 
+      json.datas.setings = SettingsServices.getData();
+    if(this.dataExportConfig.includeData) 
+      json.datas.baseData = this.app.serviceTables.saveToJSONObject();
+    if(this.dataExportConfig.includeMusicHistory) 
+      json.datas.musicList = this.musicHistoryService.saveToMusicPathArray();
+
+    fs.writeFile(path, JSON.stringify(json), (err) => {
+      this.dataExporting = false;
+      this.showImportOrExportDialog = false;
+      if(err) this.$alert('写入数据文件时失败：' + err + '  请检查您是否有权限写入指定的路径。', '导出失败', { type: 'error' });
+      else this.$msgbox({ 
+        title: '导出成功！',
+        showCancelButton: true,
+        confirmButtonText: '打开数据文件位置',
+        cancelButtonText: '确定',
+        type: 'success' 
+      }).then(() => shell.showItemInFolder(path)).catch(() => {});
+    });
   } 
   doImportData(path : string) { 
     fs.exists(path, (b)=>{
@@ -489,9 +564,14 @@ export default class SettingsView extends Vue {
             });
           }else {
             this.dataImport = data;
-            this.dataImportConfig.includeSettings = this.dataImport.dataConfig.includeSettings;
-            this.dataImportConfig.includeData = this.dataImport.dataConfig.includeData;
-            this.dataImportConfig.includeMusicHistory = this.dataImport.dataConfig.includeMusicHistory;
+            try{
+              this.dataImportConfig.includeSettings = this.dataImport.dataConfig.includeSettings;
+              this.dataImportConfig.includeData = this.dataImport.dataConfig.includeData;
+              this.dataImportConfig.includeMusicHistory = this.dataImport.dataConfig.includeMusicHistory;
+              let len = this.dataImport.datas.length;
+            }catch(e){
+              this.$alert('数据文件格式无效，请检查是否导入正确', '导入失败', { type: 'error' });
+            }
             this.currentIsImportData = true;
             this.showImportOrExportDialog = true;
           }
@@ -500,7 +580,18 @@ export default class SettingsView extends Vue {
     });
   } 
   doImportDataSure() { 
-    
+    if(this.dataImportConfig.includeSettings)
+      SettingsServices.setData(this.dataImport.datas.setings);
+    if(this.dataImportConfig.includeData){
+      this.app.serviceTables.destroy();
+      this.app.serviceTables.loadFromJsonObject(this.dataImport.datas.baseData);
+    }
+    if(this.dataImportConfig.includeMusicHistory)
+      this.musicHistoryService.loadFromPathArray(this.dataImport.datas.musicList);
+
+    this.app.saveDatas().then(() => this.$message({ message: '导入数据成功！', type: 'success' })).catch((e) => {
+      this.$message({ message: '导入数据成功！但是保存新数据时发生错误： ' + e +' ，请稍后尝试手动保存数据', type: 'warning', duration: 12000 })
+    })
   } 
   importData() {
     this.$confirm('您确定要导入数据吗? 导入数据功能是为了方便您在系统数据被篡改或数据丢失时使用的，导入后当前原有数据将会被覆盖，并且<b class="text-important">不可恢复</b>，请谨慎操作。', '重要提示', {
@@ -516,8 +607,51 @@ export default class SettingsView extends Vue {
   //关于
 
   showHelpWindow(arg) { ipc.send('main-act-show-help-window', arg); }
+
+  countDeveloperModeClick = 0;
+  timerDeveloperMode = null;
+  tipDeveloperMode : ElMessageComponent = null;
+
+  showDeveloperModeTip(str : string) {
+    if(this.tipDeveloperMode != null) {
+      this.tipDeveloperMode.close();
+      this.tipDeveloperMode = null;
+    }
+    this.tipDeveloperMode = this.$message({
+      message: str,
+      type: 'info',
+      onClose: () => this.tipDeveloperMode = null
+    });
+  }
   toggleDeveloperMode() {
-    
+    if(this.appSettingsBackup.system.developerMode) 
+      this.showDeveloperModeTip('您已处于开发者模式，无需操作')
+    else {
+      if(this.countDeveloperModeClick > 0) {
+        //Timer
+        if(this.timerDeveloperMode == null) {
+          this.timerDeveloperMode = setInterval(() => {
+            this.countDeveloperModeClick-=2;
+            if(this.countDeveloperModeClick <= 0){
+              clearInterval(this.timerDeveloperMode);
+              this.countDeveloperModeClick = 0;
+              this.timerDeveloperMode = null;
+            }
+          }, 5000);
+        }
+        //Tip 
+        if(this.countDeveloperModeClick > 3) {
+          if(this.countDeveloperModeClick < 8)
+            this.showDeveloperModeTip('再点击 ' + (8 - this.countDeveloperModeClick) + ' 次即可进入开发者模式');
+          else {
+            SettingsServices.setSettingBoolean('system.developerMode', true);
+            SettingsServices.sendUpdated();
+            this.showDeveloperModeTip('您已处于开发者模式');
+          }
+        }
+      }
+      this.countDeveloperModeClick++;
+    }
   }
 
   public showPage(name : string) { this.currentPage = name }

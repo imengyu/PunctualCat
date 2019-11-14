@@ -518,6 +518,10 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
   public conConvertStatus : 'unknow'|'success'|'failed' = 'unknow';
   public conConvertErr : PlayConditionActuatorError = null;
 
+  /* 临时属性 */
+  public tempBvar1 = false;
+  public tempBvar2 = false;
+
   /**
    * 转换 条件的格式化字符串 为执行体数组，此方法会清空原有的数组
    * @param conStr 条件的格式化字符串

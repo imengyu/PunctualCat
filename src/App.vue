@@ -162,6 +162,7 @@ export default class App extends Vue {
   lockAutoTimer = null;
   autoHideMinute = 0;
   autoLockMinute = 0;
+  developerMode = false;
 
   //Toolbar and menu
   topToolbar: Array<IconToolItem> = [
@@ -411,7 +412,7 @@ export default class App extends Vue {
     } }));
 
     this.menuItemDeveloper = new electron.remote.MenuItem({ label: '开发者选项', submenu: developerSubMenu });
-    //this.menuItemDeveloper.visible = false;
+    if(!this.developerMode) this.menuItemDeveloper.visible = false;
     this.menuSettings.append(this.menuItemDeveloper);
     
     var powerSubMenu = new electron.remote.Menu();
@@ -495,17 +496,9 @@ export default class App extends Vue {
     //base
     this.serviceDataStorage.loadData('basedata').then((data) => {
       this.baseData = data;
-
-      //console.log('Data load check baseData : ');
-      //console.dir(data);
-
       //musics
       this.serviceDataStorage.loadData('musics').then((musics) => {
-
-        if(musics) musics.forEach((element : string) => {
-          if(!this.serviceMusicHistory.existsInHistoryList(element))
-            this.serviceMusicHistory.addMusicToHistoryList(new MusicItem(element));
-        });
+        this.serviceMusicHistory.loadFromPathArray(musics);
         callback();
       }).catch((e) => {
         console.warn('loadAllDatas for musics failed ! ' + e);
@@ -519,9 +512,7 @@ export default class App extends Vue {
   saveDatas() : Promise<any> {
     return new Promise((resolve, reject) => {
       //musics
-      let musics = [];
-      for(var i = 0, c = this.musicHistoryList.length; i < c; i++)
-        musics.push(this.musicHistoryList[i].fullPath);
+      let musics = this.serviceMusicHistory.saveToMusicPathArray();
       this.baseData = this.serviceTables.saveToJSONObject();
       this.serviceDataStorage.saveData('basedata', this.baseData).then(() => {
         this.serviceDataStorage.saveData('musics', musics).then(() => {
@@ -559,6 +550,9 @@ export default class App extends Vue {
     if(!CommonUtils.isNullOrEmpty(window.title)) this.currentWindow.setTitle(window.title);
     this.background = window.background;
     this.backgroundOpacity = window.backgroundOpacity;
+    this.developerMode = SettingsServices.getSettingBoolean('system.developerMode');
+    if(this.menuItemDeveloper != null)
+      this.menuItemDeveloper.visible = this.developerMode;
   }
   loadSystemSettings() {
     let system = SettingsServices.getSettingObject('system');

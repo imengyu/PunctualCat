@@ -345,6 +345,21 @@
   }
 }
 
+.mute-con-list {
+
+  position: relative;
+  padding: 10px 3px;
+
+  > div {
+    padding: 5px 0;
+
+    .con-input {
+      display: inline-block;
+      width: calc(100% - 50px);
+    }
+  }
+}
+
 .updown-drag {
   width: 28px;
   height: 28px;

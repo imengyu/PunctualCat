@@ -231,7 +231,7 @@ ipc.on('main-save-file-dialog-json', function (event, arg) {
     properties: properties,
     title: '保存 JSON 数据文件',
     filters: [
-      { name: 'JSON 数据文件', extensions: ['json'] }
+      { name: arg.filename ? arg.filename : 'JSON 数据文件', extensions: ['json'] }
     ],
   }, function (files) {
     if (arg) arg.isSave = true;

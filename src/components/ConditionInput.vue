@@ -121,6 +121,11 @@ export default class ConditionInput extends Vue {
 
 .con-input {
 
+  position: relative;
+
+  .el-input-group {
+    vertical-align: unset;
+  }
   .con-stat {
     display: inline-block;
     width: 40px;

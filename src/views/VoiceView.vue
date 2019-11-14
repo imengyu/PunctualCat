@@ -5,8 +5,8 @@
       <el-slider v-model="volumeSoft"></el-slider>
     </div>
     <div class="block">
-      <span class="demonstration">静音时段</span>
-      
+      <span class="demonstration">系统音量</span>
+      <el-slider v-model="volumeSystem"></el-slider>
     </div>
   </div>
 </template>
@@ -22,25 +22,25 @@ export default class VoiceView extends Vue {
 
   @Prop({default:false}) show : boolean;
   volumeSoft = 50;
+  volumeSystem = 50;
 
   @Watch('volumeSoft')
   onVolumeSoftChanged(newV) {
     this.$emit('volume-soft-changed', newV);
   }
+  @Watch('volumeSystem')
+  onVolumeSystemChanged(newV) {
+    this.$emit('volume-system-changed', newV);
+  }
   @Watch('show')
   onShowChanged(newV){
     if(newV){
       $('.voice-view').focus();
-    }else{
-
     }
-
   }
-
   onBlur(){
     this.$emit('update:show', false);
   }
-
   mounted() {
     SettingsServices.addListener('load', () => {
       this.volumeSoft = Math.floor(SettingsServices.getSettingNumber('player.volume') * 100);
