@@ -2,43 +2,12 @@
   <div 
     class="con-input"
     >
-    <el-input 
-      v-if="isInputMode"
-      size="small"
-      placeholder="请输入条件"
-      v-model="conditionInputBuffer"
-      @focus="isInputMode=true"
-    >
-      <el-popover
-        v-if="conditionInputBuffer==''"
-        placement="top-start" width="300" trigger="hover" slot="prepend">
-        <span>您没有定义播放条件，该列表/任务 <b>不会自动播放</b> </span>
-        <el-button slot="reference"><i :class="'iconfont icon-tanhao'"></i></el-button>
-      </el-popover>
-      <el-popover
-        v-else
-        placement="top-start"
-        width="300"
-        trigger="hover"
-        slot="prepend">
-        <span v-if="conditionValid">当前条件格式有效</span>
-        <span v-else>
-          当前条件格式存在错误，请检查：<br />
-          <b>{{ conditionValidErr }}</b>
-        </span>
-        <el-button slot="reference">
-          <i :class="'iconfont ' + (conditionValid ? 'icon-chenggong text-success' : 'icon-shibai text-danger')"></i>
-        </el-button>
-      </el-popover>
-      <el-button slot="append" title="保存条件修改" @click="submitInput"><i class="iconfont icon-icon_right text-success"></i></el-button>
-      <el-button slot="append" title="放弃修改" @click="cancelInput"><i class="iconfont icon-icon_wrong text-danger"></i></el-button>
-    </el-input>
-    <div v-else class="con-html-host">
+    <div class="con-html-host">
       <div class="con-stat">
         <el-popover
-          v-if="conditionInputBuffer==''"
+          v-if="conditionInputBuffer==''|| conditionValidStatus=='unknow'"
           placement="top-start" width="300" trigger="hover" slot="prepend">
-          <span>您没有定义播放条件，该列表/任务 <b>不会自动播放</b> </span>
+          <span v-if="conditionInputBuffer==''">您没有定义播放条件，该条件 <b>不会被用于判断</b> </span>
           <i slot="reference" :class="'iconfont icon-tanhao'"></i>
         </el-popover>
         <el-popover
@@ -47,17 +16,25 @@
           width="300"
           trigger="hover"
           slot="prepend">
-          <span v-if="conditionValid">当前条件格式有效</span>
+          <span v-if="conditionValidStatus=='success'">当前条件格式有效</span>
           <span v-else>
             当前条件格式存在错误，请检查：<br />
             <b>{{ conditionValidErr }}</b>
           </span>
-          <i slot="reference" :class="'iconfont ' + (conditionValid ? 'icon-chenggong text-success' : 'icon-shibai text-danger')"></i>
-        </el-popover>
-        
+          <i slot="reference" :class="'iconfont ' + (conditionValidStatus=='success' ? 'icon-chenggong text-success' : 'icon-shibai text-danger')"></i>
+        </el-popover>   
       </div>
-      <div class="con-html" v-html="conditionHtmlBuffer"></div>
-      <div @click="isInputMode=true" class="con-edit"><i class="iconfont icon-chuangzuo"></i></div>
+      <el-input 
+        v-show="isInputMode"
+        ref="conEditor"
+        size="small"
+        placeholder="请输入条件"
+        v-model="conditionInputBuffer"
+        @focus="isInputMode=true"
+        @blur="submitInput()"
+        @keydown.native.enter="submitInput()"
+      ></el-input>
+      <div v-show="!isInputMode" class="con-html" v-html="conditionHtmlBuffer" @click="isInputMode=true"></div>
     </div>    
   </div>
 </template>
@@ -65,6 +42,8 @@
 <script lang="ts">
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import { PlayCondition } from '../model/PlayCondition';
+import { Input } from 'element-ui';
+import { setTimeout } from 'timers';
 
 @Component
 export default class ConditionInput extends Vue {
@@ -75,19 +54,25 @@ export default class ConditionInput extends Vue {
   conditionHtmlBuffer = '';
 
   isInputMode = false;
-  conditionValid = false;
+  conditionValidStatus = 'unknow';
   conditionValidErr = '';
 
   mounted() {
     this.refeshStatc();
   }
   
+  @Watch('isInputMode')
+  onIsInputModeChange(is) { 
+    if(is) setTimeout(() => {
+      (<Input>this.$refs['conEditor']).focus();
+    }, 300);
+  }
   @Watch('condition')
   onConditionChange(newCondition) { this.refeshStatc() }
 
   refeshStatc() {
     this.refeshConHtml();
-    this.conditionValid = this.condition.conConvertStatus == 'success';
+    this.conditionValidStatus = this.condition.conConvertStatus;
     this.conditionValidErr = this.condition.conConvertErr ? (this.condition.conConvertErr.message + ' 在：' + 
         this.condition.conConvertErr.currentConString + ' (位置：' + 
         this.condition.conConvertErr.currentIndex + ')') : '';
@@ -101,17 +86,16 @@ export default class ConditionInput extends Vue {
   submitInput() {
     if(this.condition.toConditionList(this.conditionInputBuffer)) {
       this.isInputMode = false;
-      this.conditionValid = true;
+      this.conditionValidStatus = this.condition.conConvertStatus;
       this.conditionValidErr = '';
       this.refeshConHtml();
     }else {
       this.conditionValidErr = this.condition.conConvertErr ? (this.condition.conConvertErr.message + ' 在：' + 
         this.condition.conConvertErr.currentConString + ' (位置：' + 
         this.condition.conConvertErr.currentIndex + ')') : '';
-      this.conditionValid = false;
+      this.conditionValidStatus = this.condition.conConvertStatus;
     }
   }
-  cancelInput() { this.isInputMode = false; this.refeshConHtml(); }
 }
 
 </script>
@@ -123,9 +107,6 @@ export default class ConditionInput extends Vue {
 
   position: relative;
 
-  .el-input-group {
-    vertical-align: unset;
-  }
   .con-stat {
     display: inline-block;
     width: 40px;
@@ -139,42 +120,43 @@ export default class ConditionInput extends Vue {
     border: 1px solid #DCDFE6;
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
+
+    span, i {
+      user-select: none;
+      &:focus {
+        outline: none;
+      }
+    }
   }
   .con-html {
     display: inline-block;
     overflow: hidden;
     word-break: keep-all;
     overflow-y: scroll;
-    width: calc(100% - 83px);
+    width: calc(100% - 41px);
     vertical-align: middle;
     padding: 0 6px;
     margin-left: 41px;
 
     @include pc-fix-scrollbar-white();
   }
+  .el-input {
+    display: inline-block;
+    width: calc(100% - 41px);
+    margin-left: 41px;
+
+    input {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+  }
 
   .con-html-host {
     border: 1px solid #DCDFE6;
     border-radius: 4px;
+    height: 32px;
+    line-height: 32px;
   }
-
-  .con-edit {
-    display: inline-block;
-    width: 40px;
-    background-color: #F5F7FA;
-    vertical-align: middle;
-    text-align: center;
-    position: absolute;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    border: 1px solid #DCDFE6;
-    border-radius: 4px;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    cursor: pointer;
-  }
-
 }
 .con-span {
   border-radius: 6px;
@@ -210,13 +192,13 @@ export default class ConditionInput extends Vue {
 }
 
 .con-span-date {
-  background-color: #6495ed;
+  background-color: #4e83e6;
 }
 .con-span-date-range{
-  background-color: #19b8c4;
+  background-color: #15aab4;
 }
 .con-span-time{
-  background-color: #49ce85;
+  background-color: #0aaa52;
 }
 .con-span-week {
   background-color: #d81b73;
@@ -229,9 +211,9 @@ export default class ConditionInput extends Vue {
   background-color: #009999;
 }
 .con-and {
-  background-color: #99CC33;
+  background-color: #6d9c10;
 }
 .con-not {
-  background-color: #e25a00;
+  background-color: #db5800;
 }
 </style>

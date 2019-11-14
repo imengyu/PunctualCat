@@ -106,12 +106,13 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   }
 
   public play() {
-    switch(this.type){
-      case 'shutdown': GlobalWorker.executeGlobalAction('shutdown'); break;
-      case 'reboot': GlobalWorker.executeGlobalAction('reboot'); break;
-      case 'command': this.runCommands(); break;
-      case 'music': this.startPlayMusic(); break;
-    }
+    if(!this.editing)
+      switch(this.type){
+        case 'shutdown': GlobalWorker.executeGlobalAction('shutdown'); break;
+        case 'reboot': GlobalWorker.executeGlobalAction('reboot'); break;
+        case 'command': this.runCommands(); break;
+        case 'music': this.startPlayMusic(); break;
+      }
   }
   public stop() {
     if(this.type == 'music') this.stopPlayingMusic(true);

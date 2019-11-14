@@ -351,11 +351,12 @@
   padding: 10px 3px;
 
   > div {
-    padding: 5px 0;
+    padding: 1px 0;
 
     .con-input {
       display: inline-block;
       width: calc(100% - 50px);
+      margin-right: 10x;
     }
   }
 }

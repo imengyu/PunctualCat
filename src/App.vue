@@ -666,6 +666,7 @@ export default class App extends Vue {
           showCancelButton: true,
           cancelButtonText: '暂不设置',
           confirmButtonText: '立即设置',
+          roundButton: true
         }).then(() => this.goToSettingsPage('security')).catch(() => {});
       } else this.locked = true;
     } else {
@@ -676,6 +677,7 @@ export default class App extends Vue {
           showCancelButton: true,
           cancelButtonText: '暂不设置',
           confirmButtonText: '立即设置',
+          roundButton: true
         }).then(() => this.goToSettingsPage('security')).catch(() => {});
     }
   }
