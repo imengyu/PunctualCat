@@ -58,6 +58,8 @@
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
       <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" :app="app" />
     </transition>
+    <!--底部音乐频谱-->
+    <audio-wave ref="audioWave" class="main-audio-wave"></audio-wave>
     <!--音量弹出-->
     <transition enter-active-class="animated bounceInDown anim-fast" leave-active-class="animated fadeOutUp anim-fast">
       <voice-view v-show="voiceProverVisible" :show.sync="voiceProverVisible" @volume-soft-changed="onVolumeSoftChanged" style="top:120px;right:20px" />
@@ -101,6 +103,7 @@ import $ from "jquery";
 import TextTime from "./components/TextTime.vue"
 import IconToolBar from "./components/IconToolBar.vue"
 import Calendar from "./components/Calendar.vue"
+import AudioWave from './components/AudioWave.vue'
 
 import MusicView from "./views/MusicView.vue"
 import VoiceView from "./views/VoiceView.vue"
@@ -108,7 +111,7 @@ import SettingsView from "./views/SettingsView.vue"
 import TableView from "./views/TableView.vue"
 import RadioView from "./views/RadioView.vue"
 
-import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback } from './model/MusicItem'
+import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback, setMusicWaveStartCallback, setMusicWaveStopCallback } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
 import TableServices from "./services/TableServices";
 import SettingsServices from "./services/SettingsServices";
@@ -130,6 +133,7 @@ const screen = remote.screen;
     'text-time': TextTime,
     'icon-toolbar': IconToolBar,
     'calendar': Calendar,
+    'audio-wave': AudioWave,
     'music-list': MusicView,
     'voice-view': VoiceView,
     'settings-view': SettingsView,
@@ -295,7 +299,15 @@ export default class App extends Vue {
             //Core services
             this.initCoreServices();
 
-            setPlayingCountChangedCallback((count) => this.playingMusicCount = count);
+            setPlayingCountChangedCallback((music, count) => this.playingMusicCount = count);
+            setMusicWaveStartCallback((music) => {
+              if(SettingsServices.getSettingBoolean('player.enableWave') && this.playingMusicCount == 0 && this.currentWindow.isVisible())
+                (<AudioWave>this.$refs['audioWave']).startDrawMusic(music);
+            });
+            setMusicWaveStopCallback((music) => { 
+              if(music == (<AudioWave>this.$refs['audioWave']).currentMusic)
+                (<AudioWave>this.$refs['audioWave']).stopDrawMusic();
+            });
 
             //Appily settings
             this.appilySettings(true);
@@ -511,6 +523,7 @@ export default class App extends Vue {
   }
   saveDatas() : Promise<any> {
     return new Promise((resolve, reject) => {
+      if(this.$refs['settingsView']) (<SettingsView>this.$refs['settingsView']).autoSaveSettings();
       //musics
       let musics = this.serviceMusicHistory.saveToMusicPathArray();
       this.baseData = this.serviceTables.saveToJSONObject();

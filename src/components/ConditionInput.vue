@@ -121,6 +121,9 @@ export default class ConditionInput extends Vue {
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
 
+    i {
+      font-size: 18px;
+    }
     span, i {
       user-select: none;
       &:focus {
@@ -199,6 +202,9 @@ export default class ConditionInput extends Vue {
 }
 .con-span-time{
   background-color: #0aaa52;
+}
+.con-span-time-range {
+  background-color: #0f9e7f;
 }
 .con-span-week {
   background-color: #d81b73;

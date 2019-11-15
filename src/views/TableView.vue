@@ -28,15 +28,15 @@
             width="38">
             <template slot-scope="scope">
               <div class="text-center">
-                <i v-if="scope.row.editing" class="iconfont icon-hj1 text-warning" title="您正在编辑任务，保存任务以后才能自动播放"></i>
+                <i v-if="scope.row.editing" class="iconfont icon-hj1" style="color: #0087bb" title="您正在编辑任务，保存任务以后才能自动播放"></i>
                 <i v-else-if="scope.row.status == 'normal'" class="iconfont icon-dengdaiqueren" title="任务就绪，等待播放"></i>
                 <i v-else-if="scope.row.status == 'played'" class="iconfont icon-wancheng text-success" title="任务已播放"></i>
-                <i v-else-if="scope.row.status == 'disabled'" class="iconfont icon-dengdaizhihang" title="任务已禁用，不会自动播放"></i>
+                <i v-else-if="scope.row.status == 'disabled'" class="iconfont icon-dengdaizhihang" style="color:#cacaca" title="任务已禁用，不会自动播放"></i>
                 <i v-else-if="scope.row.status == 'error'" class="iconfont icon-hj1 text-danger" title="任务播放时出现错误"></i>
                 <i v-else-if="scope.row.status == 'playing'" class="iconfont icon-yanchu text-success" title="任务正在播放"></i>
                 <i v-else-if="scope.row.status == 'norule'" class="iconfont icon-hj1 text-warning" title="由于您没有设置任务的播放条件，因此不会自动播放"></i>
                 <i v-else-if="scope.row.status == 'notplay'" class="iconfont icon-zhihangzhong" title="当前计划表今日不播放"></i>
-                <i v-else-if="scope.row.status == 'parent-disabled'" class="iconfont icon-dengdaizhihang text-secondary" title="当前计划表已禁用"></i>
+                <i v-else-if="scope.row.status == 'parent-disabled'" class="iconfont icon-dengdaizhihang" style="color:#cacaca" title="当前计划表已禁用"></i>
               </div>
             </template>
           </el-table-column>
@@ -153,7 +153,7 @@
                 </div>
                 <div slot="reference" class="no-select"
                   @click="editCommandOrMusicTask(scope.row)">
-                  <span class="no-warp-span" v-html="scope.row.getPlayTaskString()"></span>
+                  <span class="no-warp-span cursor-pointer" v-html="scope.row.getPlayTaskString()"></span>
                   <a class="float-right" style="margin-top: 3px;" href="javascript:;" @click="editCommandOrMusicTask(scope.row)" title="编辑音乐或任务"><i class="iconfont icon-chuangzuo"></i></a>
                 </div>
               </el-popover>
@@ -189,9 +189,8 @@
             align="center"
             width="40">
             <template slot-scope="scope">
-              <el-checkbox v-show="scope.row.editing" v-model="scope.row.enabled"></el-checkbox>
-              <span v-if="!scope.row.editing && scope.row.enabled" class="text-success">是</span>
-              <span v-if="!scope.row.editing && !scope.row.enabled" class="text-secondary">否</span>
+              <span v-if="scope.row.enabled" class="text-success">是</span>
+              <span v-if="!scope.row.enabled" class="text-secondary">否</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -199,14 +198,17 @@
             align="center"
             width="100">
             <template slot-scope="scope">
-              <div class="controls text-center no-select" v-show="!scope.row.editing">
+              <div class="controls text-center no-select" v-show="!scope.row.editing && !currentIsEditTask">
                 <el-button type="text" class="text-primary" title="编辑任务" @click="editTask(scope.row)">
                   <i class="iconfont icon-chuangzuo"></i>
                 </el-button>
                 <el-button v-if="scope.row.status != 'playing' && scope.row.status != 'disabled'" type="text" class="text-success" title="立即开始播放任务" @click="playTask(scope.row)">
                   <i class="iconfont icon-bofang1"></i>
                 </el-button>
-                <el-button v-if="scope.row.status == 'playing'" type="text" class="text-danger" title="停止播放任务" @click="stopTask(scope.row)">
+                <el-button v-else-if="scope.row.status == 'disabled'" type="text" class="text-primary" title="启用任务" @click="enableTask(scope.row, true)">
+                  <i class="iconfont icon-weixuanzhong"></i>
+                </el-button>
+                <el-button v-else-if="scope.row.status == 'playing'" type="text" class="text-danger" title="停止播放任务" @click="stopTask(scope.row)">
                   <i class="iconfont icon-guanbi-copy"></i>
                 </el-button>
                 <el-button type="text" class="text-danger" title="删除任务" @click="delTask(scope.row)">
@@ -219,6 +221,12 @@
                 </el-button>
                 <el-button type="text" class="text-danger" title="取消任务修改" @click="editTaskFinish(scope.row, false)">
                   <i class="iconfont icon-tiaojian-copy"></i>
+                </el-button>
+                <el-button v-if="scope.row.enabled" type="text" class="text-danger" title="禁用任务" @click="enableTask(scope.row, false)">
+                  <i class="iconfont icon-jinyong"></i>
+                </el-button>
+                <el-button v-else type="text" class="text-primary" title="启用任务" @click="enableTask(scope.row, true)">
+                  <i class="iconfont icon-weixuanzhong"></i>
                 </el-button>
               </div>
               
@@ -289,6 +297,7 @@
 import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-property-decorator";
 import { PlayTable } from '../model/PlayTable'
 import ConditionInput from '../components/ConditionInput.vue'
+import AudioWave from '../components/AudioWave.vue'
 import TableServices from '../services/TableServices'
 import App from '../App.vue'
 import { Form } from 'element-ui'
@@ -297,6 +306,7 @@ import $ from 'jquery';
 import { ContainerMixin, ElementMixin } from 'vue-slicksort';
 import { PlayTask } from "../model/PlayTask";
 import AutoPlayService from "../services/AutoPlayService";
+import { AutoPlayStatus } from "../model/PlayInterfaces";
 
 const electron = require('electron');
 const remote = electron.remote;
@@ -357,7 +367,8 @@ const SortableItemCommand = {
     'table-item': <any>SortableItemTable,
     'table-list': <any>SortableListTable,
     'command-item': <any>SortableItemCommand,
-    'command-list': <any>SortableListCommand
+    'command-list': <any>SortableListCommand,
+
   }
 })
 export default class TableView extends Vue {
@@ -373,6 +384,8 @@ export default class TableView extends Vue {
   currentEditTableBackUp = null;
   currentIsNewTable = false;
   currentIsEditTable = false;
+  currentIsEditTask = false;
+  currentEditTask = null;
   currentEditTaskBackUp = null;
 
   menuTable : Electron.Menu = null;
@@ -391,6 +404,7 @@ export default class TableView extends Vue {
   mounted() {
     this.tables = this.tableService.getData();
     this.createMenu();
+    PlayTask.setGlobalStateChangedCallback(this.globalTaskStateChanged);
     setTimeout(this.autoSwitchCurrentView, 1300);
   }
 
@@ -508,21 +522,39 @@ export default class TableView extends Vue {
     this.menuTable.popup(); 
   }
 
+  globalTaskStateChanged(task : PlayTask, status : AutoPlayStatus) {
+    if(status == 'playing')
+      this.flashTak(task, 'success');
+    else if(status == 'error')
+      this.flashTak(task, 'error', 10000, 1000);
+    else if(status == 'played')
+      this.flashTak(task, 'success', 3000, 1000);
+  }
+
   getTaskClassStyle(object : { row : PlayTask, rowIndex : number }) {
+    let cls = 'task-' + object.rowIndex;
     if(object.row.editing) 
-      return 'editing-task';
-    return '';
+      cls += ' editing-task';
+    return cls;
   }
   addTask(table : PlayTable) {
+    if(this.currentIsEditTask) {
+      this.editTaskFinish(this.currentEditTask, true);
+      this.currentIsEditTask = false;
+    }
     let task = new PlayTask();
     task.editing = true;
     task.isNew = true;
     task.name = '新任务 ' + (table.tasks.length + 1);
     table.addTask(task);
+    this.currentEditTask = task;
+    this.currentIsEditTask = true;
     this.autoPlayService.flushTable(table);
   }
   editTask(task : PlayTask) { 
     task.editing = true; 
+    this.currentEditTask = task;
+    this.currentIsEditTask = true;
     this.currentEditTaskBackUp = CommonUtils.clone(task);
   }
   editTaskFinish(task : PlayTask, save : boolean) {
@@ -536,9 +568,13 @@ export default class TableView extends Vue {
         if(task.isNew){
           task.editing = false;
           task.parent.delTask(task);
+          this.currentEditTask = null;
+          this.currentIsEditTask = false;
         }else {
           CommonUtils.cloneValue(task, this.currentEditTaskBackUp);
           task.editing = false;
+          this.currentEditTask = null;
+          this.currentIsEditTask = false;
         }
       }).catch((e) => {
         console.log(e);
@@ -546,6 +582,8 @@ export default class TableView extends Vue {
     }else {
       task.editing = false;
       task.isNew = false;
+      this.currentEditTask = null;
+      this.currentIsEditTask = false;
       this.autoPlayService.flushTable(task.parent);
     }
   }
@@ -561,6 +599,10 @@ export default class TableView extends Vue {
       this.autoPlayService.flushTable(task.parent);
       this.$message({ type: 'success', message: '删除任务成功!' });
     }).catch(() => {});
+  }
+  enableTask(task : PlayTask, enable : boolean) {
+    task.enabled = enable;
+    this.autoPlayService.flushTable(task.parent);
   }
   playTask(task : PlayTask) {
     this.$confirm('确定开始播放此任务？', '提示', {
@@ -581,6 +623,16 @@ export default class TableView extends Vue {
     }).then(() => {
       task.stop();
     }).catch(() => {});
+  }
+  flashTak(task : PlayTask, type : 'success'|'warn'|'error', time = 1600, feq = 300) {
+    let name = '.task-' + task.parent.tasks.indexOf(task);
+    let row = $(name);
+    let timer = setInterval(() => row.toggleClass('flash-task-' + type), feq);
+    row.addClass('flash-task-' + type);
+    setTimeout(() => { 
+      row.removeClass('flash-task-' + type);
+      clearInterval(timer);
+    }, time);
   }
   editCommandOrMusicTask(task : PlayTask) { 
     task.typeBackup = task.type;
@@ -713,7 +765,16 @@ export default class TableView extends Vue {
   }
 
   td {
-    border: 2px solid transparent;
+    border-top: 2px solid transparent;
+    border-bottom: 2px solid #f3f3f3;
+    transition: all ease-in-out .4s!important;
+
+    &:first-child {
+      border-left: 2px solid transparent;
+    }
+    &:last-child {
+      border-right: 3px solid transparent;
+    }
   }
 
   .editing-task {
@@ -728,6 +789,52 @@ export default class TableView extends Vue {
       }
       &:last-child {
         border-right: 3px solid #0087bb;
+      }
+    }
+  }
+
+  .flash-task-warn {
+
+    td {
+      border-top: 2px solid #dd6300;
+      border-bottom: 2px solid #dd6300;
+      background-color: #ffecdd;
+
+      &:first-child {
+        border-left: 2px solid #dd6300;
+      }
+      &:last-child {
+        border-right: 3px solid #dd6300;
+      }
+    }
+  }
+  .flash-task-success {
+
+    td {
+      border-top: 2px solid #28aa00;
+      border-bottom: 2px solid #28aa00;
+      background-color: #c7ffde;
+
+      &:first-child {
+        border-left: 2px solid #28aa00;
+      }
+      &:last-child {
+        border-right: 3px solid #28aa00;
+      }
+    }
+  }
+  .flash-task-error {
+
+    td {
+      border-top: 2px solid #eb4200;
+      border-bottom: 2px solid #eb4200;
+      background-color: #ffd3c2;
+
+      &:first-child {
+        border-left: 2px solid #eb4200;
+      }
+      &:last-child {
+        border-right: 3px solid #eb4200;
       }
     }
   }

@@ -374,6 +374,13 @@
   vertical-align: middle;
 }
 
+.main-audio-wave {
+  position: absolute;
+  width: 800px;
+  bottom: 0;
+  left: calc(50% - 400px);
+}
+
 .full-background {
 
   position: absolute;

@@ -46,7 +46,7 @@ export default class AutoPlayService extends EventEmitter {
   }
 
   public flushTable(table : PlayTable) { this.taskTickLateUpdate(this); }
-  public flush() { this.taskTickLateUpdate(this); }
+  public flush(force = false) { this.taskTickLateUpdate(this, force); }
 
   private timerSecCorrected = false;
   private timerMinuteCorrected = false;
@@ -128,7 +128,7 @@ export default class AutoPlayService extends EventEmitter {
         //启动分时钟
         service.timerHourWkCurrent = service.timeNow.getHours();
         service.timerTickMinute(service);
-        service.timerMinute = setInterval(() => service.timerTickMinute(service), 60000);
+        if(!service.timerMinute) service.timerMinute = setInterval(() => service.timerTickMinute(service), 60000);
         console.log('Correct timer minute at : ' + new Date().format('HH:ii:ss'));
         console.log('Timer minute start at : ' + new Date().format('HH:ii:ss'));
       }
@@ -166,7 +166,7 @@ export default class AutoPlayService extends EventEmitter {
         //当前分钟存在任务，启动秒时钟
 
         service.timerMinuteWkCurrent = service.timeNow.getMinutes();
-        if(!service.timerSec){
+        if(!service.timerSec) {
           service.timerTickSec(service);
           service.timerSec = setInterval(() => service.timerTickSec(service), 1000);
         }
@@ -190,47 +190,49 @@ export default class AutoPlayService extends EventEmitter {
         service.timerTickMinute(service);
         service.timerMinute = setInterval(() => service.timerTickMinute(service), 60000);
       }
+
       console.log('Timer minute start at : ' + new Date().format('HH:ii:ss'));
     }
     //0 点需要重新切换列表状态，和执行数据保存任务
-    if(hour == 0)
-      service.onDayChange(service);
+    if(hour == 0) service.onDayChange(service);
   }
 
   /*任务自动检测主控*/
 
   private onDayChange(service : AutoPlayService) {
-    service.loopFlushTableStatus(service);
+    service.loopFlushTableStatus(service, true);
     service.emit('daychange');
   }
-  private loopFlushTableStatus(service : AutoPlayService) {
+  private loopFlushTableStatus(service : AutoPlayService, forceUpdateAll = false) {
     for (var j = 0, d = service.tables.length; j < d; j++) {
       //正在播放的时间表
       var table = service.tables[j];
       if(!table.enabled) {
         table.status = 'disabled';
-        service.loopFlushTaskStatus(table, 'parent-disabled');
+        service.loopFlushTaskStatus(table, 'parent-disabled', forceUpdateAll);
       }
       else if(table.condition.isPlayingTime('full')) { 
         table.status = 'playing';
-        service.loopFlushTaskStatus(table);
+        service.loopFlushTaskStatus(table, undefined, forceUpdateAll);
       }
       else {
         table.status = 'normal';
-        service.loopFlushTaskStatus(table, 'notplay');
+        service.loopFlushTaskStatus(table, 'notplay', forceUpdateAll);
       }
     }
   }
-  private loopFlushTaskStatus(table : PlayTable, setStatus ?: AutoPlayStatus) {
+  private loopFlushTaskStatus(table : PlayTable, setStatus ?: AutoPlayStatus, forceUpdateAll = false) {
     if(setStatus){
       for (var j = 0, d = table.tasks.length; j < d; j++) 
         table.tasks[j].status = setStatus;
     }
     else for (var j = 0, d = table.tasks.length; j < d; j++) {
       var task = table.tasks[j];
-      if(!task.enabled) task.status = 'disabled';
-      else if(task.condition.isEmpty()) task.status = 'norule';
-      else task.status = 'normal';
+      if(forceUpdateAll || (task.status != 'playing' && task.status != 'error' && task.status != 'played')) {
+        if(!task.enabled) task.status = 'disabled';
+        else if(task.condition.isEmpty()) task.status = 'norule';
+        else task.status = 'normal';
+      }
     }
   }
 
@@ -298,10 +300,10 @@ export default class AutoPlayService extends EventEmitter {
 
     return rs;
   } 
-  private taskTickLateUpdate(service : AutoPlayService) {
+  private taskTickLateUpdate(service : AutoPlayService, forceUpdateAll = false) {
 
     //刷新所有列表的状态
-    service.loopFlushTableStatus(service);
+    service.loopFlushTableStatus(service, forceUpdateAll);
 
     var needStartSec = false;
     if(service.taskTick(service, 'hour')){
@@ -317,7 +319,7 @@ export default class AutoPlayService extends EventEmitter {
     if(needStartSec){
       service.timerMinuteWkCurrent = service.timeNow.getMinutes();
       service.timerTickSec(service);
-      service.timerSec = setInterval(() => service.timerTickSec(service), 1000);
+      if(!service.timerSec) service.timerSec = setInterval(() => service.timerTickSec(service), 1000);
       console.log('Timer second start at : ' + new Date().format('HH:ii:ss'));
     }
   }

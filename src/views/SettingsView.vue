@@ -48,6 +48,9 @@
             <el-form-item label="开启音乐播放淡出淡入">
               <el-switch v-model="appSettingsBackup.player.enableFade" style="margin: 10px 0;"></el-switch><br>
             </el-form-item>
+            <el-form-item label="开启音乐播放频谱">
+              <el-switch v-model="appSettingsBackup.player.enableWave" style="margin: 10px 0;"></el-switch><br>
+            </el-form-item>
             <el-form-item label="同时允许的最大音乐播放数">
               <el-input-number v-model="appSettingsBackup.player.maxPlayingMusic" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
               <span class="text-secondary el-form-span">本软件支持同时播放多首音乐，但同时播放过多音乐容易造成混乱，建议设置该参数限制同时播放音乐的数量。</span>
@@ -362,6 +365,9 @@ export default class SettingsView extends Vue {
 
   //保存、恢复默认按钮
 
+  autoSaveSettings() {
+    SettingsServices.setData(this.appSettingsBackup);
+  }
   saveSettings() {
     SettingsServices.setData(this.appSettingsBackup);
     this.$message({ type: 'success', message: '设置已保存' });

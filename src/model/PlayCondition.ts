@@ -97,9 +97,9 @@ export class PlayConditionActuator implements AutoPlayable {
       else if(conStrEnd.contains('-')) dateConArrEnd = conStrEnd.split('-');
       else if(conStrEnd.contains('\\')) dateConArrEnd = conStrEnd.split('\\');
 
-      if(conStrStart.contains('*') || conStrStart.contains('每')) 
+      if(conStrStart.indexOf('*') >= 1 || conStrStart.indexOf('每') >= 1) 
         this.throwErrWithPosition('条件错误：不允许在日期范围中使用泛日期', conStrStart, fullConStr.indexOf(conStrStart));
-      else if(conStrEnd.contains('*') || conStrEnd.contains('每')) 
+      else if(conStrEnd.indexOf('*') >= 1 || conStrEnd.indexOf('每') >= 1) 
         this.throwErrWithPosition('条件错误：不允许在日期范围中使用泛日期', conStrEnd, fullConStr.indexOf(conStrEnd));
 
       dateConArrStart = CommonUtils.deleteSpaceInStringArray(dateConArrStart);
@@ -114,7 +114,7 @@ export class PlayConditionActuator implements AutoPlayable {
         this.dateRangeValue.start.month = parseInt(dateConArrStart[0]);
         this.dateRangeValue.start.day = parseInt(dateConArrStart[1]);
       }else if(dateConArrStart.length == 3){
-        this.dateRangeValue.start.year = parseInt(dateConArrStart[0]);
+        this.dateRangeValue.start.year = dateConArrStart[0] == '每' || dateConArrStart[0] == '*' ? 0 : parseInt(dateConArrStart[0]);
         this.dateRangeValue.start.month = parseInt(dateConArrStart[1]);
         this.dateRangeValue.start.day = parseInt(dateConArrStart[2]);
       }
@@ -123,7 +123,7 @@ export class PlayConditionActuator implements AutoPlayable {
         this.dateRangeValue.end.month = parseInt(dateConArrEnd[0]);
         this.dateRangeValue.end.day = parseInt(dateConArrEnd[1]);
       }else if(dateConArrEnd.length == 3){
-        this.dateRangeValue.end.year = parseInt(dateConArrEnd[0]);
+        this.dateRangeValue.end.year = dateConArrEnd[0] == '每' ||  dateConArrEnd[0] == '*' ? 0 : parseInt(dateConArrEnd[0]);
         this.dateRangeValue.end.month = parseInt(dateConArrEnd[1]);
         this.dateRangeValue.end.day = parseInt(dateConArrEnd[2]);
       }
@@ -150,9 +150,9 @@ export class PlayConditionActuator implements AutoPlayable {
       let timeConArrEnd = conStrEnd.split(':');
       timeConArrStart = CommonUtils.deleteSpaceInStringArray(timeConArrStart);
       timeConArrEnd = CommonUtils.deleteSpaceInStringArray(timeConArrEnd);
-      if(timeConArrStart.length < 3) 
+      if(timeConArrStart.length < 2) 
         this.throwErrWithPosition('语法错误', conStrStart, fullConStr.indexOf(conStrStart));
-      if(timeConArrStart.length < 3) 
+      if(timeConArrStart.length < 2) 
         this.throwErrWithPosition('语法错误', conStrEnd, fullConStr.indexOf(conStrEnd));
 
       this.timeValueRange.start.hours = timeConArrStart[0] == '*' ? -1 : parseInt(timeConArrStart[0]);
@@ -163,7 +163,7 @@ export class PlayConditionActuator implements AutoPlayable {
       this.timeValueRange.end.minute = parseInt(timeConArrEnd[1]);
       this.timeValueRange.end.second = timeConArrEnd.length > 2 ? parseInt(timeConArrEnd[2]) : 0;
       
-
+      this.type = 'time-range';
     } else this.throwErrWithPosition('语法错误', conStrFix, fullConStr.indexOf(conStrFix));
   }
   private solveValuesSimple(conStrFix : string, fullConStr : string, thisConStartIndex : number) {

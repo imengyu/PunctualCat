@@ -10,11 +10,18 @@ import Win32Utils from '../utils/Win32Utils';
 
 export type PlayTaskType = 'music'|'command'|'shutdown'|'reboot'
 
+export type GlobalStateChangedCallback = (task : PlayTask, status : AutoPlayStatus) => void
+
 /**
  * 播放任务
  */
 export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable {
 
+  private static globalStateChangedCallback : GlobalStateChangedCallback = null;
+
+  public static setGlobalStateChangedCallback(callback : GlobalStateChangedCallback) {
+    this.globalStateChangedCallback = callback
+  }
 
   public saveToJSONObject(): object {
     let buf = {
@@ -23,6 +30,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
       startPos: this.startPos,
       timeLimit: this.timeLimit,
       type: this.type,
+      enabled: this.enabled,
       commands: [],
       loopCount: this.loopCount,
       volume: this.volume,
@@ -39,6 +47,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     this.name = json.name;
     this.note = json.name;
     this.type = json.type;
+    this.enabled = json.enabled;
     this.volume = json.volume;
     this.timeLimit = json.timeLimit;
     this.startPos = json.startPos;
@@ -182,6 +191,11 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   private switchStatus(status : AutoPlayStatus) {
     this.status = status;
     this.emit('statuschanged', status);
+    this.emitGlobalStatusChanged(status);
+  }
+  private emitGlobalStatusChanged(status : AutoPlayStatus) {
+    if(typeof PlayTask.globalStateChangedCallback == 'function')
+      PlayTask.globalStateChangedCallback(this, status)
   }
 
   public getPlayTaskString() {

@@ -5,12 +5,18 @@ import { EventEmitter } from "events";
 import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from 'constants';
 
 let staticPlayingCount = 0;
-let staticPlayingCountChangedCallback : (count : number) => void = null;
+let staticPlayingCountChangedCallback : (music : MusicItem, count : number) => void = null;
+let staticMusicWaveStartCallback : (music : MusicItem) => void = null;
+let staticMusicWaveStopCallback : (music : MusicItem) => void = null;
 let staticMusicPool = Array<MusicItem>();
 
 export function getPlayingCount() { return staticPlayingCount };
 
-export function setPlayingCountChangedCallback(callback : (count : number) => void) { staticPlayingCountChangedCallback = callback };
+export function setPlayingCountChangedCallback(callback : (music : MusicItem, count : number) => void) { staticPlayingCountChangedCallback = callback };
+
+export function setMusicWaveStartCallback(callback : (music : MusicItem) => void) { staticMusicWaveStartCallback = callback };
+
+export function setMusicWaveStopCallback(callback : (music : MusicItem) => void) { staticMusicWaveStopCallback = callback };
 
 export function stopAllMusics() { 
   staticMusicPool.forEach(music => {
@@ -71,6 +77,9 @@ export class MusicItem extends EventEmitter {
   }
 
   public audio : HTMLAudioElement = null;
+  public audioSrc : MediaElementAudioSourceNode = null;
+  public oCtx : AudioContext = null;
+  public analyser : AnalyserNode;
   private audioUpdateInterval = null;
   private audioFadeInterval = null;
   public audioFading : boolean = false;
@@ -264,6 +273,11 @@ export class MusicItem extends EventEmitter {
       if(this.status == 'playing') this.stop(() => destroyInternal() );
       else destroyInternal();
     }
+    if(this.oCtx != null) {
+      this.audioSrc.disconnect(this.analyser);
+      this.analyser.disconnect(this.oCtx.destination);
+      this.oCtx.close();
+    }
     staticMusicPool.remove(this);
   }
   /**
@@ -304,12 +318,14 @@ export class MusicItem extends EventEmitter {
     if((oldStatus == 'normal' || oldStatus == 'notload') && newStatus == 'playing'){
       staticPlayingCount ++;
       this.testAndCloseMoreMusic();
-      if(typeof staticPlayingCountChangedCallback == 'function') staticPlayingCountChangedCallback(staticPlayingCount);
+      if(typeof staticMusicWaveStartCallback == 'function') staticMusicWaveStartCallback(this);
+      if(typeof staticPlayingCountChangedCallback == 'function') staticPlayingCountChangedCallback(this, staticPlayingCount);
     }
     if((oldStatus == 'playing' || oldStatus == 'paused') && (newStatus == 'normal' || newStatus == 'playerr' || newStatus == 'lost'))
     { 
       staticPlayingCount --;
-      if(typeof staticPlayingCountChangedCallback == 'function') staticPlayingCountChangedCallback(staticPlayingCount);
+      if(typeof staticPlayingCountChangedCallback == 'function') staticPlayingCountChangedCallback(this, staticPlayingCount);
+      if(typeof staticMusicWaveStopCallback == 'function') staticMusicWaveStopCallback(this);
     }
   }
 
