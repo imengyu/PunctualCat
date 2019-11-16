@@ -48,7 +48,7 @@ export default class AudioWave extends Vue {
     this.canvas.height = window.innerHeight;
     this.oW = this.canvas.width;
     this.oH = this.canvas.height;
-    this.color = this.ctx.createLinearGradient(this.oW / 2, 0, this.oW / 2, this.oH);
+    this.color = this.ctx.createLinearGradient(this.oW / 2, 20, this.oW / 2, this.oH);
     this.color.addColorStop(0, '#cc005f');
     this.color.addColorStop(.5, '#5800cc');
     this.color.addColorStop(1, '#0066ff');
@@ -70,15 +70,22 @@ export default class AudioWave extends Vue {
       var step = Math.round(this.voiceHeight.length / this.count);
       var space = 2;
       var width = this.oW / 2 / this.count - space;
+      var height = 3;
       
       this.ctx.clearRect(0, 0, this.oW, this.oH);
       
       for (var i = 0; i < this.count; i++) {
-        var audioHeight = this.voiceHeight[step * i];
-        this.ctx.fillStyle = this.color;  // 绘制向上的线条
-        this.ctx.fillRect(this.oW / 2 + (i * (width + space)), this.oH, width, -(audioHeight*2));
-        this.ctx.fillRect(this.oW / 2 - (i * (width + space)), this.oH, width, -(audioHeight*2));
+        var audioHeight = (this.voiceHeight[step * i] / 30) * 50;
+        var audioTop = this.oH - audioHeight;
+
+        this.ctx.fillStyle = this.color;
+
+        for(var j = this.oH; j > height && j > audioTop; j -= height + space)
+          this.ctx.fillRect(this.oW / 2 + (i * (width + space)), j, width, height);
+        for(var j = this.oH; j > height && j > audioTop; j -= height + space)
+          this.ctx.fillRect(this.oW / 2 - (i * (width + space)), j, width, height);
       }
+
       window.requestAnimationFrame(this.draw);
     }else this.clear();
   }

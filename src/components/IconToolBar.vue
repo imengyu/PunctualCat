@@ -85,7 +85,8 @@ export default class IconToolBar extends Vue {
     .tooltip {
       white-space: nowrap;
       transition: all ease-in-out .2s;
-      color: #c0c0c0;
+      color: #333;
+      text-shadow: 0px 1px 10px #fff;
       font-size: 12px;
       line-height: 13px;
       text-align: center;
@@ -100,10 +101,10 @@ export default class IconToolBar extends Vue {
 
       cursor: default;
 
+      .tooltip,
       .iconfont {
         color: #007dc5;
       }
-
     }
     &:hover {
 
@@ -119,6 +120,7 @@ export default class IconToolBar extends Vue {
       .tooltip {
         opacity: 1;
       }
+      .tooltip,
       .iconfont {
         color: #007dc5;
       }

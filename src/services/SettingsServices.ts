@@ -40,7 +40,7 @@ class SettingsServices extends EventEmitter {
     },
     player: {
       enableFade: true,
-      enableWave: true,
+      enableWave: false,
       volume: 0.5,
       maxPlayingMusic: 6,
     }

@@ -254,8 +254,8 @@
         </table-item>
       </table-list>
       <div class="bottom-right-area">
-        <a v-if="currentShowTable" type="text" title="设置计划表属性" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
-        <a v-if="currentShowTable" type="text" title="向计划表添加一个任务" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
+        <a v-if="currentShowTable" type="text" class="icon" title="设置计划表属性" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
+        <a v-if="currentShowTable" type="text" class="icon" title="向计划表添加一个任务" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
       </div>
     </div>
 
@@ -726,20 +726,31 @@ export default class TableView extends Vue {
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  height: 50px;
-  padding-right: 15px;
+  padding: 10px;
 
   a {
     color: #000;
-    font-size: 20px;
+    font-size: 16px;
     margin-right: 15px;
+    padding: 7px;
+    border-radius: 50%;
+   
+    text-align: center;
+
+    &.icon {
+      font-weight: bold;
+      padding: 7px 7px 6px 7px;
+      margin-right: 5px;
+    }
 
     &:hover {
+      background-color: white;
+      box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.08);
       color: #0078c9;
     }
 
     i {
-      font-size: 22px;
+      font-size: 16px;
     }
   }
 }
@@ -910,7 +921,7 @@ export default class TableView extends Vue {
   transition: color,background-color,box-shadow ease-in-out .15s;
   white-space: nowrap;
 
-  &:hover:not(.add) {
+  &:hover {
     background-color: white;
     box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.08);
   }
@@ -932,7 +943,7 @@ export default class TableView extends Vue {
     }
 
     i {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
     }
   }

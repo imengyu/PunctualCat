@@ -1,8 +1,8 @@
 <template>
-  <div class="main-area settings-area overflow-visible">
-    <div class="main-container shadow-none overflow-visible" style="padding: 30px;padding-right: 0;">
-      <div class="left-fix-layer"></div>
-      <div class="shadow-fix-layer"></div>
+  <div class="main-area settings-area">
+    <div class="main-container" style="padding: 30px;padding-right: 0;">
+      <!--shadow-none<div class="left-fix-layer"></div>
+      <div class="shadow-fix-layer"></div>-->
       <el-tabs v-if="appSettingsBackup" tab-position="left" v-model="currentPage">
         <el-tab-pane name="global">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-shezhi"></i>全局设置</span>
@@ -730,6 +730,10 @@ export default class SettingsView extends Vue {
     height: 36px;
     line-height: 36px;
     font-size: 16px;
+  }
+  .el-form-item__label {
+    line-height: 20px;
+    padding-top: 10px;
   }
 }
 </style>
