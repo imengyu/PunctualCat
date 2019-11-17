@@ -1,17 +1,17 @@
 <template>
   <div class="main-area table-area overflow-visible">
-    <div class="main-container">
-      <div v-if="currentShowTable">
+    <div class="main-container" v-loading="currentDeleteingTask">
+      <div v-if="currentShowTable && (!currentShowTable.tasks || currentShowTable.tasks.length == 0)" class="table-none">
+        <img src="../assets/images/empty-s.svg" />
+        <span>这个计划表还没有任务哦</span>
+        <el-button class="mt-3" type="primary" @click="addTask(currentShowTable)" round>添加任务</el-button>
+      </div>
+      <div v-else-if="currentShowTable">
         <el-table
           class="table-tasks"
           :data="currentShowTable.tasks"
           :row-class-name="getTaskClassStyle"
           border>
-          <div slot="empty" class="task-none">
-            <img src="../assets/images/empty-s.svg" />
-            <span>这个计划表还没有任务哦</span>
-            <el-button class="mt-3" type="primary" @click="addTask(currentShowTable)" round>添加任务</el-button>
-          </div>
           <el-table-column
             prop="name"
             label="任务名称"
@@ -387,6 +387,7 @@ export default class TableView extends Vue {
   currentIsEditTask = false;
   currentEditTask = null;
   currentEditTaskBackUp = null;
+  currentDeleteingTask = false;
 
   menuTable : Electron.Menu = null;
 
@@ -402,7 +403,7 @@ export default class TableView extends Vue {
   };
 
   mounted() {
-    this.tables = this.tableService.getData();
+    this.tables = this.tableService.tables;
     this.createMenu();
     PlayTask.setGlobalStateChangedCallback(this.globalTaskStateChanged);
     setTimeout(this.autoSwitchCurrentView, 1300);
@@ -448,7 +449,7 @@ export default class TableView extends Vue {
       }
       this.tableService.delTable(table);
       this.autoPlayService.flush();
-      this.$message({ type: 'success', message: '删除计划表成功!' });
+      this.$message({ type: 'success', message: '计划表已删除!' });
     }).catch(() => {});
   } 
   enableTable(table : PlayTable, enable : boolean) {
@@ -460,7 +461,7 @@ export default class TableView extends Vue {
     }).then(() => {
       table.enabled = enable;
       this.autoPlayService.flushTable(table);
-      this.$message({ type: 'success', message: (enable ? '启用' : '禁用') + '计划表成功!' });
+      this.$message({ type: 'success', message: '计划表已' + (enable ? '启用' : '禁用') + '!' });
     }).catch(() => {});
   } 
   editTable(table : PlayTable) {
@@ -595,10 +596,18 @@ export default class TableView extends Vue {
       roundButton: true,
       type: 'warning'
     }).then(() => {
-      task.parent.delTask(task);
-      this.autoPlayService.flushTable(task.parent);
-      this.$message({ type: 'success', message: '删除任务成功!' });
-    }).catch(() => {});
+      let table = task.parent
+      table.delTask(task);
+      this.autoPlayService.flushTable(table);
+      this.$message({ type: 'success', message: '任务已删除!' });
+      if(table == this.currentShowTable) {
+        this.currentDeleteingTask = true;
+        this.currentShowTable = null;
+        setTimeout(() => {this.currentShowTable = table; this.currentDeleteingTask = false }, 200)
+      }
+    }).catch((e) => {
+      console.log(e);
+    });
   }
   enableTask(task : PlayTask, enable : boolean) {
     task.enabled = enable;
@@ -991,7 +1000,7 @@ export default class TableView extends Vue {
   svg {
 
   }
-  span {
+  > span {
     margin: 20px 0 35px 0;
     color: #aaa;
   }

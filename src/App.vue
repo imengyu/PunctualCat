@@ -472,10 +472,12 @@ export default class App extends Vue {
   }
   initWindowTime() {
     this.switchTimeRun(true);
-    this.currentWindow.on('hide', () => this.switchTimeRun(false));
-    this.currentWindow.on('minimize', () => this.switchTimeRun(false));
-    this.currentWindow.on('restore', () => this.switchTimeRun(true));
-    this.currentWindow.on('show', () => this.switchTimeRun(true));
+    this.currentWindow.webContents.addListener('devtools-reload-page', this.onDevToolsReloadPage);
+    this.currentWindow.addListener('hide', this.onWindowDeactive);
+    this.currentWindow.addListener('minimize', this.onWindowDeactive);
+    this.currentWindow.addListener('restore', this.onWindowActive);
+    this.currentWindow.addListener('show', this.onWindowActive);
+    this.currentWindow.addListener('focus', this.clearAutoLockCount);
   }
   
   initCoreServices() {
@@ -489,6 +491,15 @@ export default class App extends Vue {
     this.autoPlayService.on('daychange', this.onDayChange);
 
     SettingsServices.on('update', this.onSettingsUpdate);
+  }
+
+  uninitWindowTime() {
+    this.currentWindow.webContents.removeListener('devtools-reload-page', this.onDevToolsReloadPage);
+    this.currentWindow.removeListener('focus', this.clearAutoLockCount);
+    this.currentWindow.removeListener('hide', this.onWindowDeactive);
+    this.currentWindow.removeListener('minimize', this.onWindowDeactive);
+    this.currentWindow.removeListener('restore', this.onWindowActive);
+    this.currentWindow.removeListener('show', this.onWindowActive);
   }
   uninit() : Promise<any> {
     clearInterval(this.lockAutoTimer);
@@ -614,7 +625,9 @@ export default class App extends Vue {
     });
 
   }
-
+  onWindowActive() { this.switchTimeRun(true) }
+  onWindowDeactive() { this.switchTimeRun(false) }
+  onDevToolsReloadPage() { this.uninitWindowTime() }
 
   //** 界面控制
 
@@ -721,7 +734,6 @@ export default class App extends Vue {
 
   initAutoLockTimer() {
     this.clearAutoLockCount();
-    this.currentWindow.on('focus', () => this.clearAutoLockCount());
     window.addEventListener('click', () => this.clearAutoLockCount());
     window.addEventListener('keydown', () => this.clearAutoLockCount());
     this.lockAutoTimer = setInterval(this.autoLockTimerTick, 60000);

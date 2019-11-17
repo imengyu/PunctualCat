@@ -503,3 +503,35 @@
 
   }
 }
+
+.common-a-button {
+  display: inline-block;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #000;
+
+  &.big {
+    padding: 6px 8px;
+    font-size: 20px;
+  }
+  &.small {
+    padding: 5px;
+    font-size: 16px;
+  }
+  &.mini {
+    padding: 2px;
+    font-size: 14px;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: rgba(0, 0, 0, 0.06);
+  }
+  &:disabled,&.disabled {
+    color: #888;
+    cursor: default;
+  }
+
+  &+& {
+    margin-left: 2px;
+  }
+}

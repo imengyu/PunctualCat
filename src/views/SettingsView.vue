@@ -20,8 +20,7 @@
               <el-button size="mini" type="info" @click="switchAutoStart(false)" round>取消开机启动</el-button>
               <br>
               <span class="text-secondary el-form-span"><i class="fa fa-exclamation-triangle mr-2" style="color: #db9411"></i> 某些安全软件可能会禁止开机启动，请您手动允许。</span>
-            </el-form-item>
-            
+            </el-form-item>        
             <el-form-item label="本软件长时间无操作时自动隐藏">
               <el-switch v-model="appSettingsBackup.system.autoHide" style="margin: 10px 0;"></el-switch><br>
               <el-input-number v-model="appSettingsBackup.system.autoHideMinute" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="60"></el-input-number>
@@ -47,6 +46,7 @@
           <el-form :model="appSettingsBackup" label-width="140px">
             <el-form-item label="开启音乐播放淡出淡入">
               <el-switch v-model="appSettingsBackup.player.enableFade" style="margin: 10px 0;"></el-switch><br>
+              淡出淡入时长(毫秒) ： <el-input-number v-model="appSettingsBackup.player.fadeMs" size="mini" controls-position="right" :min="1000" :max="5000"></el-input-number>
             </el-form-item>
             <el-form-item label="开启音乐播放频谱">
               <el-switch v-model="appSettingsBackup.player.enableWave" style="margin: 10px 0;"></el-switch><br>

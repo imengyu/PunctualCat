@@ -2,7 +2,6 @@ import { getFileName } from '../utils/FileUtils'
 import SettingsServices from "../services/SettingsServices";
 import CommonUtils from "../utils/CommonUtils";
 import { EventEmitter } from "events";
-import { SSL_OP_SSLEAY_080_CLIENT_DH_BUG } from 'constants';
 
 let staticPlayingCount = 0;
 let staticPlayingCountChangedCallback : (music : MusicItem, count : number) => void = null;
@@ -88,8 +87,10 @@ export class MusicItem extends EventEmitter {
   private doFadeOut(callback : () => void) {
     if(SettingsServices.getSettingBoolean('player.enableFade') && this.status == 'playing'){
 
+      let fadeMs = SettingsServices.getSettingNumber('player.fadeMs');
+      let timeStep = fadeMs / 40.0;
       let endVolume = SettingsServices.getSettingNumber('player.volume') * this.volume;
-      let volumeStep = (endVolume - 0.01) / 25.0;
+      let volumeStep = (endVolume - 0.01) / timeStep;
 
       if(this.audioFading) 
         clearInterval(this.audioFadeInterval);
@@ -109,8 +110,10 @@ export class MusicItem extends EventEmitter {
   private doFadeIn(callback : () => void) {
     if(SettingsServices.getSettingBoolean('player.enableFade') && this.audio.currentTime > 0){
   
+      let fadeMs = SettingsServices.getSettingNumber('player.fadeMs');
+      let timeStep = fadeMs / 40.0;
       let endVolume = SettingsServices.getSettingNumber('player.volume') * this.volume;
-      let volumeStep = (endVolume - 0.01) / 25.0;
+      let volumeStep = (endVolume - 0.01) / timeStep;
 
       this.audio.volume = 0.01;
       if(this.audioFading) 

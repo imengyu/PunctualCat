@@ -93,6 +93,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public typeBackup: PlayTaskType;
   public musicsBackup : Array<MusicItem>;
   public commandsBackup : Array<string>;
+  private lockedByDestroy = false;
 
   public volume = 100;
   public timeLimit = {
@@ -129,6 +130,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public destroy() {
 
   }
+  public destroyLock() { this.lockedByDestroy = true; }
 
   private runCommands() {
     GlobalWorker.executeGlobalAction('runcommands', this.commands)
@@ -189,12 +191,14 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     this.switchStatus(success ? 'played' : 'error');
   }
   private switchStatus(status : AutoPlayStatus) {
-    this.status = status;
-    this.emit('statuschanged', status);
-    this.emitGlobalStatusChanged(status);
+    if(!this.lockedByDestroy) {
+      this.status = status;
+      this.emit('statuschanged', status);
+      this.emitGlobalStatusChanged(status);
+    }
   }
   private emitGlobalStatusChanged(status : AutoPlayStatus) {
-    if(typeof PlayTask.globalStateChangedCallback == 'function')
+    if(!this.lockedByDestroy && typeof PlayTask.globalStateChangedCallback == 'function')
       PlayTask.globalStateChangedCallback(this, status)
   }
 

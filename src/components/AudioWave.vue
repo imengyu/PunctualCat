@@ -5,6 +5,8 @@
 <script lang="ts">
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import { MusicItem } from '../model/MusicItem';
+import { setTimeout } from 'timers';
+import staticSettingsServices from '../services/SettingsServices';
 
 @Component
 export default class AudioWave extends Vue {
@@ -18,6 +20,7 @@ export default class AudioWave extends Vue {
   color : CanvasGradient;
   oW = 0;
   oH = 0;
+  stopDrawStarted : boolean = false;
 
   currentMusic : MusicItem = null;
   running = false;
@@ -27,9 +30,16 @@ export default class AudioWave extends Vue {
   }
 
   public stopDrawMusic() { 
-    this.running = false; 
-    this.currentMusic = null;
-    this.clear();
+    if(!this.stopDrawStarted) {
+      this.stopDrawStarted = true;
+      let fadeMs = staticSettingsServices.getSettingNumber('player.fadeMs');
+      setTimeout(() => {
+        this.running = false; 
+        this.currentMusic = null;
+        this.clear();
+        this.stopDrawStarted = false;
+      }, fadeMs);
+    }
   }
   public startDrawMusic(music : MusicItem) {
 
@@ -73,17 +83,28 @@ export default class AudioWave extends Vue {
       var height = 3;
       
       this.ctx.clearRect(0, 0, this.oW, this.oH);
-      
+
+      //
+      //background-color: rgb(40, 150, 252);
+      //background-color: rgb(230, 0, 180);
+      //                      +190 -150 -137
+
       for (var i = 0; i < this.count; i++) {
-        var audioHeight = (this.voiceHeight[step * i] / 30) * 50;
+        var audioPec = (this.voiceHeight[step * i] / 100);
+        var audioPec2 = audioPec * 0.26;
+        var audioHeight = audioPec * 160;
         var audioTop = this.oH - audioHeight;
 
-        this.ctx.fillStyle = this.color;
+        //this.ctx.fillStyle = 'rgb('+(200-audioPec*50)+','+(200-audioPec*150)+','+(200-audioPec*252)+')';
+        this.ctx.fillStyle = 'rgb('+(audioPec*50)+','+(audioPec*150)+','+(audioPec*252)+')';
 
-        for(var j = this.oH; j > height && j > audioTop; j -= height + space)
-          this.ctx.fillRect(this.oW / 2 + (i * (width + space)), j, width, height);
-        for(var j = this.oH; j > height && j > audioTop; j -= height + space)
-          this.ctx.fillRect(this.oW / 2 - (i * (width + space)), j, width, height);
+        this.ctx.fillRect(this.oW / 2 + (i * (width + space)), this.oH, width, -audioHeight);
+        this.ctx.fillRect(this.oW / 2 - (i * (width + space)), this.oH, width, -audioHeight);
+
+        //for(var j = this.oH; j > height && j > audioTop; j -= height + space)
+        //  this.ctx.fillRect(this.oW / 2 + (i * (width + space)), j, width, height);
+        //for(var j = this.oH; j > height && j > audioTop; j -= height + space)
+        //  this.ctx.fillRect(this.oW / 2 - (i * (width + space)), j, width, height);
       }
 
       window.requestAnimationFrame(this.draw);

@@ -9,8 +9,10 @@ export type PlayConditionActuatorType = 'unknow'|'time'|'date'|'week'|'week-rang
 
 export type PlayConditionActuatorLogicType = 'and'|'or'|'unknow'
 
+export type PlayConditionType = 'time-point'|'day-point'|'time-range'|'day-range'|'any'
+
 export let regDate = new RegExp(/^(((\d{4}|每|\*)年)*(\d{1,2}|每|\*)月(\d{1,2}|每|\*)日)$|^((\d{2,4}(-|\/|\\))*(\d{1,2}|\*)(-|\/|\\)(\d{1,2}|\*))$/);//✔
-export let regTime = new RegExp(/^([0-1]?[0-9]|2[0-3]|\*):([0-5][0-9]):([0-5][0-9])$|^(([0-1]?[0-9]|2[0-3]|\*):([0-5][0-9]))(?!:)$/); //✔
+export let regTime = new RegExp(/^([0-1]?[0-9]|2[0-3]|\*)(:|：)([0-5][0-9]):([0-5][0-9])$|^(([0-1]?[0-9]|2[0-3]|\*)(:|：)([0-5][0-9]))(?!(:|：))$/); //✔
 export let regWeek = new RegExp(/^(周(一|二|三|四|五|六|日|[0-6]))$|^(星期(一|二|三|四|五|六|日))$/); //✔
 
 /**
@@ -43,7 +45,7 @@ export class PlayConditionActuator implements AutoPlayable {
   public static tryConvertConStrToActuator(conStr : string, fullConStr : string, thisConStartIndex : number) : PlayConditionActuator {
     let newActyator : PlayConditionActuator = null;
     let conStrFix = conStr.trim();
-    if(conStrFix.startsWith('(') && conStrFix.endsWith(')')){
+    if((conStrFix.startsWith('(') && conStrFix.endsWith(')')) || (conStrFix.startsWith('（') && conStrFix.endsWith('）'))){
       //Loop for group (xxx)
       newActyator = new PlayConditionActuator('group');
       let conStrArr = newActyator.splitContStrToArr(conStrFix.substr(1, conStrFix.length - 2));
@@ -65,18 +67,19 @@ export class PlayConditionActuator implements AutoPlayable {
           }
       };
 
-      fixLogicAndTrim(['与', '且', '和', '并且'], () => newActyator.logicType = 'and');
-      fixLogicAndTrim(['或', '或者'], () => newActyator.logicType = 'or');
-      fixLogicAndTrim(['非', '不是'], () => newActyator.logicNot = true);
+      fixLogicAndTrim(['与', '且', '和', '并且', 'and', '&&'], () => newActyator.logicType = 'and');
+      fixLogicAndTrim(['或', '或者', 'or', '||'], () => newActyator.logicType = 'or');
+      fixLogicAndTrim(['非', '不是', '!'], () => newActyator.logicNot = true);
 
       //Base    
-      if(conStrFix.contains('至')){
-        
-        let conStrFixSplited = conStrFix.split('至');
-        if(conStrFixSplited.length < 2) newActyator.throwErrWithPosition('语法错误：未知的“至”', conStr, thisConStartIndex);
+      let conStrFixSplited = null;
+      if(conStrFix.contains('至')) conStrFixSplited = conStrFix.split('至');
+      else if(conStrFix.contains(' - ')) conStrFixSplited = conStrFix.split(' - ');
+
+      if(conStrFixSplited != null){
+        if(conStrFixSplited.length < 2) newActyator.throwErrWithPosition('语法错误：未知的 至 分隔符', conStr, thisConStartIndex);
         newActyator.solveValuesRange(conStrFix, conStrFixSplited[0].trim(), conStrFixSplited[1].trim(), fullConStr, conStr.indexOf(conStrFixSplited[0]));
-      }else
-        newActyator.solveValuesSimple(conStrFix, fullConStr, conStr.indexOf(conStrFix)); 
+      }else newActyator.solveValuesSimple(conStrFix, fullConStr, conStr.indexOf(conStrFix)); 
     }
     return newActyator;
   }
@@ -146,8 +149,13 @@ export class PlayConditionActuator implements AutoPlayable {
       else if(conStrEnd.contains('*') || conStrEnd.contains('每')) 
         this.throwErrWithPosition('条件错误：不允许在时间范围中使用泛时间', conStrEnd, fullConStr.indexOf(conStrEnd));
 
-      let timeConArrStart = conStrStart.split(':');
-      let timeConArrEnd = conStrEnd.split(':');
+      let timeConArrStart = null;
+      let timeConArrEnd = null;
+      if(conStrStart.contains(':')) timeConArrStart = conStrStart.split(':');
+      else if(conStrStart.contains('：')) timeConArrStart = conStrStart.split('：');
+      if(conStrEnd.contains(':')) timeConArrEnd = conStrEnd.split(':');
+      else if(conStrEnd.contains('：')) timeConArrEnd = conStrEnd.split('：');
+
       timeConArrStart = CommonUtils.deleteSpaceInStringArray(timeConArrStart);
       timeConArrEnd = CommonUtils.deleteSpaceInStringArray(timeConArrEnd);
       if(timeConArrStart.length < 2) 
@@ -196,7 +204,9 @@ export class PlayConditionActuator implements AutoPlayable {
     } else if(regTime.test(conStrFix)) {
       this.type = 'time';
 
-      let timeConArr = conStrFix.split(':');
+      let timeConArr = null;
+      if(conStrFix.contains(':')) timeConArr = conStrFix.split(':');
+      else if(conStrFix.contains('：')) timeConArr = conStrFix.split('：');
       timeConArr = CommonUtils.deleteSpaceInStringArray(timeConArr);
       if(timeConArr.length < 2) 
         this.throwErrWithPosition('语法错误', conStrFix, fullConStr.indexOf(conStrFix));
@@ -254,6 +264,7 @@ export class PlayConditionActuator implements AutoPlayable {
   public logicNot = false;
   public childList : Array<PlayConditionActuator> = [];
   public parent : PlayConditionActuator = null;
+  public allowType : PlayConditionType = 'any';
 
   public timeValue = {
     hours: 0,
@@ -299,6 +310,44 @@ export class PlayConditionActuator implements AutoPlayable {
     return (this.logicNot ? '!' : '') + (this.logicType == 'and' ? '&&' : (this.logicType == 'or' ? '||' : ''));
   }
 
+  public setConditionAllowType(type : PlayConditionType){
+
+  }
+  public getConditionSummaryType() : PlayConditionType {
+    switch(this.type) {
+      case 'date':  return 'day-point';
+      case 'date-range':  return 'day-range'
+      case 'group': {
+        let resultType : PlayConditionType = 'any', i = 0, baseUint = '', baseType = '';
+        for(; i < this.childList.length; i++) {
+          let childType = this.childList[i].getConditionSummaryType();
+          if(childType == 'time-point')
+            return 'time-point';
+          if(childType == 'day-point') {
+            if(baseUint != 'time') baseUint = 'day';
+            if(baseType != 'range') baseType = 'point';
+          }
+          else if(childType == 'day-range') {
+            if(baseUint != 'time') baseUint = 'day';
+            baseType = 'range';
+          }
+          else if(childType == 'time-range') {
+            baseUint = 'time';
+            baseType = 'range';
+          }
+        }
+        if(baseUint == 'time' && baseType == 'range') resultType = 'time-range';
+        else if(baseUint == 'day' && baseType == 'range') resultType = 'day-range';
+        else if(baseUint == 'day' && baseType == 'point') resultType = 'day-point';
+        return resultType;
+      }
+      case 'time-range': return 'time-range'
+      case 'time': return 'time-point'
+      case 'week': return 'day-point'
+      case 'week-range': 'day-range'
+    }
+    return 'any';
+  }
   public isEmpty() {
     return this.childList.length == 0
   }
@@ -522,7 +571,13 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
   public tempBvar1 = false;
   public tempBvar2 = false;
 
-  /**
+  public setConditionAllowType(type : PlayConditionType) {
+    if(!CommonUtils.isNullObject(this.conList)) this.conList.setConditionAllowType(type);
+  }
+  public getConditionType()  : PlayConditionType {
+    return CommonUtils.isNullObject(this.conList) ? 'any' : this.conList.getConditionSummaryType();
+  }
+  /** 
    * 转换 条件的格式化字符串 为执行体数组，此方法会清空原有的数组
    * @param conStr 条件的格式化字符串
    */

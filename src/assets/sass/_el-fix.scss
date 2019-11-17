@@ -200,3 +200,8 @@
 .el-form-item__label {
   line-height: 20px;
 }
+.el-select.round {
+  input {
+    border-radius: 30px;
+  }
+}

@@ -15,6 +15,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
       name: this.name,
       note: this.note,
       color: this.color,
+      enabled: this.enabled,
       condition: this.condition.saveToJSONObject(),
       tasks: [],
     }, i = 0;
@@ -27,6 +28,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
     this.name = obj.name;
     this.note = obj.note;
     this.color = obj.color;
+    this.enabled = obj.enabled;
     for(var i = 0; i < obj.tasks.length; i++){
       let newTask = new PlayTask();
       newTask.loadFromJsonObject(obj.tasks[i]);
@@ -74,6 +76,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   }
   public delTask(task : PlayTask) {
     task.parent = null;
+    task.destroyLock();
     if(task.status == 'playing') task.stop();
     task.destroy();
     this.tasks.remove(task);

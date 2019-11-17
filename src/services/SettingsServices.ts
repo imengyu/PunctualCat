@@ -41,7 +41,9 @@ class SettingsServices extends EventEmitter {
     player: {
       enableFade: true,
       enableWave: false,
+      fadeMs: 1000,
       volume: 0.5,
+      readAloudVolume: 100,
       maxPlayingMusic: 6,
     }
   };
@@ -76,6 +78,7 @@ class SettingsServices extends EventEmitter {
         this.staticSettings = value;
         CommonUtils.cloneValueIfUndefined(this.staticSettings, this.staticSettingsTemplate);
         //Prealloc
+        this.emit('afteroad');
         let arr = this.staticSettings.auto.muteTimes; this.staticSettings.auto.muteTimes = [];
         arr.forEach(element => this.staticSettings.auto.muteTimes.push(new PlayCondition(null, element)));
       }
@@ -90,6 +93,7 @@ class SettingsServices extends EventEmitter {
    */
   public saveSettings() : Promise<any> {
     //Prealloc
+    this.emit('beforesave');
     let arr : Array<PlayCondition> = this.staticSettings.auto.muteTimes; this.staticSettings.auto.muteTimes = [];
     for(var i=0;i<arr.length;i++)this.staticSettings.auto.muteTimes.push(arr[i].saveToJSONObject());
     //Save
