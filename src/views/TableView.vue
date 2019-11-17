@@ -57,7 +57,7 @@
                 v-if="scope.row.editing"
                 placement="top"
                 trigger="manual"
-                width="400"
+                width="500"
                 popper-class="propever-commands"
                 v-model="scope.row.editingTask">
                 <el-radio-group v-model="scope.row.type" size="mini">
@@ -67,13 +67,19 @@
                   <el-radio-button label="shutdown">关闭电脑</el-radio-button>
                 </el-radio-group>
                 <div v-if="scope.row.type=='music'" class="propever-taskarea">
-                  <div class="text-secondary">任务将会按您设置的音乐顺序播放</div>
+                  <div class="text-secondary">设置当前任务的最大播放时长，超过这个时间以后此任务将会自动停止</div>
+                  <div class="mt-2 mb-2">
+                    <el-input-number v-model="scope.row.timeLimit.hours" class="mini-fix" size="mini" controls-position="right" :min="0" :max="23"></el-input-number> : 
+                    <el-input-number v-model="scope.row.timeLimit.minute" class="mini-fix" size="mini" controls-position="right" :min="0" :max="59"></el-input-number> : 
+                    <el-input-number v-model="scope.row.timeLimit.second" class="mini-fix" size="mini" controls-position="right" :min="0" :max="59"></el-input-number>
+                  </div>
+                  <div class="text-secondary">设置当前任务的音乐，音乐将会按您设置的顺序播放</div>
                   <command-list v-if="scope.row.musics && scope.row.musics.length > 0" lockAxis="y" axis="y" v-model="scope.row.musics">
                     <command-item v-for="(music, index) in scope.row.musics" :index="index" :key="index">
                       <div class="updown-drag">
                         <svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="12" height="12"><path d="M814.17307 634.253637H163.708909c-32.045196 0-51.26956 20.829002-35.246962 36.846594C152.491463 696.734385 439.276067 996.332311 453.694027 1010.75653c17.622229 19.224364 56.075964 16.017591 72.093556 0C537.003777 999.540336 831.796551 688.726215 849.421284 671.100231c16.021346-17.620978-4.805152-35.248214-35.248214-36.846594zM163.708909 390.726669H814.17307c30.44181 0 51.26956-19.225616 35.248214-36.846594C831.796551 336.254091 537.003777 25.439971 524.189203 12.625397c-14.419212-16.022598-52.872946-17.627236-72.098562 0C439.276067 28.646743 152.491463 328.245921 128.461947 353.880075c-16.022598 16.022598 3.201766 36.846593 35.246962 36.846594z m0 0" fill="#fff"></path></svg>
                       </div>
-                      <el-input style="display: inline-block;width: calc(100% - 100px);" size="mini" v-model="scope.row.musics[index].fullPath" :readonly="true"></el-input>
+                      <el-input style="display: inline-block;width: calc(100% - 200px);" size="mini" v-model="scope.row.musics[index].music.fullPath" :readonly="true"></el-input>
                       <el-popover
                         placement="top"
                         width="150"
@@ -85,7 +91,7 @@
                         <el-button size="mini" type="text" class="display-block m-0"
                           @click="scope.row.chooseMusic2=false;chooseTaskMusic(scope.row,'history',index)">从音乐库中选择</el-button>
                         <el-button size="mini" type="text" class="display-block m-0" @click="scope.row.chooseMusic2=false;">取消</el-button>
-                        <el-button slot="reference" type="primary" size="mini" icon="el-icon-refresh-right" title="更换音乐" circle></el-button>
+                        <el-button slot="reference" type="primary" class="ml-1" size="mini" icon="el-icon-refresh-right" title="更换音乐" circle></el-button>
                       </el-popover>
                       <el-popover
                         placement="top"
@@ -97,7 +103,39 @@
                           <el-button size="mini" type="text" @click="scope.row.chooseMusic3=false">取消</el-button>
                           <el-button type="primary" size="mini" @click="scope.row.chooseMusic3=false;scope.row.musics.remove(index)">确定</el-button>
                         </div>
-                        <el-button slot="reference" type="danger" size="mini" icon="el-icon-close" title="删除此音乐" circle></el-button>
+                        <el-button slot="reference" type="danger" class="ml-1" size="mini" icon="el-icon-close" title="删除此音乐" circle></el-button>
+                      </el-popover>
+                      <el-popover
+                        placement="top"
+                        width="220"
+                        trigger="click"
+                        v-model="scope.row.chooseMusic4">
+                        <p class="mt-0">设置音乐的起始播放时间。此时间不能超过音乐的长度，否则音乐不会播放</p>
+                        <div class="mb-2">
+                          <el-input-number v-model="scope.row.musics[index].startPos.hour" class="mini-fix" size="mini" controls-position="right" :min="0" :max="23"></el-input-number> : 
+                          <el-input-number v-model="scope.row.musics[index].startPos.minute" class="mini-fix" size="mini" controls-position="right" :min="0" :max="59"></el-input-number> : 
+                          <el-input-number v-model="scope.row.musics[index].startPos.second" class="mini-fix" size="mini" controls-position="right" :min="0" :max="59"></el-input-number>
+                        </div>
+                        <div style="text-align: right; margin: 0">
+                          <el-button type="primary" size="mini" @click="scope.row.chooseMusic4=false">确定</el-button>
+                        </div>
+                        <el-button slot="reference" type="primary" class="ml-1" size="mini" title="设置音乐的起始播放时间" round>{{ scope.row.musics[index].startPos.getTimeString() }}</el-button>
+                      </el-popover>
+                      <el-popover
+                        placement="top"
+                        width="220"
+                        trigger="click"
+                        v-model="scope.row.chooseMusic5">
+                        <p class="mt-0">设置音乐的最大播放时长，超过这个时间以后此音乐将会自动停止</p>
+                        <div class="mb-2">
+                          <el-input-number v-model="scope.row.musics[index].maxLength.hour" class="mini-fix" size="mini" controls-position="right" :min="0" :max="23"></el-input-number> : 
+                          <el-input-number v-model="scope.row.musics[index].maxLength.minute" class="mini-fix" size="mini" controls-position="right" :min="0" :max="59"></el-input-number> : 
+                          <el-input-number v-model="scope.row.musics[index].maxLength.second" class="mini-fix" size="mini" controls-position="right" :min="0" :max="59"></el-input-number>
+                        </div>
+                        <div style="text-align: right; margin: 0">
+                          <el-button type="primary" size="mini" @click="scope.row.chooseMusic5=false">确定</el-button>
+                        </div>
+                        <el-button slot="reference" type="primary" class="ml-1" size="mini" title="设置音乐的最大播放时长" round>{{ scope.row.musics[index].maxLength.getTimeString() }}</el-button>
                       </el-popover>
                     </command-item>
                   </command-list>
@@ -307,6 +345,7 @@ import { ContainerMixin, ElementMixin } from 'vue-slicksort';
 import { PlayTask } from "../model/PlayTask";
 import AutoPlayService from "../services/AutoPlayService";
 import { AutoPlayStatus } from "../model/PlayInterfaces";
+import { MusicTask } from "../model/MusicItem";
 
 const electron = require('electron');
 const remote = electron.remote;
@@ -659,8 +698,8 @@ export default class TableView extends Vue {
   }
   chooseTaskMusic(task : PlayTask, type : 'file'|'history', index : number) { 
     this.app.chooseOneMusicAndCallback(type, (music) => {
-      if(index == -1) task.musics.push(music);
-      else task.musics[index] = music
+      if(index == -1) task.musics.push(new MusicTask(music));
+      else task.musics[index].music = music
     });
   }
 
@@ -696,15 +735,9 @@ export default class TableView extends Vue {
 @import "../assets/sass/_scroll";
 
 .table-area {
-
   .main-container {
     padding: 30px;
   }
-
-  .bottom-area {
-
-  }
-  
 }
 
 .table-cursor {
@@ -970,7 +1003,7 @@ export default class TableView extends Vue {
     vertical-align: bottom;
 
     &[data-status='unknow']{
-      background-color: #b7b7b7;
+      background-color: #e6e6e6;
     }
     &[data-status='normal']{
       background-color: #c3d8ca;
@@ -979,7 +1012,7 @@ export default class TableView extends Vue {
       background-color: #1da546;
     }
     &[data-status='disabled']{
-      background-color: rgba(226, 63, 13, 0.588);
+      background-color: rgba(202, 202, 202, 0.588);
     }
   }
 
@@ -998,7 +1031,7 @@ export default class TableView extends Vue {
   text-align: center;
 
   svg {
-
+    max-width: 160px;
   }
   > span {
     margin: 20px 0 35px 0;
@@ -1101,7 +1134,12 @@ export default class TableView extends Vue {
       border: none;
     }
   }
+
+  .el-button--mini.is-round {
+    padding: 7px;
+  }
 }
+
 
 
 .no-warp-span-full {

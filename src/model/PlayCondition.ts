@@ -11,6 +11,12 @@ export type PlayConditionActuatorLogicType = 'and'|'or'|'unknow'
 
 export type PlayConditionType = 'time-point'|'day-point'|'time-range'|'day-range'|'any'
 
+export type PlayConditionAllowType = {
+  intervalType: 'time'|'day'|'any',
+  timeType: 'range'|'point'|'any',
+  forceDisallowTypes: Array<PlayConditionType>
+}
+
 export let regDate = new RegExp(/^(((\d{4}|每|\*)年)*(\d{1,2}|每|\*)月(\d{1,2}|每|\*)日)$|^((\d{2,4}(-|\/|\\))*(\d{1,2}|\*)(-|\/|\\)(\d{1,2}|\*))$/);//✔
 export let regTime = new RegExp(/^([0-1]?[0-9]|2[0-3]|\*)(:|：)([0-5][0-9]):([0-5][0-9])$|^(([0-1]?[0-9]|2[0-3]|\*)(:|：)([0-5][0-9]))(?!(:|：))$/); //✔
 export let regWeek = new RegExp(/^(周(一|二|三|四|五|六|日|[0-6]))$|^(星期(一|二|三|四|五|六|日))$/); //✔
@@ -30,19 +36,24 @@ export class PlayConditionActuatorError extends Error {
   }
 }
 
+let anyPlayConditionAllowType : PlayConditionAllowType = {
+  intervalType: 'any',
+  timeType: 'any',
+  forceDisallowTypes: []
+}
+
 /**
  * 条件执行器
  */
 export class PlayConditionActuator implements AutoPlayable {
   
-
   private constructor(type : PlayConditionActuatorType) { this.type = type; }
 
   /**
    * 递归自动转换为执行体
    * @param conStr 已条件格式化字符串
    */
-  public static tryConvertConStrToActuator(conStr : string, fullConStr : string, thisConStartIndex : number) : PlayConditionActuator {
+  public static tryConvertConStrToActuator(conStr : string, allow : PlayConditionAllowType, fullConStr : string, thisConStartIndex : number) : PlayConditionActuator {
     let newActyator : PlayConditionActuator = null;
     let conStrFix = conStr.trim();
     if((conStrFix.startsWith('(') && conStrFix.endsWith(')')) || (conStrFix.startsWith('（') && conStrFix.endsWith('）'))){
@@ -50,7 +61,7 @@ export class PlayConditionActuator implements AutoPlayable {
       newActyator = new PlayConditionActuator('group');
       let conStrArr = newActyator.splitContStrToArr(conStrFix.substr(1, conStrFix.length - 2));
       for(let i = 0; i < conStrArr.length; i++){
-        let childActyator = PlayConditionActuator.tryConvertConStrToActuator(conStrArr[i], fullConStr, conStr.indexOf(conStrArr[i]))
+        let childActyator = PlayConditionActuator.tryConvertConStrToActuator(conStrArr[i], anyPlayConditionAllowType, fullConStr, conStr.indexOf(conStrArr[i]))
         childActyator.parent = newActyator;
         newActyator.childList.push(childActyator);
       }
@@ -80,6 +91,31 @@ export class PlayConditionActuator implements AutoPlayable {
         if(conStrFixSplited.length < 2) newActyator.throwErrWithPosition('语法错误：未知的 至 分隔符', conStr, thisConStartIndex);
         newActyator.solveValuesRange(conStrFix, conStrFixSplited[0].trim(), conStrFixSplited[1].trim(), fullConStr, conStr.indexOf(conStrFixSplited[0]));
       }else newActyator.solveValuesSimple(conStrFix, fullConStr, conStr.indexOf(conStrFix)); 
+    }
+    if(allow != anyPlayConditionAllowType) {
+      let finalType = newActyator.getConditionSummaryType();
+      if(allow.intervalType == 'day'){
+        if(finalType == 'time-point' || finalType == 'time-range')
+          newActyator.throwErrWithPosition('错误：这里要求使用非精确时间条件', conStr, thisConStartIndex);
+      }else if(allow.intervalType == 'time'){
+        if(finalType == 'time-point' || finalType == 'time-range')
+          newActyator.throwErrWithPosition('错误：这里要求使用精确时间条件', conStr, thisConStartIndex);
+      }
+      if(allow.timeType == 'point'){
+        if(finalType == 'day-range' || finalType == 'time-range')
+          newActyator.throwErrWithPosition('错误：这里要求使用区间作为条件', conStr, thisConStartIndex);
+      }else if(allow.timeType == 'range'){
+        if(finalType == 'day-point' || finalType == 'time-point')
+          newActyator.throwErrWithPosition('错误：这里要求使用时间点作为条件，不能使用区间', conStr, thisConStartIndex);
+      }
+      if(allow.forceDisallowTypes.length > 0) {
+        for(var i=0;i<allow.forceDisallowTypes.length;i++) {
+          if(finalType == allow.forceDisallowTypes[i]){
+            newActyator.throwErrWithPosition('错误：条件不符合要求，此条件不会被用于自动播放的判断', conStr, thisConStartIndex);
+            break;
+          }
+        }
+      }
     }
     return newActyator;
   }
@@ -264,7 +300,6 @@ export class PlayConditionActuator implements AutoPlayable {
   public logicNot = false;
   public childList : Array<PlayConditionActuator> = [];
   public parent : PlayConditionActuator = null;
-  public allowType : PlayConditionType = 'any';
 
   public timeValue = {
     hours: 0,
@@ -310,9 +345,6 @@ export class PlayConditionActuator implements AutoPlayable {
     return (this.logicNot ? '!' : '') + (this.logicType == 'and' ? '&&' : (this.logicType == 'or' ? '||' : ''));
   }
 
-  public setConditionAllowType(type : PlayConditionType){
-
-  }
   public getConditionSummaryType() : PlayConditionType {
     switch(this.type) {
       case 'date':  return 'day-point';
@@ -544,9 +576,13 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
 
 
   public saveToJSONObject(): object {
-    return { value: this.toConditionString() }
+    return { 
+      value: this.toConditionString() ,
+      allow: this.conAllowType
+    }
   }
   public loadFromJsonObject(json: any) {
+    if(json.allow) this.conAllowType = json.allow;
     this.toConditionList(json.value)
   } 
 
@@ -555,7 +591,8 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    * @param conStr 条件的格式化字符串
    * @param jsonObject JSON 对象
    */
-  public constructor(conStr: string, jsonObject?: any) {
+  public constructor(conStr: string, jsonObject?: any, conAllowType?: PlayConditionAllowType) {
+    if(conAllowType) this.conAllowType = conAllowType;
     if(conStr && conStr != '') this.toConditionList(conStr);
     else if(jsonObject) this.loadFromJsonObject(jsonObject);
   }
@@ -566,13 +603,17 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
   public conList : PlayConditionActuator = null;
   public conConvertStatus : 'unknow'|'success'|'failed' = 'unknow';
   public conConvertErr : PlayConditionActuatorError = null;
+  private conAllowType : PlayConditionAllowType = anyPlayConditionAllowType;
 
   /* 临时属性 */
   public tempBvar1 = false;
   public tempBvar2 = false;
 
-  public setConditionAllowType(type : PlayConditionType) {
-    if(!CommonUtils.isNullObject(this.conList)) this.conList.setConditionAllowType(type);
+  public setConditionAllowType(type : PlayConditionAllowType) {
+    this.conAllowType = type;
+  }
+  public getConditionAllowType() : PlayConditionAllowType {
+    return this.conAllowType;
   }
   public getConditionType()  : PlayConditionType {
     return CommonUtils.isNullObject(this.conList) ? 'any' : this.conList.getConditionSummaryType();
@@ -588,9 +629,9 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
     }
     try{
       let fixConStr = '';
-      if(conStr.startsWith('(') && conStr.endsWith(')')) fixConStr = conStr;
+      if(conStr.startsWith('(') && conStr.endsWith(')') || conStr.startsWith('（') && conStr.endsWith('）')) fixConStr = conStr;
       else fixConStr = '(' + conStr + ')'
-      this.conList = PlayConditionActuator.tryConvertConStrToActuator(fixConStr, fixConStr, 0);
+      this.conList = PlayConditionActuator.tryConvertConStrToActuator(fixConStr, this.conAllowType, fixConStr, 0);
       this.conConvertStatus = 'success';
       return true;
     }catch (err) {

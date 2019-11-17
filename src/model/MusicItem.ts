@@ -24,6 +24,45 @@ export function stopAllMusics() {
   });
 };
 
+export class MusicTask {
+
+  public music : MusicItem = null;
+  public startPos : MusicPos = new MusicPos();
+  public maxLength : MusicPos = new MusicPos();
+
+  public constructor(music : MusicItem, startPos = null, maxLength = null) {
+    this.music = music;
+    if(startPos) this.startPos = startPos;
+    if(maxLength) this.maxLength = maxLength;
+  }
+}
+
+export class MusicPos {
+
+  public hour = 0;
+  public minute = 0;
+  public second = 0;
+
+  public constructor(hour = 0, minute = 0, second = 0) {
+    if(hour) this.hour = hour;
+    if(minute) this.minute = minute;
+    if(second) this.second = second;
+    if(second >= 60) {
+      this.hour = Math.floor(second / 3600); second = second % 3600;
+      this.minute = Math.floor(second / 60); second = second % 60;
+      this.second = Math.floor(second % 60);
+    }
+  }
+
+  public getSec() {
+    return this.hour * 3600 + this.minute * 60 + this.second;
+  }
+  public getTimeString() {
+    return (this.hour > 0 ? CommonUtils.pad(this.hour, 2) + ':' : '') + 
+      CommonUtils.pad(this.minute, 2) + ':' + CommonUtils.pad(this.second, 2);
+  }
+}
+
 /**
  * 音乐条目以及播放器
  */
@@ -184,7 +223,7 @@ export class MusicItem extends EventEmitter {
    * 播放音乐
    * @param fromStart 是否从头开始播放
    */
-  public play(fromStart : boolean = false, callback? : (success: boolean) => void) {
+  public play(fromStart : boolean = false, callback? : (success: boolean) => void, startPos = 0) {
 
     let callBackWithErr = (e ?: any) => {
       if(e) this.playError = e;
@@ -200,7 +239,9 @@ export class MusicItem extends EventEmitter {
         if(fromStart) this.audio.currentTime = 0;//从头开始
   
         this.audio.play().then(() => {
-  
+          
+          if(startPos > 0) this.audio.currentTime = startPos;
+
           this.doFadeIn(() => {
             this.audioUpdateInterval = setInterval(() => this.audio_updateTime(this), 500);
             if(typeof callback == 'function') callback(true);
@@ -236,7 +277,8 @@ export class MusicItem extends EventEmitter {
         this.updateStatus('normal');
         this.loopmode = false;
         this.audio.pause();
-        this.audio.currentTime = 0;
+        this.audio.currentTime = 0;  
+        this.emit('ended');
         if(typeof callback == 'function') callback();
       }
       

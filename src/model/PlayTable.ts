@@ -43,7 +43,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
     else {
       this.name = '';
       this.note = '';
-      this.condition = new PlayCondition('', null);
+      this.condition = new PlayCondition('', null, { intervalType: 'day', timeType: 'any', forceDisallowTypes: [] });
     }
   }
 

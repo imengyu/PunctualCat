@@ -36,6 +36,10 @@ export class DataStorageServices {
     });
   }
 
+  public forceNoDataMode() {
+    
+  }
+
   /**
    * 保存数据
    * @param key 键值

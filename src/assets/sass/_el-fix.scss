@@ -205,3 +205,16 @@
     border-radius: 30px;
   }
 }
+
+.el-input-number.is-controls-right.mini-fix{
+  width: 60px;
+
+  .el-input__inner {
+    padding-left: 2px;
+    padding-right: 23px;
+  }
+  .el-input-number__increase,
+  .el-input-number__decrease {
+    width: 23px;
+  }
+} 

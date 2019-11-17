@@ -478,7 +478,7 @@ export default class SettingsView extends Vue {
 
   //静音
   addMuteTime() {
-    this.appSettingsBackup.auto.muteTimes.push(new PlayCondition(''))
+    this.appSettingsBackup.auto.muteTimes.push(new PlayCondition('', null, { intervalType: 'any', timeType: 'range', forceDisallowTypes: [] }))
   }
 
   //开机启动

@@ -89,6 +89,29 @@
         <el-button @click="exitApp" round>退出应用</el-button>
       </span>
     </el-dialog>
+    <!--关机对话框-->
+    <el-dialog
+      :visible.sync="shutdownNowDialog"
+      class="el-dialog-width-fix-50"
+      center>
+      <div class="iconfont icon-bangzhu text-center mb-3" style="font-size:66px;"></div>
+      <div class="text-center">关机已启动，系统将在 <span class="text-important">{{ shutdownTick }}</span> 秒后关机</div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="shutdownCancel" round>取消关机</el-button>
+        <el-button @click="executeShutdownNow" round>立即关机</el-button>
+      </span>
+    </el-dialog>
+    <el-dialog
+      :visible.sync="rebootNowDialog"
+      class="el-dialog-width-fix-50"
+      center>
+      <div class="iconfont icon-bangzhu text-center mb-3" style="font-size:66px;"></div>
+      <div class="text-center">重启已启动，系统将在 <span class="text-important">{{ shutdownTick }}</span> 秒后重新启动</div>
+      <span slot="footer" class="dialog-footer">
+        <el-button type="primary" @click="rebootCancel" round>取消关机</el-button>
+        <el-button @click="executeShutdownNow" round>立即重启机</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -157,6 +180,8 @@ export default class App extends Vue {
   quitDialog : boolean = false;
   shutdownNowDialog : boolean = false;
   rebootNowDialog : boolean = false;
+  shutdownTimer = null;
+  shutdownTick = 0;
   locked = false;
   lockedLasswordErr = '';
   lockedEnterPassword = '';
@@ -254,10 +279,20 @@ export default class App extends Vue {
       $("#intro").addClass('hidden');
     }, 1000);
   }
+  showRunTimeError(source, lineno, colno, error) { 
+    this.$alert('<div class="display-block font-monospace mt-3 p-3 bg-light-grey overflow-scroll-x scroll-fix-white">' + error + 
+      '</div><div class="display-block font-monospace p-3 bg-light-grey overflow-scroll-x scroll-fix-white">错误位置：<span class="text-important">' + 
+        source + ':' + colno + '</span></div>','程序发生了一个不可预料的错误', {
+      dangerouslyUseHTMLString: true,
+      type: 'error'
+    })
+    console.error(error, source, lineno, colno)
+  }
   showStartUpError(message : string, e) {
     $("#global-error-info").show();
     $("#global-error-info-content").html('<span class="display-block text-important">' + message + '</span><span class="display-block font-monospace">' + e + '</span>');
     $("#intro").hide();
+    console.error(message, e)
   }
   exitHide(callback) {
     $("html,body").addClass(["animated", "zoomOut"]);
@@ -271,11 +306,13 @@ export default class App extends Vue {
   //初始化和卸载
   init() {
 
+    (<any>window).main = this;
     //初始化所有服务
     this.currentWindow = remote.getCurrentWindow();
     this.serviceDataStorage = createDataStorageServices();
     this.initWindowTime();
     this.initAutoLockTimer();
+    this.initWindowBaseEvents();
 
     this.serviceDataStorage.init().then(() => {
       
@@ -323,6 +360,7 @@ export default class App extends Vue {
               this.topTabSelectItem = this.topToolbar[0];
               this.autoPlayService.start();
               this.inited = true;
+              (<any>window).inited = true;
             }, 1000);   
           }catch(e){
             this.showStartUpError('初始化失败 ', e)
@@ -381,6 +419,15 @@ export default class App extends Vue {
 
     this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => this.lock() }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }));
+
+    let noDataMode = localStorage.getItem('noDataMode');
+    if(noDataMode == 'yes') {
+      this.menuSettings.append(new electron.remote.MenuItem({ label: '退出无数据模式', click: () => {
+        localStorage.setItem('noDataMode', 'no');
+        location.reload(true);
+      } }));
+    }
+
     this.menuSettings.append(new electron.remote.MenuItem({ label: '数据导出与导入', click: () => this.goToSettingsPage('datas') }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '手动保存数据', accelerator: 'CmdOrCtrl+S', click: () => {  
       this.saveDatas().then(() => this.$message({ message: '手动保存数据成功', type: 'success' }))
@@ -395,7 +442,7 @@ export default class App extends Vue {
       if(this.currentWindow.webContents.isDevToolsOpened()) this.currentWindow.webContents.closeDevTools();
       else this.currentWindow.webContents.openDevTools();
     }}));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => { ipc.send('main-act-window-control', 'openProcessManager'); } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => ipc.send('main-act-window-control', 'openProcessManager') }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制清除数据', click: () => { 
       this.$confirm('警告！这是调试功能，数据清除后不可恢复，是否继续？', {
@@ -409,9 +456,10 @@ export default class App extends Vue {
         .catch((e) => this.$message({ message: '清除数据失败！错误信息：' + e, type: 'success' }))
       }).catch(() => {});
     } }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制结束进程', accelerator: 'CmdOrCtrl+K', click: () => { ipc.send('main-act-quit'); } }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制重载页面', accelerator: 'CmdOrCtrl+R', click: () => { location.reload(true) } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制结束进程', accelerator: 'CmdOrCtrl+K', click: () => ipc.send('main-act-quit') }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制重载页面', accelerator: 'CmdOrCtrl+R', click: () => location.reload(true) }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制杀死页面', click: () => { location.href = 'chrome://kill/' } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '错误测试', click: () => { throw new Error('测试异常，抛出错误') } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制跳转到 URL', click: () => { 
       this.$prompt('输入要跳转到的 URL ', 'DEBUG - URL', {
         confirmButtonText: '跳转',
@@ -428,8 +476,8 @@ export default class App extends Vue {
     this.menuSettings.append(this.menuItemDeveloper);
     
     var powerSubMenu = new electron.remote.Menu();
-    powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭计算机', click: () => { /*this.shutdownByUser();*/ } }));
-    powerSubMenu.append(new electron.remote.MenuItem({ label: '重启计算机', click: () => { /*this.rebootByUser();*/ } }));
+    powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭计算机', click: () => this.shutdownByUser() }));
+    powerSubMenu.append(new electron.remote.MenuItem({ label: '重启计算机', click: () => this.rebootByUser() }));
     powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭显示器', click: () => this.closeMointor() }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global') }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '系统电源', submenu: powerSubMenu }));
@@ -469,6 +517,9 @@ export default class App extends Vue {
 
     this.currentWindow.setMenu(this.menuSettings);
     this.currentWindow.setMenuBarVisibility(false);
+  }
+  initWindowBaseEvents() {
+    this.currentWindow.on('session-end', () => this.exitApp()) //关机事件
   }
   initWindowTime() {
     this.switchTimeRun(true);
@@ -516,6 +567,36 @@ export default class App extends Vue {
 
   //数据控制
   loadAllDatas(callback : () => void) {
+    let noDataMode = localStorage.getItem('noDataMode');
+    if(noDataMode == 'yes') {
+      const h = this.$createElement;
+      this.$msgbox({ 
+        title: '提示', 
+        message: h('div', null, [
+          h('p', null, [
+            h('span', null, '您现在正在运行无数据模式，当前并没有加载您的数据。如果你在加载数据时软件'+ 
+            '不能正常运行而无数据模式可以正常运行，可能是您的数据有问题造成的，请在'),
+            h('a', { on: { click: () => this.goToSettingsPage('datas') } }, '“系统设置”>“数据管理”'),
+            h('span', null, '中导出数据，并将其发送给我们，我们将会为您修复数据。')
+          ]),
+          h('p', null, '或者，如果您之前有过数据备份，您可以直接导入以前备份的数据。'),
+          h('p', null, '如果您要退出无数据模式，点击下方 “退出无数据模式” 按钮或在主菜单点击 “退出无数据模式” 。'),
+          h('p', { style: { class: 'text-warning' } }, '在您恢复数据之前请勿点击 “手动保存数据” ，这会造成您之前的错误数据丢失，无法恢复。')
+        ]),
+        showCancelButton: true,
+        showConfirmButton: true,
+        confirmButtonText: '退出无数据模式',
+        cancelButtonText: '关闭提示',
+        beforeClose: (action, instance, done) => {
+          if (action === 'confirm') {
+            localStorage.setItem('noDataMode', 'false');
+            location.reload(true);
+          } else done();
+        }
+      }).then(() => {}).catch((e) => console.log(e));
+      callback();
+      return;
+    }
     //base
     this.serviceDataStorage.loadData('basedata').then((data) => {
       this.baseData = data;
@@ -544,6 +625,21 @@ export default class App extends Vue {
         }).catch((e) =>  reject(e))
       }).catch((e) =>  reject(e))
     })  
+  }
+  saveDataBeforeShutdown() {
+    this.saveDatas().then(() => {
+      this.$notify({ title: '数据保存成功', message: '即将关闭计算机', type: 'success' });
+    }).catch((e) => {
+      console.warn('Auto save data failed : ' + e);
+    });
+  }
+  saveDataOnDayChange() {
+    //Auto save data
+    this.saveDatas().then(() => {
+      console.log('Auto save data at : ' + new Date);
+    }).catch((e) => {
+      console.warn('Auto save data failed : ' + e);
+    });
   }
   appilySettings(bySystem : boolean) {
     this.loadSecuritySettings(bySystem);
@@ -616,14 +712,7 @@ export default class App extends Vue {
     (<any>this.$refs['calendar']).forceUpdate();
     (<TextTime>this.$refs['textTime1']).update();
     (<TextTime>this.$refs['textTime2']).update();
-
-    //Auto save data
-    this.saveDatas().then(() => {
-      console.log('Auto save data at : ' + new Date);
-    }).catch((e) => {
-      console.warn('Auto save data failed : ' + e);
-    });
-
+    this.saveDataOnDayChange();
   }
   onWindowActive() { this.switchTimeRun(true) }
   onWindowDeactive() { this.switchTimeRun(false) }
@@ -800,6 +889,44 @@ export default class App extends Vue {
 
   //** 应用工作函数
 
+  shutdownByUser() {
+    this.shutdownNowDialog = true;
+    if(this.shutdownTimer == null) {
+      this.shutdownTick = 30;
+      this.shutdownTimer = setInterval(() => {
+        if(this.shutdownTick > 0) this.shutdownTick--;
+        else {
+          clearInterval(this.shutdownTimer);
+          this.shutdownTimer = null;
+          this.executeShutdownNow();
+        }
+      }, 1000);
+    }
+  }
+  rebootByUser() {
+    this.rebootNowDialog = true;
+    if(this.shutdownTimer == null) {
+      this.shutdownTick = 30;
+      this.shutdownTimer = setInterval(() => {
+        if(this.shutdownTick > 0) this.shutdownTick--;
+        else {
+          clearInterval(this.shutdownTimer);
+          this.shutdownTimer = null;
+          this.executeRebootNow();
+        }
+      }, 1000);
+    }
+  }
+  shutdownCancel() {
+    this.shutdownNowDialog = false;
+    clearInterval(this.shutdownTimer);
+    this.shutdownTimer = null;
+  }
+  rebootCancel() {
+    this.rebootNowDialog = false;
+    clearInterval(this.shutdownTimer);
+    this.shutdownTimer = null;
+  }
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }
   emptyAction() {}
@@ -807,12 +934,10 @@ export default class App extends Vue {
   executeShutdownNow() { ipc.send("main-act-shutdown"); }
   executeRebootNow() { ipc.send("main-act-reboot"); }
   exitAppWithAsk() { this.quitDialog = true; }
-  exitApp() { 
-    let doExit = () => {
-      ipc.send("main-act-quit")
-      /*this.exitHide(() =>  ipc.send("main-act-quit"));*/ 
-    }
-    this.uninit().then(() =>  doExit()).catch((e) => {
+  exitApp(force = false) { 
+    let doExit = () => ipc.send("main-act-quit");
+    if(force) doExit();
+    else this.uninit().then(() =>  doExit()).catch((e) => {
       const h = this.$createElement;
       this.$msgbox({
         title: '发生了错误',

@@ -30,3 +30,15 @@ var appBuildDate = '2919/11/28';
 
 console.log('Current app cwd is ' + appPath);
 console.log('App version is ' + appVesrsion + ' ' + appBuildDate);
+
+function ignoreGlobalErrAndHide() {
+  if(confirm('忽略错误继续运行可能会导致意外的程序行为，是否继续？如果您不是开发者调试程序，不建议继续运行'))
+    document.getElementById('global-error-info').style.display='none'
+}
+function reloadWithNoDataMode() {
+  if(confirm('无数据模式将暂时不会加载您的数据，但您的数据并没有丢失，稍后重启以后您可以手动导出数据然后排查问题'+
+    '（期间不要手动保存数据），更多说明，请参考帮助文档。是否继续无数据模式？')) {
+    localStorage.setItem('noDataMode', 'yes');
+    location.reload(true);
+  }
+}

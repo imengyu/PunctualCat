@@ -21,7 +21,7 @@ Vue.use(ElementUI);
 Vue.prototype.$ = $;
 
 const initVue = function() {
-  main = new Vue({
+  new Vue({
     el: '#app',
     render: h => h(App)
   })
@@ -42,8 +42,7 @@ const showErr = function(source, lineno, colno, error) {
 
 //Global error
 window.onerror = (event, source, lineno, colno, error) => {
-  if(main.inited)
-    console.log(event);
+  if(window.inited) main.showRunTimeError(source, lineno, colno, error);
   else showErr(source, lineno, colno, error);
 };
 

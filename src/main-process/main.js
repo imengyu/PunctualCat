@@ -92,6 +92,21 @@ function createWindow () {
     // when you should delete the corresponding element.
     mainWindow = null
   })
+  mainWindow.on('new-window-for-tab', () => {
+    console.log('New Tab');
+  })
+  mainWindow.on('unresponsive', () => {
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      message: '软件可能卡住了，需要一些事件让其完成工作。如果它长时间没有响应，可能是软件故障。',
+      title: '抱歉，软件出现了一些故障',
+      buttons: [ '等待其响应', '强制重新加载页面' ]
+    }).then((value) => {
+      if(value == 1) {
+        mainWindow.reload();
+      }
+    })
+  });
   mainWindow.on('close',(e) => {  
     if(!appQuit){
       e.preventDefault();
