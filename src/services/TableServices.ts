@@ -1,12 +1,14 @@
 import { PlayTable } from '../model/PlayTable'
 import { AutoSaveable } from '../model/PlayInterfaces'
 
+
 /**
  * 时间表控制服务
  */
 export default class TableServices implements AutoSaveable {
 
   public tables: Array<PlayTable> = [];
+
 
   /**
    * 获取数据数组

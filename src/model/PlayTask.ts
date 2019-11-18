@@ -7,6 +7,8 @@ import GlobalWorker from '../services/GlobalWorker'
 import { getMusicHistoryService, MusicHistoryService  } from '../services/MusicHistoryService'
 import SettingsServices from "../services/SettingsServices";
 import Win32Utils from '../utils/Win32Utils';
+import { Logger } from 'log4js';
+import { threadId } from 'worker_threads';
 
 export type PlayTaskType = 'music'|'command'|'shutdown'|'reboot'|'mutetime'|'setsystemvol'
 
@@ -73,6 +75,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
 
   public constructor(jsonObject?:any) {
     super();
+    this.logger = window.appLogger;
     this.musicHistoryService = getMusicHistoryService();
     if(jsonObject) this.loadFromJsonObject(jsonObject);
     else this.condition = new PlayCondition('', null, {
@@ -96,6 +99,9 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public commands : Array<string> = [];
 
   /* 临时属性 */
+
+  private logger : Logger = null;
+
   public isNew = false;
   public chooseMusic1 = false;
   public chooseMusic2 = false;
@@ -143,6 +149,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public destroyLock() { this.lockedByDestroy = true; }
 
   private runCommands() {
+    this.logger.info('Run commands for task : ' + this.name)
     GlobalWorker.executeGlobalAction('runcommands', this.commands)
     this.switchStatus('played');
   }
@@ -158,6 +165,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     this.currentPlayMusicIndex = 0;
     this.currentPlayMusicCount = 0;
     this.switchStatus('playing');
+    this.logger.info('Play ' + this.musics.length + ' musics for task : ' + this.name)
     if(this.musics.length > 0){
       //最大播放时长
       let maxSec = this.timeLimit.hours * 3600 + this.timeLimit.minute * 60 + this.timeLimit.second;
@@ -171,7 +179,10 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
             if(this.currentPlayMusicTimeLimitTimer) clearTimeout(this.currentPlayMusicTimeLimitTimer);
             this.currentPlayMusicTimeLimitTimer = setTimeout(() => {
               this.currentPlayMusicTimeLimitTimer = null;
-              this.playerEnded()
+              this.playerEnded();
+              this.logger.info('Play music task ' + this.name + ' on music ' + 
+                this.musics[this.currentPlayMusicIndex].music.name + 
+                ' is length limit exceeded, no stop music');
             }, 1000 * maxLength);
           }
           this.endCallback = () => this.playerEnded();
@@ -183,23 +194,29 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
               this.stopPlayingMusic(false);
               if(SettingsServices.getSettingBoolean('auto.playTipIfFail'))
                 Win32Utils.messageBeep(Win32Utils.messageBeepTypes.MB_ICONEXCLAMATION);
+              this.logger.error('Play music ' + this.musics[this.currentPlayMusicIndex].music.name + ' failed in task ' + 
+                this.name + ' , ERROR : ' + this.musics[this.currentPlayMusicIndex].music.playError);
             }
           }, startSec);
 
         }else {
           this.currentPlayMusicCount++;
-          if(this.currentPlayMusicCount >= this.loopCount)
+          if(this.currentPlayMusicCount >= this.loopCount){
             this.stopPlayingMusic(true);//循环次数超过，停止
+            this.logger.info('Play music task ' + this.name + ' finished');
+          }
           else {
             this.currentPlayMusicIndex = 0;
             this.playerLoop();//重新开始一次循环
+            this.logger.info('Play music task ' + this.name + ' to next loop ('+ this.currentPlayMusicIndex+'/' + this.loopCount +')');
           }
         }
       };
       if(maxSec > 0) {
         this.currentPlayTaskTimeLimitTimer = setTimeout(() => {
           this.currentPlayTaskTimeLimitTimer = null;
-          this.stopPlayingMusic(true)
+          this.stopPlayingMusic(true);
+          this.logger.info('Play music task ' + this.name + ' is length limit exceeded, no stop task');
         }, 1000 * maxSec);
       }
       this.playerLoop();
@@ -218,7 +235,8 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     }
     if(this.currentPlayMusicIndex < this.musics.length) {
       this.musics[this.currentPlayMusicIndex].music.off('ended', this.endCallback);
-      this.musics[this.currentPlayMusicIndex].music.stop();
+      if(this.musics[this.currentPlayMusicIndex].music.status=='playing')
+        this.musics[this.currentPlayMusicIndex].music.stop();
       this.musics[this.currentPlayMusicIndex].music.volume = 1.0;
       //停止，index+1
       this.currentPlayMusicIndex++;

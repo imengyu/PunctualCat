@@ -1003,13 +1003,13 @@ export default class TableView extends Vue {
     vertical-align: bottom;
 
     &[data-status='unknow']{
-      background-color: #e6e6e6;
+      background-color: #420000;
     }
     &[data-status='normal']{
-      background-color: #c3d8ca;
+      background-color: rgba(0, 184, 6, 0.2);
     }
     &[data-status='playing']{
-      background-color: #1da546;
+      background-color: #00b706;
     }
     &[data-status='disabled']{
       background-color: rgba(202, 202, 202, 0.588);

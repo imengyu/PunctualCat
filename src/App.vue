@@ -442,7 +442,10 @@ export default class App extends Vue {
     this.menuSettings.append(new electron.remote.MenuItem({ label: '数据导出与导入', click: () => this.goToSettingsPage('datas') }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '手动保存数据', accelerator: 'CmdOrCtrl+S', click: () => {  
       this.saveDatas().then(() => this.$message({ message: '手动保存数据成功', type: 'success' }))
-        .catch((e) => this.$alert('保存数据失败，错误信息：' + e, '保存数据失败', { type: 'error', roundButton: true, }))
+        .catch((e) => {
+          this.$alert('保存数据失败，错误信息：' + e, '保存数据失败', { type: 'error', roundButton: true, })
+          this.logger.error('保存数据失败', e);
+        })
     }}));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', click: () => {  } }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
@@ -661,6 +664,7 @@ export default class App extends Vue {
   saveDataBeforeShutdown() {
     this.saveDatas().then(() => {
       this.$notify({ title: '数据保存成功', message: '即将关闭计算机', type: 'success' });
+      this.logger.info('Auto save data before shutdown');
     }).catch((e) => {
       this.logger.warn('Auto save data failed : ', e);
     });
@@ -705,9 +709,6 @@ export default class App extends Vue {
     this.background = window.background;
     this.backgroundOpacity = window.backgroundOpacity;
     this.developerMode = SettingsServices.getSettingBoolean('system.developerMode');
-    if(!this.developerMode) {
-      window.appLogger.level = 'warn';
-    }
     if(this.menuItemDeveloper != null)
       this.menuItemDeveloper.visible = this.developerMode;
   }
@@ -992,6 +993,7 @@ export default class App extends Vue {
     let doExit = () => ipc.send("main-act-quit");
     if(force) doExit();
     else this.uninit().then(() =>  doExit()).catch((e) => {
+      this.logger.error('An error occurred while exiting ', e);
       const h = this.$createElement;
       this.$msgbox({
         title: '发生了错误',

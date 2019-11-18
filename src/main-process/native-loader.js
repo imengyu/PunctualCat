@@ -11,7 +11,8 @@ const Datastore = require("nedb");
 const process = require('process')
 const fs = require('fs')
 const log4js = require("log4js");
-const { dialog } = require('electron')
+const electron = require('electron')
+const dialog = electron.remote.dialog;
 
 var appPath = process.cwd();
 var dbPath = appPath + "/data/data.db";
@@ -23,13 +24,16 @@ var appLogger = null;
 var appAutoLogger = null;
 var appWin32 = null;
 
-initLogs().then(() => {
-  loadNativeModule();
-  loadGlobal();
-}).catch((err) => {
-  dialog.showErrorBox('初始化日志失败', err);
+window.addEventListener('load', () => {
+  initLogs().then(() => {
+    loadGlobal();
+    loadNativeModule();
+    loadMain();
+  }).catch((err) => {
+    console.error(err);
+    dialog.showErrorBox('初始化日志失败', err);
+  });
 });
-
 
 function initLogs() {
   return new Promise((resolve, reject) => {
@@ -78,7 +82,7 @@ function loadGlobal() {
   window.destroyLogs = destroyLogs;
 
   appLogger.info('Current app cwd is ' + appPath);
-  appLogger.denug('App version is ' + appVesrsion + ' ' + appBuildDate);
+  appLogger.debug('App version is ' + appVesrsion + ' ' + appBuildDate);
 }
 function loadNativeModule() {
   try{
@@ -98,6 +102,9 @@ function loadNativeModule() {
     appLogger.error('Error while loading Native module : ' + e);
     dialog.showErrorBox('加载本地模块时发生错误', '这可能导致程序出现不可预料的行为。建议您参照 帮助文档 将错误日志发送给我们，以便更好的解决此问题。错误消息：' + e);
   }
+}
+function loadMain() {
+  window.initVue();
 }
 
 function ignoreGlobalErrAndHide() {

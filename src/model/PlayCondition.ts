@@ -1,6 +1,7 @@
 import { AutoPlayable, AutoSaveable, AutoPlayCheckType } from './PlayInterfaces'
 import DateUtils from '../utils/DateUtils';
 import CommonUtils from '../utils/CommonUtils';
+import { getTimeNow } from '../services/AutoPlayService'
 
 /**
  * 条件执行器类型
@@ -461,7 +462,7 @@ export class PlayConditionActuator implements AutoPlayable {
     return '';
   }
   public isPlayingTime(type: AutoPlayCheckType) : boolean {
-    let dateNow = new Date();
+    let dateNow = getTimeNow();
     switch(this.type) {
       case 'date': {
         return (this.dateValue.day == 0 || this.dateValue.day == dateNow.getDate()) &&
@@ -542,7 +543,7 @@ export class PlayConditionActuator implements AutoPlayable {
     return false;
   }
   public isStoppingTime(type: AutoPlayCheckType) {
-    let dateNow = new Date();
+    let dateNow = getTimeNow();
     switch(this.type) {
       case 'week-range': 
         return this.weekRangeValue.end == dateNow.getDay()

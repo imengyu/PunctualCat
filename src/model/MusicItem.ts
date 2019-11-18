@@ -2,6 +2,7 @@ import { getFileName } from '../utils/FileUtils'
 import SettingsServices from "../services/SettingsServices";
 import CommonUtils from "../utils/CommonUtils";
 import { EventEmitter } from "events";
+import { Logger } from 'log4js';
 
 let staticPlayingCount = 0;
 let staticPlayingCountChangedCallback : (music : MusicItem, count : number) => void = null;
@@ -85,6 +86,8 @@ export class MusicItem extends EventEmitter {
   public audioDurtion : number = 0;
   public audioDurtionString : string = '';
 
+  private logger : Logger = null;
+
   /**
    * 创建音乐
    * @param fullPath 音乐完整路径
@@ -92,6 +95,8 @@ export class MusicItem extends EventEmitter {
    */
   public constructor(fullPath : string, name?: string) {
     super();
+
+    this.logger = window.appLogger;
     this.fullPath = fullPath;
     this.name = name || getFileName(fullPath);
 

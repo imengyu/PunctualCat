@@ -48,9 +48,7 @@ window.onerror = (event, source, lineno, colno, error) => {
 
 //Loader start
 
-window.addEventListener('load', () => {
-  initVue();
-});
+window.initVue = initVue;
 
 //Base type extends
 

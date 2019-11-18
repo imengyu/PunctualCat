@@ -266,6 +266,7 @@ import SettingsServices from '../services/SettingsServices'
 import Win32Utils from "../utils/Win32Utils";
 import fs from 'fs';
 import { PlayCondition } from "../model/PlayCondition";
+import { Logger } from "log4js";
 
 const ipc = electron.ipcRenderer;
 const process = require('process');
@@ -279,6 +280,8 @@ export default class SettingsView extends Vue {
 
   @Prop({default:null}) app : App;
   musicHistoryService : MusicHistoryService = null;
+
+  logger : Logger = null;
 
   currentPage = 'global';
   process = null;
@@ -352,6 +355,7 @@ export default class SettingsView extends Vue {
     this.appSettingsBackup = CommonUtils.clone(SettingsServices.getData());
     this.musicHistoryService = getMusicHistoryService();
     this.autoStartStatus = this.getAutoStartStatus();
+    this.logger = window.appLogger;
 
     ipc.on('selected-json', function (event, arg, path) {
       if(!path || path.length == 0) 
@@ -370,6 +374,7 @@ export default class SettingsView extends Vue {
   }
   saveSettings() {
     SettingsServices.setData(this.appSettingsBackup);
+    this.logger.info('Settings have been updated');
     this.$message({ type: 'success', message: '设置已保存' });
   }
   unsaveSettings() {
@@ -391,6 +396,7 @@ export default class SettingsView extends Vue {
       type: 'warning'
     }).then(() => {
       SettingsServices.resetDefault();
+      this.logger.info('Settings have been reset to default values');
       this.$message({ type: 'success', message: '已恢复默认设置' });
     }).catch(() => {});
   }
@@ -413,6 +419,7 @@ export default class SettingsView extends Vue {
             this.managerPasswordEditor.newCheck = '';
             this.showEditManagerPasswordDialog = false;
             this.$message({ message: '修改管理员密码成功 !', type: 'success' });
+            this.logger.info('Manager password has been updated');
             if(!this.appSettingsBackup.security.preventAnymouseUse) {
               this.$confirm('您真已经成功设置管理员密码，现在是否要开启安全保护功能? ', '提示', {
                 confirmButtonText: '开启',
@@ -433,7 +440,9 @@ export default class SettingsView extends Vue {
               this.managerPasswordEditor.newCheck = '';
               this.$message({ message: '修改管理员密码成功 !', type: 'success' })
               this.showEditManagerPasswordDialog = false;
+              this.logger.info('Manager password has been updated');
             }else{
+              this.logger.info('Manager password update failed because old password error');
               this.$message({ message: '无法修改管理员密码，旧密码错误', type: 'error' })
             }
           }
@@ -467,9 +476,10 @@ export default class SettingsView extends Vue {
 
           SettingsServices.setSetting('security.managerPassword', '')
           this.appSettingsBackup.security.managerPassword = '';
-
+          this.logger.info('Manager password has been cleared');
           this.$message({ type: 'success', message: '删除管理员密码成功！ ' });
         }else {
+          this.logger.info('Manager password clear failed because old password error');
           this.$alert('管理员密码不正确', '修改密码提示', { type: 'error' })
         }
       }).catch(() => {});
@@ -486,6 +496,7 @@ export default class SettingsView extends Vue {
   switchAutoStart(enable){
     var rs = Win32Utils.setAutoStartEnable(enable);
     this.autoStartStatus = this.getAutoStartStatus();
+    this.logger.info((enable ? 'Set' : 'cancel') + ' autostart ' + (rs ? 'success' : 'failed'));
     this.$message({
       message: (enable ? '设置' : '取消') + '开机启动' + (rs ? '成功' : '失败'),
       type: rs ? 'success' : 'error'
@@ -547,14 +558,20 @@ export default class SettingsView extends Vue {
     fs.writeFile(path, JSON.stringify(json), (err) => {
       this.dataExporting = false;
       this.showImportOrExportDialog = false;
-      if(err) this.$alert('写入数据文件时失败：' + err + '  请检查您是否有权限写入指定的路径。', '导出失败', { type: 'error' });
-      else this.$msgbox({ 
-        title: '导出成功！',
-        showCancelButton: true,
-        confirmButtonText: '打开数据文件位置',
-        cancelButtonText: '确定',
-        type: 'success' 
-      }).then(() => shell.showItemInFolder(path)).catch(() => {});
+      if(err) {
+        this.$alert('写入数据文件时失败：' + err + '  请检查您是否有权限写入指定的路径。', '导出失败', { type: 'error' });
+        this.logger.error('Write data file ' + path + ' error while export data : ', err);
+      }
+      else { 
+        this.logger.info('Export data ' + path + ' success');
+        this.$msgbox({ 
+          title: '导出成功！',
+          showCancelButton: true,
+          confirmButtonText: '打开数据文件位置',
+          cancelButtonText: '确定',
+          type: 'success' 
+        }).then(() => shell.showItemInFolder(path)).catch(() => {});
+      }
     });
   } 
   doImportData(path : string) { 
@@ -563,6 +580,7 @@ export default class SettingsView extends Vue {
       else{
         fs.readFile(path, (err, data) => {
           if(err) {
+            this.logger.error('Read data file ' + path + ' error while import data : ', err);
             this.$alert('读取文件失败！<br>错误信息：' + err, '导入失败', {
               type: 'error',
               dangerouslyUseHTMLString: true,
@@ -575,7 +593,9 @@ export default class SettingsView extends Vue {
               this.dataImportConfig.includeData = this.dataImport.dataConfig.includeData;
               this.dataImportConfig.includeMusicHistory = this.dataImport.dataConfig.includeMusicHistory;
               let len = this.dataImport.datas.length;
+
             }catch(e){
+              this.logger.error('Import data failed : ', err);
               this.$alert('数据文件格式无效，请检查是否导入正确', '导入失败', { type: 'error' });
             }
             this.currentIsImportData = true;
@@ -595,7 +615,11 @@ export default class SettingsView extends Vue {
     if(this.dataImportConfig.includeMusicHistory)
       this.musicHistoryService.loadFromPathArray(this.dataImport.datas.musicList);
 
-    this.app.saveDatas().then(() => this.$message({ message: '导入数据成功！', type: 'success' })).catch((e) => {
+    this.app.saveDatas().then(() => {
+      this.$message({ message: '导入数据成功！', type: 'success' });
+      this.logger.error('Import data sucess, old data has been discarded');
+    }).catch((e) => {
+      this.logger.error('Import data sucess but save the data import diled : ', e);
       this.$message({ message: '导入数据成功！但是保存新数据时发生错误： ' + e +' ，请稍后尝试手动保存数据', type: 'warning', duration: 12000 })
     })
   } 

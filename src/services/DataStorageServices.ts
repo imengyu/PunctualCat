@@ -1,4 +1,5 @@
 import Datastore from 'nedb'
+import { Logger } from 'log4js';
 
 let staticDataStorageServices : DataStorageServices = null;
 
@@ -22,9 +23,11 @@ export function destroyDataStorageServices() {
 export class DataStorageServices {
 
   private db : Datastore = null;
+  private logger : Logger;
 
   public constructor(db : Datastore){
     this.db = db;
+    this.logger = window.appLogger;
   }
 
   public init() : Promise<void> {
@@ -36,16 +39,13 @@ export class DataStorageServices {
     });
   }
 
-  public forceNoDataMode() {
-    
-  }
-
   /**
    * 保存数据
    * @param key 键值
    * @param object 数据
    */
   public saveData(key : string, object : any) : Promise<any> {
+    this.logger.info('Save data ' + key);
     return new Promise((resolve, reject) => {
       let objectO = { key: key, data: object };
       this.db.find({ key: key }, (err, objectReturn)  => {
@@ -69,6 +69,7 @@ export class DataStorageServices {
    * @param key 键值
    */
   public loadData(key : string) : Promise<any> {
+    this.logger.info('Load data ' + key);
     return new Promise((resolve, reject) => {
       let objectO = { key: key };
       this.db.find(objectO, (err, objectReturn) => {
@@ -85,6 +86,7 @@ export class DataStorageServices {
    * 清除数据
    */
   public clearData() : Promise<any> {
+    this.logger.info('Clear all datas');
     return new Promise((resolve, reject) => {
       this.db.remove({}, { multi: true }, function (err, numRemoved) {
         if(err) reject(err);
