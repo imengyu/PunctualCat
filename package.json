@@ -23,6 +23,7 @@
     "element-ui": "^2.11.1",
     "html-withimg-loader": "^0.1.16",
     "jquery": "^3.4.1",
+    "log4js": "^6.0.0",
     "nedb": "^1.8.0",
     "vue": "^2.6.10",
     "vue-class-component": "^7.1.0",

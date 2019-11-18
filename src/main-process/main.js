@@ -1,6 +1,7 @@
 const electron = require('electron')
 const path = require("path")
 const url = require('url')
+const process = require('process')
 
 const { app,BrowserWindow,globalShortcut,dialog } = require('electron')
  
@@ -144,6 +145,7 @@ function destroyMain() {
   appQuit = true;
   mainWindow.close();
 }
+
 function showCrashedWindow() {
   crashedWindow = new BrowserWindow({
     width: 560, 
@@ -175,7 +177,7 @@ function showCrashedWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 
-app.on('ready', function(){
+app.on('ready', function() {
   createWindow();
 })
 app.on('window-all-closed', function () {

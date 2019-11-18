@@ -347,8 +347,8 @@ export default class SettingsView extends Vue {
 
   mounted() {
     this.process = process;
-    this.appVesrsion = (<any>window).appVesrsion;
-    this.appBuildDate = (<any>window).appBuildDate;
+    this.appVesrsion = window.appVesrsion;
+    this.appBuildDate = window.appBuildDate;
     this.appSettingsBackup = CommonUtils.clone(SettingsServices.getData());
     this.musicHistoryService = getMusicHistoryService();
     this.autoStartStatus = this.getAutoStartStatus();

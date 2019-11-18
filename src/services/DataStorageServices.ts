@@ -7,7 +7,7 @@ let staticDataStorageServices : DataStorageServices = null;
  */
 export function createDataStorageServices() : DataStorageServices {
   if(staticDataStorageServices == null)
-    staticDataStorageServices = new DataStorageServices((<any>window).db);
+    staticDataStorageServices = new DataStorageServices(window.appDb);
   return staticDataStorageServices;
 }
 

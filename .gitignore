@@ -3,6 +3,7 @@
 /data/
 /musics/
 /dist/
+/logs/
 node_modules/
 .vs/
 /src/node_modules/

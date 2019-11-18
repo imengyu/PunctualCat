@@ -42,7 +42,7 @@ const showErr = function(source, lineno, colno, error) {
 
 //Global error
 window.onerror = (event, source, lineno, colno, error) => {
-  if(window.inited) main.showRunTimeError(source, lineno, colno, error);
+  if(window.appInited) window.app.showRunTimeError(source, lineno, colno, error);
   else showErr(source, lineno, colno, error);
 };
 

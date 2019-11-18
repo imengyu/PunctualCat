@@ -122,6 +122,7 @@ import "./utils/BaseExtends";
 import Win32Helper from "./utils/Win32Utils";
 import CommonUtils from "./utils/CommonUtils";
 import $ from "jquery";
+import fs from 'fs';
 
 import TextTime from "./components/TextTime.vue"
 import IconToolBar from "./components/IconToolBar.vue"
@@ -146,6 +147,8 @@ import GlobalWorker from "./services/GlobalWorker";
 import electron, { BrowserWindow, Rectangle } from "electron";
 import { Menu, MenuItem } from "electron";
 import Win32Utils from "./utils/Win32Utils";
+import { Logger } from "log4js";
+
 
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
@@ -192,6 +195,8 @@ export default class App extends Vue {
   autoHideMinute = 0;
   autoLockMinute = 0;
   developerMode = false;
+
+  logger : Logger = null;
 
   //Toolbar and menu
   topToolbar: Array<IconToolItem> = [
@@ -242,9 +247,7 @@ export default class App extends Vue {
   serviceMusicHistory : MusicHistoryService = null;
 
 
-  mounted() {
-    this.init();
-  }
+  mounted() { this.init() }
 
   beforeDestroy() {
     this.uninit();
@@ -279,19 +282,21 @@ export default class App extends Vue {
       $("#intro").addClass('hidden');
     }, 1000);
   }
-  showRunTimeError(source, lineno, colno, error) { 
+  showRunTimeError(source : string, lineno : number, colno : number, error : Error) { 
     this.$alert('<div class="display-block font-monospace mt-3 p-3 bg-light-grey overflow-scroll-x scroll-fix-white">' + error + 
       '</div><div class="display-block font-monospace p-3 bg-light-grey overflow-scroll-x scroll-fix-white">错误位置：<span class="text-important">' + 
         source + ':' + colno + '</span></div>','程序发生了一个不可预料的错误', {
       dangerouslyUseHTMLString: true,
       type: 'error'
     })
-    console.error(error, source, lineno, colno)
+    this.logger.error(error.message, error, source, lineno, colno)
+    console.error(error, source, lineno, colno);
   }
   showStartUpError(message : string, e) {
     $("#global-error-info").show();
     $("#global-error-info-content").html('<span class="display-block text-important">' + message + '</span><span class="display-block font-monospace">' + e + '</span>');
     $("#intro").hide();
+    this.logger.error(message, e);
     console.error(message, e)
   }
   exitHide(callback) {
@@ -305,69 +310,76 @@ export default class App extends Vue {
 
   //初始化和卸载
   init() {
-
-    (<any>window).main = this;
+    window.app = this;
     //初始化所有服务
+    this.logger = window.appLogger;
     this.currentWindow = remote.getCurrentWindow();
     this.serviceDataStorage = createDataStorageServices();
     this.initWindowTime();
     this.initAutoLockTimer();
     this.initWindowBaseEvents();
-
-    this.serviceDataStorage.init().then(() => {
+    this.initAppConfigue().then(() => {
+      this.serviceDataStorage.init().then(() => {
       
-      SettingsServices.initSettings();
-      SettingsServices.loadSettings().then(() => initInternal()).catch((e) => {
-        this.showStartUpError('加载设置失败 ', e)
-        initInternal();
-      })
-
-      let initInternal = () => {
-
-        //Load actions
-        GlobalWorker.registerGlobalAction('shutdown', this.executeShutdownNow);
-        GlobalWorker.registerGlobalAction('reboot', this.executeRebootNow);
-        //music history
-        this.serviceMusicHistory = createMusicHistoryService(this.musicHistoryList);
-
-        this.loadAllDatas(() => {
-
-          try {
-            //Core services
-            this.initCoreServices();
-
-            setPlayingCountChangedCallback((music, count) => this.playingMusicCount = count);
-            setMusicWaveStartCallback((music) => {
-              if(SettingsServices.getSettingBoolean('player.enableWave') && this.playingMusicCount == 0 && this.currentWindow.isVisible())
-                (<AudioWave>this.$refs['audioWave']).startDrawMusic(music);
-            });
-            setMusicWaveStopCallback((music) => { 
-              if(music == (<AudioWave>this.$refs['audioWave']).currentMusic)
-                (<AudioWave>this.$refs['audioWave']).stopDrawMusic();
-            });
-
-            //Appily settings
-            this.appilySettings(true);
-
-            //Menu
-            this.initMenus();
-            //IPCS
-            this.initIpcs();
-
-            //hide intro
-            setTimeout(() => {
-              this.hideIntro();
-              this.topTabSelectItem = this.topToolbar[0];
-              this.autoPlayService.start();
-              this.inited = true;
-              (<any>window).inited = true;
-            }, 1000);   
-          }catch(e){
-            this.showStartUpError('初始化失败 ', e)
-          }
+        SettingsServices.initSettings();
+        SettingsServices.loadSettings().then(() => initInternal()).catch((e) => {
+          this.showStartUpError('加载设置失败 ', e)
+          initInternal();
         })
-      }
-    }).catch((e) =>  this.showStartUpError('初始化数据失败 ', e))
+
+        let initInternal = () => {
+
+          //Load actions
+          GlobalWorker.registerGlobalAction('shutdown', () => {
+            this.logger.info('Execute shutdown action by auto task');
+            this.shutdownByUser();
+          });
+          GlobalWorker.registerGlobalAction('reboot', () => {
+            this.logger.info('Execute reboot action by auto task');
+            this.rebootByUser();
+          });
+          //music history
+          this.serviceMusicHistory = createMusicHistoryService(this.musicHistoryList);
+
+          this.loadAllDatas(() => {
+
+            try {
+              //Core services
+              this.initCoreServices();
+
+              setPlayingCountChangedCallback((music, count) => this.playingMusicCount = count);
+              setMusicWaveStartCallback((music) => {
+                if(SettingsServices.getSettingBoolean('player.enableWave') && this.playingMusicCount == 0 && this.currentWindow.isVisible())
+                  (<AudioWave>this.$refs['audioWave']).startDrawMusic(music);
+              });
+              setMusicWaveStopCallback((music) => { 
+                if(music == (<AudioWave>this.$refs['audioWave']).currentMusic)
+                  (<AudioWave>this.$refs['audioWave']).stopDrawMusic();
+              });
+
+              //Appily settings
+              this.appilySettings(true);
+
+              //Menu
+              this.initMenus();
+              //IPCS
+              this.initIpcs();
+
+              //hide intro
+              setTimeout(() => {
+                this.hideIntro();
+                this.topTabSelectItem = this.topToolbar[0];
+                this.autoPlayService.start();
+                this.inited = true;
+                window.appInited = true;
+              }, 1000);   
+            }catch(e){
+              this.showStartUpError('初始化失败 ', e)
+            }
+          })
+        }
+      }).catch((e) =>  this.showStartUpError('初始化数据失败 ', e))
+    }).catch((e) =>  this.showStartUpError('在加载静态配置文件时发生错误，请尝试移除静态配置文件 ', e))
   }
   initIpcs() {
     ipc.on("main-window-act", (event, arg) => {
@@ -416,7 +428,6 @@ export default class App extends Vue {
   initMenus() {
     this.menuSettings = new electron.remote.Menu();
     
-
     this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => this.lock() }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }));
 
@@ -519,7 +530,25 @@ export default class App extends Vue {
     this.currentWindow.setMenuBarVisibility(false);
   }
   initWindowBaseEvents() {
-    this.currentWindow.on('session-end', () => this.exitApp()) //关机事件
+    this.currentWindow.on('session-end', () => {
+      this.logger.info('Session end event received, now exit app');
+      this.exitApp()
+    }) //关机事件
+  }
+  initAppConfigue() : Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      fs.readFile(process.cwd() + '/config/app.js', (err, data) => {
+        if(err) resolve();
+        else {
+          try {
+            let dataJson = data.toJSON().data;
+            console.log('app.json check : ');
+            console.dir(dataJson);
+            resolve();
+          }catch(e) { reject(e) }
+        }
+      })
+    });
   }
   initWindowTime() {
     this.switchTimeRun(true);
@@ -536,7 +565,7 @@ export default class App extends Vue {
     if(this.baseData) this.serviceTables.loadFromJsonObject(this.baseData);
     else {
       this.baseData = [];
-      console.log('Base data lost, use empty data');
+      this.logger.warn('Base data lost, use empty data');
     }
     this.autoPlayService = new AutoPlayService(this.serviceTables);
     this.autoPlayService.on('daychange', this.onDayChange);
@@ -559,13 +588,16 @@ export default class App extends Vue {
       this.saveDatas().then(() => {
         this.autoPlayService.stop();
         this.serviceTables.destroy();
+        window.destroyLogs();
         destroyDataStorageServices();
         resolve();
       }).catch((e) => reject(e))
     })
   }
 
-  //数据控制
+  //
+  //中央数据控制与设置
+
   loadAllDatas(callback : () => void) {
     let noDataMode = localStorage.getItem('noDataMode');
     if(noDataMode == 'yes') {
@@ -593,7 +625,7 @@ export default class App extends Vue {
             location.reload(true);
           } else done();
         }
-      }).then(() => {}).catch((e) => console.log(e));
+      }).then(() => {}).catch(() => {});
       callback();
       return;
     }
@@ -605,11 +637,11 @@ export default class App extends Vue {
         this.serviceMusicHistory.loadFromPathArray(musics);
         callback();
       }).catch((e) => {
-        console.warn('loadAllDatas for musics failed ! ' + e);
+        this.logger.warn('Load musics data failed ! ', e);
         callback();
       })
     }).catch((e) => {
-      console.warn('loadAllDatas for base data failed ! ' + e);
+      this.logger.warn('Load base data failed ! ', e);
       callback();
     })
   }
@@ -630,18 +662,20 @@ export default class App extends Vue {
     this.saveDatas().then(() => {
       this.$notify({ title: '数据保存成功', message: '即将关闭计算机', type: 'success' });
     }).catch((e) => {
-      console.warn('Auto save data failed : ' + e);
+      this.logger.warn('Auto save data failed : ', e);
     });
   }
   saveDataOnDayChange() {
     //Auto save data
     this.saveDatas().then(() => {
-      console.log('Auto save data at : ' + new Date);
+      this.logger.info('Auto save data at success');
     }).catch((e) => {
-      console.warn('Auto save data failed : ' + e);
+      this.logger.warn('Auto save data failed : ' + e);
     });
   }
   appilySettings(bySystem : boolean) {
+    if(!bySystem) 
+      this.logger.info('Appily settings');
     this.loadSecuritySettings(bySystem);
     this.loadSystemSettings();
     this.loadWindowSettings(bySystem);
@@ -671,6 +705,9 @@ export default class App extends Vue {
     this.background = window.background;
     this.backgroundOpacity = window.backgroundOpacity;
     this.developerMode = SettingsServices.getSettingBoolean('system.developerMode');
+    if(!this.developerMode) {
+      window.appLogger.level = 'warn';
+    }
     if(this.menuItemDeveloper != null)
       this.menuItemDeveloper.visible = this.developerMode;
   }
@@ -783,7 +820,10 @@ export default class App extends Vue {
           confirmButtonText: '立即设置',
           roundButton: true
         }).then(() => this.goToSettingsPage('security')).catch(() => {});
-      } else this.locked = true;
+      } else { 
+        this.locked = true;
+        this.logger.info('System locked by ' + (bySystem ? 'system' : 'user'));
+      }
     } else {
       if(!bySystem) 
         this.$msgbox({
@@ -802,9 +842,12 @@ export default class App extends Vue {
       this.locked = false;
       this.lockedEnterPassword = '';
       this.lockedLasswordErr = '';
+      this.logger.info('System unlocked');
     }
     else {
       this.lockedLasswordErr = this.lockedEnterPassword == '' ? '请输入密码！' : '密码不正确，请检查';
+      if(this.lockedEnterPassword != '')
+        this.logger.info('Try to unlock system failed because password error');
       $('#password-input').prop('class', 'shake animated error anim-500ms');
       setTimeout(() => {
         $('#password-input').prop('class', 'error');
@@ -818,6 +861,8 @@ export default class App extends Vue {
   loginInputKeyDown(ev : KeyboardEvent) {
     if(ev.keyCode == 13) this.doUnLock();
   }
+
+  //自动锁定
 
   lastUserInputTime : Date = null;
 
@@ -868,7 +913,8 @@ export default class App extends Vue {
         this.musicHistoryList[i].setVolume(volume);
     }
   }
-  //选择文件扩展
+
+  //** 选择文件扩展
 
   chooseOneMusicCallback : (music : MusicItem) => void = null;
   chooseOneImageCallback : (imgPath : string) => void = null;
@@ -921,18 +967,26 @@ export default class App extends Vue {
     this.shutdownNowDialog = false;
     clearInterval(this.shutdownTimer);
     this.shutdownTimer = null;
+    this.logger.info('Shutdown is canceled by user');
   }
   rebootCancel() {
     this.rebootNowDialog = false;
     clearInterval(this.shutdownTimer);
     this.shutdownTimer = null;
+    this.logger.info('Reboot is canceled by user');
   }
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }
   emptyAction() {}
   closeMointor() { Win32Helper.closeMointor(); }
-  executeShutdownNow() { ipc.send("main-act-shutdown"); }
-  executeRebootNow() { ipc.send("main-act-reboot"); }
+  executeShutdownNow() { 
+    this.logger.info('Shutdown is being executed');
+    ipc.send("main-act-shutdown"); 
+  }
+  executeRebootNow() { 
+    this.logger.info('Reboot is being executed');
+    ipc.send("main-act-reboot"); 
+  }
   exitAppWithAsk() { this.quitDialog = true; }
   exitApp(force = false) { 
     let doExit = () => ipc.send("main-act-quit");
