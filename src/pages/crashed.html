@@ -4,72 +4,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
   <title>PunctualCat</title>
-  <style>
-    html,body{
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      overflow: hidden;
-      margin: 0;
-    }
-    .full-center {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      font-size: 15px;
-      width: 100%;
-      height: calc(100% - 70px);
-      position: absolute;
-    }
-    .full-center svg {
-      margin-bottom: 25px;
-    }
-    .full-center span {
-      text-align: center;
-    }
-    .full-center .stat {
-      text-align: center;
-      font-size: 16px;
-      margin-top: 20px;
-      background-color: #0081a8;
-      color: #fff;
-      border-radius: 16px;
-      padding: 4px 13px;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .loading {
-      display: inline-block;
-      width: 15px;
-      height: 15px;
-      margin-right: 10px;
-      
-    }
-    .loading svg {
-      margin: 0;
-      animation: infinite loading-inn 2s;
-      animation-timing-function: linear;
-    }
-    @keyframes loading-inn {
-      0%{
-        transform: rotate(0deg);
-      }
-      50%{
-        transform: rotate(180deg);
-      }
-      100%{
-        transform: rotate(360deg);
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="css/pages.css" type="text/css" />
 </head>
 <body>
-  <div class="full-center">
-      <svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="70" height="70"><path d="M512 1008C238.08 1008 16 785.92 16 512 16 238.08 238.08 16 512 16 785.92 16 1008 238.08 1008 512c0 273.92-222.08 496-496 496z m0-32c256.256 0 464-207.744 464-464S768.256 48 512 48 48 255.744 48 512 255.744 976 512 976zM188.288 415.488a16 16 0 1 1 0-32h214.528a16 16 0 1 1 0 32H188.288z m441.6 0a16 16 0 1 1 0-32h214.528a16 16 0 1 1 0 32h-214.528z m-249.6 329.088a16 16 0 0 1 0-32h254.72a16 16 0 1 1 0 32h-254.72z m-200-276.288h16v127.744h-16v-127.744z m38.4 0h16v127.744h-16v-127.744z m38.4 0h16v127.744h-16v-127.744z"></path></svg>
+  <div class="full-center" style="height: calc(100% - 70px);">
+    <img src="img/404.svg" width="70" />
     <span id="global-error-info-text" class="text-secondary mb-3">抱歉，程序出现了一个错误导致停止运行，稍后我们将为您重启程序</span>
-    <div class="stat"><i class="loading"><svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M512 981.312a469.312 469.312 0 1 0-445.824-322.24A42.688 42.688 0 1 0 147.2 632.32 384 384 0 1 1 512 896a42.688 42.688 0 1 0 0 85.312z" fill="#fff"></path></svg></i><span id="global-error-info-stat" >请稍后</span></div>
+    <div class="stat">
+      <i class="loading"><svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="16" height="16"><path d="M512 981.312a469.312 469.312 0 1 0-445.824-322.24A42.688 42.688 0 1 0 147.2 632.32 384 384 0 1 1 512 896a42.688 42.688 0 1 0 0 85.312z" fill="#fff"></path></svg></i>
+      <span id="global-error-info-stat" >请稍后</span>
+    </div>
   </div>
   <script>
   window.onload = function() {

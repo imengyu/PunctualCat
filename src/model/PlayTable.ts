@@ -35,7 +35,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
       newTask.parent = this;
       this.tasks.push(newTask);
     }
-    this.condition = new PlayCondition(null, obj.condition);
+    this.condition = new PlayCondition(null, obj.condition, { intervalType: 'day', timeType: 'any', forceDisallowTypes: [] });
   }
 
   public constructor(jsonObject?:any) {

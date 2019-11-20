@@ -5,7 +5,7 @@ import { EventEmitter } from "events";
 import { AutoPlayStatus } from '../model/PlayInterfaces';
 import { Logger } from 'log4js';
 
-export type AutoPlayTickType = 'hour'|'minute'|'second';
+export type AutoPlayTickType = 'hour'|'minute'|'second'|'run';
 
 var timeNow : Date = null;
 
@@ -75,8 +75,10 @@ export default class AutoPlayService extends EventEmitter {
   private timerMinute = null;
   private timerHour = null;
 
-  private thisHourPlayTask : PlayTask[];
-  private thisMinutePlayTask : PlayTask[];
+  private thisHourPlayTask : PlayTask[] = [];
+  private thisMinutePlayTask : PlayTask[] = [];
+  private thisSecondPlayTask : PlayTask[] = [];
+  private thisSecondStopTask : PlayTask[] = [];
 
   /**
    * 开始时钟校准序列
@@ -90,12 +92,12 @@ export default class AutoPlayService extends EventEmitter {
         clearInterval(this.timerCorrectSec);
         this.timerCorrectSec = null;
         this.timerSecCorrected = true;
-        //时钟开始时运行一次检查，因为分钟和小时时钟没有启动，没有数据
-        this.taskTickLateUpdate();
         //运行秒时钟
         this.timerMinuteWkCurrent = timeNow.getMinutes();
         this.timerTickSec();
-        this.timerSec = setInterval(() => this.timerTickSec(), 1000);
+        this.timerSec = setInterval(() => this.timerTickSec(), 1000);   
+        //时钟开始时运行一次检查，因为分钟和小时时钟没有启动，没有数据
+        this.taskTickLateUpdate();
         this.logInfo('Timer second start at : ' + timeNow.format('HH:ii:ss'));
         this.logInfo('Correct timer second at : ' + timeNow.format('HH:ii:ss'));
       }
@@ -153,6 +155,7 @@ export default class AutoPlayService extends EventEmitter {
     }
     if(minute == this.timerMinuteWkCurrent){
       this.taskTick('second');
+      this.taskTick('run');
     }else if(this.timerMinuteCorrected) {
       clearInterval(this.timerSec);
       this.timerSec = null;
@@ -163,12 +166,24 @@ export default class AutoPlayService extends EventEmitter {
     if(updateTime) timeNow = new Date();
     var hour = timeNow.getHours();
     var minute = timeNow.getMinutes();
+    var second = timeNow.getSeconds();
+    if(second != 0) timeNow.setSeconds(0);
+    if(Math.abs(second) > 5) { //认为时钟偏移已经超过指定的范围了，需要重启时钟
+      clearInterval(this.timerMinute);
+      this.timerMinute = null;
+      this.logger.info('Minute timer deviation too large, recorrect minute timer at : ' + timeNow.format('HH:ii:ss'));
+      this.timerMinuteCorrected = false;
+      if(this.timerSec == null) {
+        this.timerSec = setInterval(() => this.timerTickSec(), 1000);
+        this.timerTickSec(false);
+      }
+    }
     //console.log('Timer minute tick at : ' + timeNow.format('HH:ii:ss'));
     if(!this.timerHourCorrected){
       if(minute == 0){
         clearInterval(this.timerMinute);
         this.timerMinute = null;
-        this.timerMinuteCorrected = true;
+        this.timerHourCorrected = true;
         this.logInfo('Timer minute stop at : ' + timeNow.format('HH:ii:ss'));
         if(this.timerHour == null) {
           this.timerHour = setInterval(() => this.timerTickHour(), 3600000);
@@ -200,6 +215,10 @@ export default class AutoPlayService extends EventEmitter {
   private timerTickHour(updateTime = true){
     if(updateTime) timeNow = new Date();
     var hour = timeNow.getHours();
+    var minute = timeNow.getMinutes();
+    var second = timeNow.getSeconds();
+    if(second != 0) timeNow.setSeconds(0);
+    if(minute != 0) timeNow.setMinutes(0);
     if(this.taskTick('hour')){
       //当前小时存在任务，启动分钟时钟
       this.timerHourWkCurrent = hour;
@@ -301,22 +320,29 @@ export default class AutoPlayService extends EventEmitter {
     if(type == 'hour') rs = this.taskTickHour();
     else if(type == 'minute') rs = this.taskTickMinute();
     else if(type == 'second') {
+      this.thisSecondPlayTask = [];
+      this.thisSecondStopTask = [];
       for (var k = 0, f = this.thisMinutePlayTask.length; k < f; k++){
         if(this.thisMinutePlayTask[k].isPlayingTime('full')){
-          this.thisMinutePlayTask[k].play();
-          this.logInfo('Auto start task ' + this.thisMinutePlayTask[k].name)
+          this.thisSecondPlayTask.push(this.thisMinutePlayTask[k]);
           rs = true;
         }
         if(this.thisMinutePlayTask[k].isStoppingTime('full')){
-          this.thisMinutePlayTask[k].stop();
-          this.logInfo('Auto stop task ' + this.thisMinutePlayTask[k].name)
+          this.thisHourPlayTask.push(this.thisMinutePlayTask[k]);
           rs = true;
         }
       }
     } 
-
-    //this.logInfo('taskTick : ' + type + '('+ rs +') at : ' + new Date().format('HH:ii:ss'));
-
+    else if(type == 'run') {
+      if(this.thisSecondPlayTask.length > 0) for (var k = 0, f = this.thisSecondPlayTask.length; k < f; k++){
+        this.thisSecondPlayTask[k].play();
+        this.logInfo('Auto start task ' + this.thisSecondPlayTask[k].name);
+      }
+      if(this.thisSecondStopTask.length > 0) for (var k = 0, f = this.thisSecondStopTask.length; k < f; k++){
+        this.thisSecondStopTask[k].stop();
+        this.logInfo('Auto stop task ' + this.thisSecondStopTask[k].name);
+      }
+    }
     return rs;
   } 
   private taskTickLateUpdate(forceUpdateAll = false) {
@@ -338,8 +364,10 @@ export default class AutoPlayService extends EventEmitter {
 
     if(needStartSec){
       this.timerMinuteWkCurrent = timeNow.getMinutes();
-      this.timerTickSec();
-      if(!this.timerSec) this.timerSec = setInterval(() => this.timerTickSec(), 1000);
+      if(!this.timerSec) {
+        this.timerSec = setInterval(() => this.timerTickSec(), 1000);
+        this.timerTickSec();
+      }
       this.logInfo('Timer second start at : ' + new Date().format('HH:ii:ss'));
     }
   }

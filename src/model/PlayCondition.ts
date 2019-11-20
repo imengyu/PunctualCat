@@ -104,10 +104,10 @@ export class PlayConditionActuator implements AutoPlayable {
       }
       if(allow.timeType == 'point'){
         if(finalType == 'day-range' || finalType == 'time-range')
-          newActyator.throwErrWithPosition('错误：这里要求使用区间作为条件', conStr, thisConStartIndex);
+          newActyator.throwErrWithPosition('错误：这里要求使用时间点作为条件，不能使用区间', conStr, thisConStartIndex);
       }else if(allow.timeType == 'range'){
         if(finalType == 'day-point' || finalType == 'time-point')
-          newActyator.throwErrWithPosition('错误：这里要求使用时间点作为条件，不能使用区间', conStr, thisConStartIndex);
+          newActyator.throwErrWithPosition('错误：这里要求使用区间作为条件', conStr, thisConStartIndex);
       }
       if(allow.forceDisallowTypes.length > 0) {
         for(var i=0;i<allow.forceDisallowTypes.length;i++) {
@@ -593,9 +593,9 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
    * @param jsonObject JSON 对象
    */
   public constructor(conStr: string, jsonObject?: any, conAllowType?: PlayConditionAllowType) {
-    if(conAllowType) this.conAllowType = conAllowType;
     if(conStr && conStr != '') this.toConditionList(conStr);
     else if(jsonObject) this.loadFromJsonObject(jsonObject);
+    if(conAllowType) this.conAllowType = conAllowType;
   }
 
   /**

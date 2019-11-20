@@ -183,6 +183,7 @@ export default class App extends Vue {
   quitDialog : boolean = false;
   shutdownNowDialog : boolean = false;
   rebootNowDialog : boolean = false;
+  isMax = false;
   shutdownTimer = null;
   shutdownTick = 0;
   locked = false;
@@ -270,6 +271,17 @@ export default class App extends Vue {
       playerTabItem.hotPointCount = 0;
     }
   }
+  @Watch('isMax')
+  onIsMaxChanged(max : boolean) {
+    if(max) {
+      $('.window-icon-maximize').hide();
+      $('.window-icon-unmaximize').show();
+    }else {
+      $('.window-icon-maximize').show();
+      $('.window-icon-unmaximize').hide();
+    }
+
+  }
 
   //Methods
   //=====
@@ -305,6 +317,17 @@ export default class App extends Vue {
       callback();
     });
   }
+  minWindow() { this.currentWindow.minimize() }
+  closeWindow() { this.currentWindow.close() }
+  maxRestoreWindow() {
+    if(this.isMax) { this.currentWindow.restore(); this.isMax=false; }
+    else { this.currentWindow.maximize(); this.isMax=true; }
+  }
+  initWindowFuns() {
+    (<any>window).minWindow = () => this.minWindow();
+    (<any>window).closeWindow = () => this.closeWindow();
+    (<any>window).maxRestoreWindow = () => this.maxRestoreWindow();
+  }
 
   //** Init styles
 
@@ -315,7 +338,8 @@ export default class App extends Vue {
     this.logger = window.appLogger;
     this.currentWindow = remote.getCurrentWindow();
     this.serviceDataStorage = createDataStorageServices();
-    this.initWindowTime();
+    this.initWindowFuns();
+    this.initWindowEvents();
     this.initAutoLockTimer();
     this.initWindowBaseEvents();
     this.initAppConfigue().then(() => {
@@ -340,6 +364,9 @@ export default class App extends Vue {
           });
           //music history
           this.serviceMusicHistory = createMusicHistoryService(this.musicHistoryList);
+          //Devtools
+          if(SettingsServices.getSettingBoolean('system.developerMode'))
+            this.currentWindow.webContents.openDevTools();
 
           this.loadAllDatas(() => {
 
@@ -537,6 +564,9 @@ export default class App extends Vue {
       this.logger.info('Session end event received, now exit app');
       this.exitApp()
     }) //关机事件
+    this.currentWindow.on('page-title-updated', (event, title, explicSplit) => {
+      $('.window-title').text(title);
+    }) //标题更改
   }
   initAppConfigue() : Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -553,16 +583,6 @@ export default class App extends Vue {
       })
     });
   }
-  initWindowTime() {
-    this.switchTimeRun(true);
-    this.currentWindow.webContents.addListener('devtools-reload-page', this.onDevToolsReloadPage);
-    this.currentWindow.addListener('hide', this.onWindowDeactive);
-    this.currentWindow.addListener('minimize', this.onWindowDeactive);
-    this.currentWindow.addListener('restore', this.onWindowActive);
-    this.currentWindow.addListener('show', this.onWindowActive);
-    this.currentWindow.addListener('focus', this.clearAutoLockCount);
-  }
-  
   initCoreServices() {
     this.serviceTables = new TableServices();
     if(this.baseData) this.serviceTables.loadFromJsonObject(this.baseData);
@@ -576,8 +596,19 @@ export default class App extends Vue {
     SettingsServices.on('update', this.onSettingsUpdate);
   }
 
-  uninitWindowTime() {
+  initWindowEvents() {
+    this.switchTimeRun(true);
+    this.currentWindow.webContents.addListener('devtools-reload-page', this.onDevToolsReloadPage);
+    this.currentWindow.addListener('hide', this.onWindowDeactive);
+    this.currentWindow.addListener('minimize', this.onWindowDeactive);
+    this.currentWindow.addListener('restore', this.onWindowActive);
+    this.currentWindow.addListener('show', this.onWindowActive);
+    this.currentWindow.addListener('focus', this.clearAutoLockCount);
+  }
+  uninitWindowEvents() {
     this.currentWindow.webContents.removeListener('devtools-reload-page', this.onDevToolsReloadPage);
+    this.currentWindow.removeAllListeners('page-title-updated');
+    this.currentWindow.removeAllListeners('session-end');
     this.currentWindow.removeListener('focus', this.clearAutoLockCount);
     this.currentWindow.removeListener('hide', this.onWindowDeactive);
     this.currentWindow.removeListener('minimize', this.onWindowDeactive);
@@ -688,7 +719,8 @@ export default class App extends Vue {
     let window = SettingsServices.getSettingObject('window');
     if(bySystem) {
       let oldSize = window.oldSize;
-      if(oldSize && oldSize.x != 900 && oldSize.y != 600) {
+      if(window.oldIsMax) { this.currentWindow.maximize(); this.isMax = true; }
+      else if(oldSize && oldSize.x != 900 && oldSize.y != 600) {
         let screenSize = screen.getPrimaryDisplay().bounds;
         let newPos = {
           x: (screenSize.width - oldSize.x) / 2,
@@ -706,6 +738,7 @@ export default class App extends Vue {
       }
     }
     if(!CommonUtils.isNullOrEmpty(window.title)) this.currentWindow.setTitle(window.title);
+    else this.currentWindow.setTitle('PunctualCat')
     this.background = window.background;
     this.backgroundOpacity = window.backgroundOpacity;
     this.developerMode = SettingsServices.getSettingBoolean('system.developerMode');
@@ -739,7 +772,7 @@ export default class App extends Vue {
       x: bounds.width,
       y: bounds.height
     });
-    SettingsServices.setSettingBoolean('window.isMax', this.currentWindow.isMaximized());
+    SettingsServices.setSettingBoolean('window.oldIsMax', this.currentWindow.isMaximized());
   }
   
 
@@ -754,7 +787,7 @@ export default class App extends Vue {
   }
   onWindowActive() { this.switchTimeRun(true) }
   onWindowDeactive() { this.switchTimeRun(false) }
-  onDevToolsReloadPage() { this.uninitWindowTime() }
+  onDevToolsReloadPage() { this.uninitWindowEvents() }
 
   //** 界面控制
 

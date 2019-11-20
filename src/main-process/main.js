@@ -3,12 +3,11 @@ const path = require("path")
 const url = require('url')
 const process = require('process')
 
-const { app,BrowserWindow,globalShortcut,dialog } = require('electron')
+const { app,BrowserWindow,globalShortcut,dialog,shell } = require('electron')
  
 var mainWindow
 var helpWindow
 var crashedWindow
-var screenSize = {};
 
 const Menu = electron.Menu;
 const Tray = electron.Tray;
@@ -22,14 +21,12 @@ var appQuit = false
 
 function createWindow () {
 
-  screenSize = electron.screen.getPrimaryDisplay().workAreaSize;
-
   mainWindow = new BrowserWindow({
     minWidth: 710,
     minHeight: 500,
     width: 900, 
     height: 600,
-    frame: true,
+    frame: false,
     transparent: false,
     fullscreen: false,
     resizable: true,
@@ -47,7 +44,6 @@ function createWindow () {
     protocol: 'file:',
     slashes: true
   }))
-  mainWindow.webContents.openDevTools();
   mainWindow.webContents.on('crashed', (event, killed) => {
 
     if(killed) {
@@ -74,7 +70,6 @@ function createWindow () {
       }, 10000);*/
     }
   });
-  
   mainWindow.webContents.on('devtools-reload-page', () => {
     if(!mainWindow.isMinimized()) mainWindow.restore();
     if(!mainWindow.isFocused()) mainWindow.focus();
@@ -93,30 +88,30 @@ function createWindow () {
     // when you should delete the corresponding element.
     mainWindow = null
   })
-  mainWindow.on('new-window-for-tab', () => {
-    console.log('New Tab');
-  })
   mainWindow.on('unresponsive', () => {
     dialog.showMessageBox(mainWindow, {
       type: 'info',
-      message: '软件可能卡住了，需要一些事件让其完成工作。如果它长时间没有响应，可能是软件故障。',
+      message: '软件可能卡住了，需要一些时间让其完成工作。',
       title: '抱歉，软件出现了一些故障',
-      buttons: [ '等待其响应', '强制重新加载页面' ]
+      detail: '如果它长时间没有响应，可能是软件故障。您可以尝试强制重新加载页面',
+      noLink: true,
+      buttons: [ '等待其响应', '强制重新加载页面' ],
     }).then((value) => {
-      if(value == 1) {
+      if(value.response == 1) {
         mainWindow.reload();
       }
     })
   });
+  mainWindow.on('responsive', () => {
+
+  })
   mainWindow.on('close',(e) => {  
     if(!appQuit){
       e.preventDefault();
       mainWindow.hide();
     } 
   });
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
-  })
+  mainWindow.once('ready-to-show', () => mainWindow.show())
 
   var trayMenuTemplate = [
     {
@@ -143,6 +138,7 @@ function createWindow () {
 }
 function destroyMain() {
   appQuit = true;
+  mainWindow.removeAllListeners();
   mainWindow.close();
 }
 
@@ -172,7 +168,33 @@ function showCrashedWindow() {
     crashedWindow = null;
   });
 }
- 
+function showHelpWindow(anchorPos) {
+  if(anchorPos) anchorPos = '#' + anchorPos;
+  else anchorPos = '';
+  if(helpWindow == null){
+    helpWindow = new BrowserWindow({
+      minWidth: 510,
+      minHeight: 460,
+      width: 960, 
+      height: 660,
+      frame: true,
+      show: false,
+      icon: path.join(__dirname, 'app.ico'),
+      webPreferences: { nodeIntegration: true },
+    })
+    helpWindow.setMenu(null)
+    helpWindow.loadURL(`file:///${__dirname}/pages/docs.html${anchorPos}`);
+    helpWindow.webContents.openDevTools();
+    helpWindow.on('closed', () => helpWindow = null)
+    helpWindow.once('ready-to-show', () => helpWindow.show())
+  }else{
+    helpWindow.loadURL(`file:///${__dirname}/pages/docs.html${anchorPos}`);
+    helpWindow.show();
+    helpWindow.focus();
+  }
+}
+
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -193,6 +215,36 @@ app.on('activate', function () {
   if (mainWindow === null) {
     createWindow()
   }
+})
+app.on('web-contents-created', (event, contents) => {
+  contents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame, frameProcessId, frameRoutingId) => {
+    contents.loadURL(path.join(__dirname, 'pages/failed.html'));
+    contents.executeJavaScript('document.getElementById(\'global-error-info-code\').innerText = \''+errorDescription+'('+errorCode+')\'');
+  });
+  contents.on('will-navigate', (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl)
+    if(parsedUrl.protocol == 'file:') {
+      console.log('navigate to file : ' + parsedUrl.pathname);
+    }else if(parsedUrl.protocol == 'http:' || parsedUrl.protocol == 'https:') {
+      event.preventDefault();
+      dialog.showMessageBox(mainWindow, {
+        title: '打开外部链接',
+        message: '您是否需要在浏览器中打开外部链接？',
+        detail: '目标链接：' + navigationUrl,
+        buttons: [ '在浏览器中打开此页面', '取消打开' ]
+      }).then((value) => {
+        if(value.response == 0) shell.openExternal(navigationUrl)
+      }).catch(() => {});
+    }
+  });
+  contents.on('new-window', async (event, navigationUrl) => {
+    const parsedUrl = new URL(navigationUrl);
+    if(parsedUrl.protocol != 'devtools:' && parsedUrl.protocol != 'file:'){
+      console.log(parsedUrl);
+      event.preventDefault();
+      shell.openExternal(navigationUrl)
+    }
+  })
 })
  
 // In this file you can include the rest of your app's specific main process
@@ -258,9 +310,20 @@ ipc.on('main-save-file-dialog-json', function (event, arg) {
 ipc.on('main-act-quit', function (event, arg) {
   appQuit = true; app.quit();
 });
+ipc.on('main-act-show-help-window', function (event, arg) {
+  showHelpWindow(arg);
+});
 ipc.on('main-act-recreate', function (event) {
   if(mainWindow == null) createWindow();
 });
+ipc.on('main-act-reload', function (event) {
+  if(mainWindow && event.sender == mainWindow.webContents) 
+    mainWindow.webContents.loadURL(url.format({ pathname: path.join(__dirname, 'index.html'), protocol: 'file:', slashes: true }))
+  else if(helpWindow && event.sender == helpWindow.webContents) {
+    helpWindow.webContents.loadURL(url.format({ pathname: path.join(__dirname, 'pages/docs.html'), protocol: 'file:', slashes: true }))
+  }
+});
+
 ipc.on('main-act-run-shell', function (event, arg) {
   let workerProcess
   //console.log('run command : ' + arg.command);

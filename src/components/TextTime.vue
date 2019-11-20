@@ -77,6 +77,7 @@ export default class TextTime extends Vue {
   display: inline-block;
   padding: 15px;
   padding-left: 20px;
+  padding-top: 5px;
 
   .text-bigger {
     display: flex;

@@ -13,7 +13,7 @@ class SettingsServices extends EventEmitter {
         x: 900,
         y: 600
       },
-      isMax: false,
+      oldIsMax: false,
       title: '',
       background: '',
       backgroundOpacity: 60,

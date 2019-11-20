@@ -56,7 +56,11 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     this.volume = json.volume;
     this.timeLimit = json.timeLimit;
     this.loopCount = json.loopCount;
-    this.condition = new PlayCondition(null, json.condition);
+    this.condition = new PlayCondition(null, json.condition, {
+      intervalType: 'any',
+      timeType: 'point',
+      forceDisallowTypes: [ 'day-range', 'day-point' ]
+    });
     for(var i = 0; i < json.commands.length; i++)
       this.commands.push(json.commands[i]);
     for(var i = 0; i < json.musics.length; i++) {
@@ -81,7 +85,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     else this.condition = new PlayCondition('', null, {
       intervalType: 'any',
       timeType: 'point',
-      forceDisallowTypes: [ 'day-range' ]
+      forceDisallowTypes: [ 'day-range', 'day-point' ]
     });
   }
 
