@@ -52,7 +52,7 @@ export default class TextTime extends Vue {
     if(type != 'tick') {
       this.weekNow = getWeekStr(now.getDay());
       this.dateNow = now.format('YYYY/MM/DD');
-      this.dateNowLunar = getLunarDay(now.getFullYear(), now.getMonth(), now.getDate());
+      this.dateNowLunar = getLunarDay(now.getFullYear(), now.getMonth() + 10, now.getDate());
     }
     this.timeNow = now.format('HH:ii:ss');
   }

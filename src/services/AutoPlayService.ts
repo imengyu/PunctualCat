@@ -11,6 +11,22 @@ var timeNow : Date = null;
 
 export function getTimeNow() { return timeNow }
 
+export type AutoPlayServiceStatus = {
+  workingTimer: 'hour'|'minute'|'second'|'disabled',
+  workingPrecent: number,
+  workingRunChecked: boolean,
+  workingCheckedTaskCount: number,
+  workingIsCorrecting: boolean
+};
+
+export type AutoPlayServiceTimerStatus = {
+  timer: 'hour'|'minute'|'second',
+  type: 'start'|'stop'|'corrected'
+};
+
+export type AutoPlayServiceStatusChangedCallback = (status : AutoPlayServiceStatus) => void;
+export type AutoPlayServiceTimerStatusChangedCallback = (status : AutoPlayServiceTimerStatus) => void;
+
 /**
  * 自动播放控制服务
  */
@@ -23,6 +39,8 @@ export default class AutoPlayService extends EventEmitter {
   private tables : Array<PlayTable> = null;
   private tableServices : TableServices;
   private logger : Logger = null;
+  private statusChangedCallback : AutoPlayServiceStatusChangedCallback = null;
+  private timerStatusChangedCallback : AutoPlayServiceTimerStatusChangedCallback = null;
 
   public constructor(tableServices : TableServices) {
     super();
@@ -51,6 +69,20 @@ export default class AutoPlayService extends EventEmitter {
     }
 
   }
+  /**
+   * 注册时钟状态回调
+   */
+  public registerServerStatusCallback(callback : AutoPlayServiceStatusChangedCallback) {
+    this.statusChangedCallback = callback;
+  }
+  /**
+   * 注册时钟状态回调 2
+   */
+  public registerTimerStatusCallback(callback : AutoPlayServiceTimerStatusChangedCallback) {
+    this.timerStatusChangedCallback = callback;
+  }
+  public clearServerStatusCallback() { this.statusChangedCallback = null; }
+  public clearTimerStatusCallback() { this.timerStatusChangedCallback = null; }
 
   public flushTable(table : PlayTable) { this.taskTickLateUpdate(); }
   public flush(force = false) { this.taskTickLateUpdate(force); }
@@ -61,6 +93,21 @@ export default class AutoPlayService extends EventEmitter {
       buf+= arguments[i];
     this.logger.info(buf);
     console.log(buf);
+  }
+  private runStatusCallback(status : 'hour'|'minute'|'second'|'disabled', precent: number, correcting: boolean = false, checked: boolean = false, checkCount = 0) {
+    if(typeof this.statusChangedCallback == 'function') 
+      this.statusChangedCallback({
+        workingTimer: status,
+        workingPrecent: precent,
+        workingRunChecked: checked,
+        workingIsCorrecting: correcting,
+        workingCheckedTaskCount: checkCount
+      });
+  }
+  private runTimerStatusCallback(timer : 'hour'|'minute'|'second', type: 'start'|'stop'|'corrected') {
+    this.logInfo('Timer ' + timer + ' ' + type + ' at : ' + timeNow.format('HH:ii:ss'));
+    if(typeof this.timerStatusChangedCallback == 'function') 
+      this.timerStatusChangedCallback({ timer: timer, type: type });
   }
 
   private timerSecCorrected = false;
@@ -98,8 +145,8 @@ export default class AutoPlayService extends EventEmitter {
         this.timerSec = setInterval(() => this.timerTickSec(), 1000);   
         //时钟开始时运行一次检查，因为分钟和小时时钟没有启动，没有数据
         this.taskTickLateUpdate();
-        this.logInfo('Timer second start at : ' + timeNow.format('HH:ii:ss'));
-        this.logInfo('Correct timer second at : ' + timeNow.format('HH:ii:ss'));
+        this.runTimerStatusCallback('second', 'corrected');
+        this.runTimerStatusCallback('second', 'start');
       }
     }, 50);
   }
@@ -129,6 +176,7 @@ export default class AutoPlayService extends EventEmitter {
     this.timerMinuteCorrected = false;
     this.timerHourCorrected = false;
 
+    this.runStatusCallback('disabled', 0);
     this.logInfo('All timers stopped');
   }
 
@@ -139,6 +187,7 @@ export default class AutoPlayService extends EventEmitter {
     var seconds = timeNow.getSeconds();
     var minute = timeNow.getMinutes();
     if(!this.timerMinuteCorrected){
+      this.runStatusCallback('second', (seconds / 60) * 360, true);
       if(seconds == 0){
         clearInterval(this.timerSec);
         this.timerSec = null;
@@ -149,17 +198,18 @@ export default class AutoPlayService extends EventEmitter {
           this.timerMinute = setInterval(() => this.timerTickMinute(), 60000);
           this.timerTickMinute(false);
         }
-        this.logInfo('Correct timer minute at : ' + timeNow.format('HH:ii:ss'));
-        this.logInfo('Timer minute start at : ' + timeNow.format('HH:ii:ss'));
+        this.runTimerStatusCallback('minute', 'corrected');
+        this.runTimerStatusCallback('minute', 'start');
       }
     }
-    if(minute == this.timerMinuteWkCurrent){
-      this.taskTick('second');
-      this.taskTick('run');
+    if(minute == this.timerMinuteWkCurrent){  
+      let checked = this.taskTick('second');
+      this.runStatusCallback('second', (seconds / 60) * 360, false, checked, this.thisSecondPlayTask.length + this.thisSecondStopTask.length);
+      if(checked) this.taskTick('run');
     }else if(this.timerMinuteCorrected) {
       clearInterval(this.timerSec);
       this.timerSec = null;
-      this.logInfo('Timer second stop at : ' + timeNow.format('HH:ii:ss'));
+      this.runTimerStatusCallback('second', 'stop');
     }
   }
   private timerTickMinute(updateTime = true){
@@ -177,20 +227,22 @@ export default class AutoPlayService extends EventEmitter {
         this.timerSec = setInterval(() => this.timerTickSec(), 1000);
         this.timerTickSec(false);
       }
+      this.runTimerStatusCallback('second', 'start');
     }
     //console.log('Timer minute tick at : ' + timeNow.format('HH:ii:ss'));
     if(!this.timerHourCorrected){
+      this.runStatusCallback('minute', (minute / 60 * 365), true);
       if(minute == 0){
         clearInterval(this.timerMinute);
         this.timerMinute = null;
         this.timerHourCorrected = true;
-        this.logInfo('Timer minute stop at : ' + timeNow.format('HH:ii:ss'));
+        this.runTimerStatusCallback('minute', 'stop');
         if(this.timerHour == null) {
           this.timerHour = setInterval(() => this.timerTickHour(), 3600000);
           this.timerTickHour(false);
         }
-        this.logInfo('Correct timer hour at : ' + timeNow.format('HH:ii:ss'));
-        this.logInfo('Timer hour start at : ' + timeNow.format('HH:ii:ss'));
+        this.runTimerStatusCallback('hour', 'corrected');
+        this.runTimerStatusCallback('hour', 'start');
       }
       //0 点需要重新切换列表状态
       if(hour == 0 && minute == 0)
@@ -204,12 +256,13 @@ export default class AutoPlayService extends EventEmitter {
           this.timerSec = setInterval(() => this.timerTickSec(), 1000);
           this.timerTickSec(false);
         }
-        this.logInfo('Timer second start at : ' + timeNow.format('HH:ii:ss'));
-      }
+        this.runStatusCallback('minute', (minute / 60 * 365), false, true, this.thisMinutePlayTask.length);
+        this.runTimerStatusCallback('second', 'start');
+      } else this.runStatusCallback('minute', (minute / 60 * 365), false, false);
     }else if(this.timerHourCorrected) {
       clearInterval(this.timerMinute);
       this.timerMinute = null;
-      this.logInfo('Timer minute stop at : ' + timeNow.format('HH:ii:ss'));
+      this.runTimerStatusCallback('minute', 'stop');
     }
   }
   private timerTickHour(updateTime = true){
@@ -228,8 +281,9 @@ export default class AutoPlayService extends EventEmitter {
         }, 60000);
         this.timerTickMinute(false);
       }
-      this.logInfo('Timer minute start at : ' + timeNow.format('HH:ii:ss'));
-    }
+      this.runStatusCallback('hour', (hour / 24 * 365), false, true, this.thisHourPlayTask.length);
+      this.runTimerStatusCallback('minute', 'start');
+    } else this.runStatusCallback('hour', (hour / 24 * 365), false, false);
     //0 点需要重新切换列表状态，和执行数据保存任务
     if(hour == 0) this.onDayChange();
   }
@@ -313,9 +367,7 @@ export default class AutoPlayService extends EventEmitter {
     return result
   }
   private taskTick(type : AutoPlayTickType) : boolean {
-
     var rs = false;
-    
     //小时， 全局检索
     if(type == 'hour') rs = this.taskTickHour();
     else if(type == 'minute') rs = this.taskTickMinute();
@@ -359,8 +411,7 @@ export default class AutoPlayService extends EventEmitter {
         needStartSec = true;
       }
     }
-    if(this.taskTick('minute'))
-      needStartSec = true;
+    if(this.taskTick('minute')) needStartSec = true;
 
     if(needStartSec){
       this.timerMinuteWkCurrent = timeNow.getMinutes();
@@ -368,7 +419,7 @@ export default class AutoPlayService extends EventEmitter {
         this.timerSec = setInterval(() => this.timerTickSec(), 1000);
         this.timerTickSec();
       }
-      this.logInfo('Timer second start at : ' + new Date().format('HH:ii:ss'));
+      this.runTimerStatusCallback('second', 'start');
     }
   }
 }

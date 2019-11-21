@@ -266,6 +266,31 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
 
   public getPlayTaskString() {
     if(this.type == 'music') {
+      let rs = '音乐 ';
+      if(this.musics.length == 0)
+        rs += '无音乐';
+      else if(this.musics.length == 1)
+        rs += this.musics[0].music.name;
+      else if(this.musics.length > 1)
+        rs += this.musics[0].music.name + ' 等 '+ (this.musics.length-1) +' 个音乐';
+      return rs;
+    } else if(this.type == 'command') {
+      let rs = '命令 ';
+      if(this.commands.length == 0)
+        rs += '无';
+      else if(this.commands.length == 1)
+        rs += this.commands[0];
+      else if(this.commands.length > 1)
+        rs += this.commands.length + ' 个命令';
+      return rs;
+    } else if(this.type == 'reboot') 
+      return '重启计算机'
+    else if(this.type == 'shutdown')
+      return '关闭计算机'
+    return '未定义任务';
+  }
+  public getPlayTaskHtml() {
+    if(this.type == 'music') {
       let rs = '<span class="badge badge-pill badge-primary mr-2">音乐</span>';
       if(this.musics.length == 0)
         rs += '<i class="text-secondary">无音乐</i>';

@@ -346,6 +346,9 @@ export class PlayConditionActuator implements AutoPlayable {
     return (this.logicNot ? '!' : '') + (this.logicType == 'and' ? '&&' : (this.logicType == 'or' ? '||' : ''));
   }
 
+  private htmlBuffer = '';
+  private strBuffer = '';
+
   public getConditionSummaryType() : PlayConditionType {
     switch(this.type) {
       case 'date':  return 'day-point';
@@ -385,81 +388,94 @@ export class PlayConditionActuator implements AutoPlayable {
     return this.childList.length == 0
   }
   public convertToConHtml() : string {
-    switch(this.type) {
-      case 'date':
-      case 'time':
-      case 'week':
-        return '<span class="con-span con-span-' + this.type + '">' + this.convertToConStr() + '</span>';
-      case 'date-range':
-      case 'week-range': 
-      case 'time-range': 
-        return '<span class="con-span con-span-' + this.type + '">' + this.convertToConStr().replace(' 至 ', '<span class="con-span-to">至</span>') + '</span>';
-      case 'group': {
-        let resultStr = '', i = 0;
-        if(this.childList.length == 0){
-          resultStr += '<span class="con-none">未定义条件</span>';
-        }else for(; i < this.childList.length; i++) {
-          if(i > 0){
-            switch(this.childList[i].logicType){
-              case 'or': resultStr += '<span class="con-span con-span-logic con-or">或</span>'; break;
-              case 'and': resultStr += '<span class="con-span con-span-logic con-and">且</span>'; break;
+    if(this.htmlBuffer == '') {
+      switch(this.type) {
+        case 'date':
+        case 'time':
+        case 'week':
+          this.htmlBuffer = '<span class="con-span con-span-' + this.type + '">' + this.convertToConStr() + '</span>';
+          break;
+        case 'date-range':
+        case 'week-range': 
+        case 'time-range': 
+          this.htmlBuffer =  '<span class="con-span con-span-' + this.type + '">' + this.convertToConStr().replace(' 至 ', '<span class="con-span-to">至</span>') + '</span>';
+          break;
+        case 'group': {
+          let resultStr = '', i = 0;
+          if(this.childList.length == 0){
+            resultStr += '<span class="con-none">未定义条件</span>';
+          }else for(; i < this.childList.length; i++) {
+            if(i > 0){
+              switch(this.childList[i].logicType){
+                case 'or': resultStr += '<span class="con-span con-span-logic con-or">或</span>'; break;
+                case 'and': resultStr += '<span class="con-span con-span-logic con-and">且</span>'; break;
+              }
             }
+            if(this.childList[i].logicNot)
+              resultStr += '<span class="con-span con-span-logic con-not">非</span>';
+            resultStr += this.childList[i].convertToConHtml();
           }
-          if(this.childList[i].logicNot)
-            resultStr += '<span class="con-span con-span-logic con-not">非</span>';
-          resultStr += this.childList[i].convertToConHtml();
+          if(this.isTopLevel()) this.htmlBuffer = resultStr;
+          else this.htmlBuffer = '<span class="con-group">' + resultStr + '</span>';
+          break;
         }
-        if(this.isTopLevel()) return resultStr;
-        else return '<span class="con-group">' + resultStr + '</span>';
       }
-      
     }
-    return '';
+    return this.htmlBuffer;
   }
   public convertToConStr() : string {
-    switch(this.type) {
-      case 'date': 
-        return (this.dateValue.year == 0 ? '每' : this.dateValue.year.toString()) +  '年' +
-        (this.dateValue.month == 0 ? '每' : this.dateValue.month.toString()) +  '月' +
-        (this.dateValue.day == 0 ? '每' : this.dateValue.day.toString()) +  '日';
-      case 'date-range': 
-        return (this.dateRangeValue.start.year == 0 ? '每' : this.dateRangeValue.start.year.toString()) + '年' +
-        (this.dateRangeValue.start.month == 0 ? '每' : this.dateRangeValue.start.month.toString()) +  '月' +
-        (this.dateRangeValue.start.day == 0 ? '每' : this.dateRangeValue.start.day.toString()) + '日 至 ' + 
-        (this.dateRangeValue.end.year == 0 ? '每' : this.dateRangeValue.end.year.toString()) +  '年' +
-        (this.dateRangeValue.end.month == 0 ? '每' : this.dateRangeValue.end.month.toString()) +  '月' +
-        (this.dateRangeValue.end.day == 0 ? '每' : this.dateRangeValue.end.day.toString()) +  '日';
-      case 'group': {
-        let resultStr = '', i = 0;
-        for(; i < this.childList.length; i++) {
-          if(i > 0){
-            switch(this.childList[i].logicType){
-              case 'or': resultStr += ' 或 '; break;
-              case 'and': resultStr += ' 且 '; break;
+    if(this.strBuffer == '') {
+      switch(this.type) {
+        case 'date': 
+          this.strBuffer = (this.dateValue.year == 0 ? '每' : this.dateValue.year.toString()) +  '年' +
+          (this.dateValue.month == 0 ? '每' : this.dateValue.month.toString()) +  '月' +
+          (this.dateValue.day == 0 ? '每' : this.dateValue.day.toString()) +  '日';
+          break;
+        case 'date-range': 
+          this.strBuffer = (this.dateRangeValue.start.year == 0 ? '每' : this.dateRangeValue.start.year.toString()) + '年' +
+          (this.dateRangeValue.start.month == 0 ? '每' : this.dateRangeValue.start.month.toString()) +  '月' +
+          (this.dateRangeValue.start.day == 0 ? '每' : this.dateRangeValue.start.day.toString()) + '日 至 ' + 
+          (this.dateRangeValue.end.year == 0 ? '每' : this.dateRangeValue.end.year.toString()) +  '年' +
+          (this.dateRangeValue.end.month == 0 ? '每' : this.dateRangeValue.end.month.toString()) +  '月' +
+          (this.dateRangeValue.end.day == 0 ? '每' : this.dateRangeValue.end.day.toString()) +  '日';
+          break;
+        case 'group': {
+          let resultStr = '', i = 0;
+          for(; i < this.childList.length; i++) {
+            if(i > 0){
+              switch(this.childList[i].logicType){
+                case 'or': resultStr += ' 或 '; break;
+                case 'and': resultStr += ' 且 '; break;
+              }
             }
+            if(this.childList[i].logicNot)
+              resultStr += '非 ';
+            resultStr += this.childList[i].convertToConStr();
           }
-          if(this.childList[i].logicNot)
-            resultStr += '非 ';
-          resultStr += this.childList[i].convertToConStr();
+          if(this.isTopLevel()) this.strBuffer = resultStr;
+          else this.strBuffer = '(' + resultStr + ')';
+          break;
         }
-        if(this.isTopLevel()) return resultStr;
-        else return '(' + resultStr + ')';
-      }
-      case 'time-range': 
-        return (this.timeValueRange.start.hours == -1 ? '*' : CommonUtils.pad(this.timeValueRange.start.hours, 2)) + ':' + 
-        CommonUtils.pad(this.timeValueRange.start.minute, 2) + ':' + CommonUtils.pad(this.timeValueRange.start.second, 2) + ' 至 ' + 
-        (this.timeValueRange.end.hours == -1 ? '*' : CommonUtils.pad(this.timeValueRange.end.hours, 2)) + ':' + 
-        CommonUtils.pad(this.timeValueRange.end.minute, 2) + ':' + CommonUtils.pad(this.timeValueRange.end.second, 2);
-      case 'time': 
-        return (this.timeValue.hours == -1 ? '*' : CommonUtils.pad(this.timeValue.hours, 2)) + ':' + 
-        CommonUtils.pad(this.timeValue.minute, 2) + ':' + CommonUtils.pad(this.timeValue.second, 2);
-      case 'week': 
-        return DateUtils.getWeekStr(this.weekValue);
-      case 'week-range': {
-        return DateUtils.getWeekStr(this.weekRangeValue.start) + ' 至 ' + DateUtils.getWeekStr(this.weekRangeValue.end);
+        case 'time-range': 
+          this.strBuffer = (this.timeValueRange.start.hours == -1 ? '*' : CommonUtils.pad(this.timeValueRange.start.hours, 2)) + ':' + 
+          CommonUtils.pad(this.timeValueRange.start.minute, 2) + ':' + CommonUtils.pad(this.timeValueRange.start.second, 2) + ' 至 ' + 
+          (this.timeValueRange.end.hours == -1 ? '*' : CommonUtils.pad(this.timeValueRange.end.hours, 2)) + ':' + 
+          CommonUtils.pad(this.timeValueRange.end.minute, 2) + ':' + CommonUtils.pad(this.timeValueRange.end.second, 2);
+          break;
+        case 'time': 
+          this.strBuffer = (this.timeValue.hours == -1 ? '*' : CommonUtils.pad(this.timeValue.hours, 2)) + ':' + 
+          CommonUtils.pad(this.timeValue.minute, 2) + ':' + CommonUtils.pad(this.timeValue.second, 2);
+          break;
+        case 'week': 
+          this.strBuffer = DateUtils.getWeekStr(this.weekValue);
+          break;
+        case 'week-range': {
+          this.strBuffer = DateUtils.getWeekStr(this.weekRangeValue.start) + ' 至 ' + DateUtils.getWeekStr(this.weekRangeValue.end);
+          break;
+        }
       }
     }
-    return '';
+    return this.strBuffer;
   }
   public isPlayingTime(type: AutoPlayCheckType) : boolean {
     let dateNow = getTimeNow();

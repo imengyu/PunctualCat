@@ -218,3 +218,39 @@
     width: 23px;
   }
 } 
+
+.el-tooltip__popper.is-dark {
+  background: rgba(97,97,97,.9);
+  border-radius: 2px;
+  color: #fff;
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 14px;
+  padding: 8px;
+  animation: pulse 200ms cubic-bezier(0,0,.2,1)forwards;
+
+  .popper__arrow {
+    display: none;
+  }
+}
+
+@keyframes pulse {
+	0% {
+		-webkit-transform: scale(0);
+		transform: scale(0);
+		opacity: 0
+	}
+
+	50% {
+		-webkit-transform: scale(.99);
+		transform: scale(.99)
+	}
+
+	100% {
+		-webkit-transform: scale(1);
+		transform: scale(1);
+		opacity: 1;
+		visibility: visible
+	}
+}

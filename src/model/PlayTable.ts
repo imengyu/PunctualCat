@@ -18,6 +18,8 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
       enabled: this.enabled,
       condition: this.condition.saveToJSONObject(),
       tasks: [],
+      sort: this.sort,
+      width: this.width,
     }, i = 0;
     for(;i < this.tasks.length; i++)
       buf.tasks.push(this.tasks[i].saveToJSONObject());
@@ -29,6 +31,8 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
     this.note = obj.note;
     this.color = obj.color;
     this.enabled = obj.enabled;
+    if(obj.sort) this.sort = obj.sort;
+    if(obj.width) this.width = obj.width;
     for(var i = 0; i < obj.tasks.length; i++){
       let newTask = new PlayTask();
       newTask.loadFromJsonObject(obj.tasks[i]);
@@ -54,6 +58,38 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   public color = '#000';
   public enabled = true;
   public status : AutoPlayStatus = 'unknow';
+
+  /*界面的保存属性*/
+
+  public sort = {
+    order: 'descending',
+    prop: 'condition',
+  }
+  public width = {
+    name: '120',
+    condition: '95',
+  }
+
+  /**
+   * 进行排序
+   */
+  public doSort() {
+    let order = this.sort.order == 'ascending' ? -1 : 1;
+    let prop = this.sort.prop;
+    if(prop == 'name' || prop == 'condition' || prop == 'music') {
+      this.tasks.sort((a : PlayTask, b : PlayTask) => {
+        if(prop == 'name') 
+          return order * a.name.localeCompare(b.name);
+        else if(prop == 'condition') { 
+          if(a.condition && b.condition)
+            return order * a.condition.toConditionString().localeCompare(b.condition.toConditionString());
+        }
+        else if(prop == 'music')
+          return order * a.getPlayTaskString().localeCompare(b.getPlayTaskString());
+        return 0;
+      });
+    }
+  }
 
   /**
    * 检测当前 播放计划表 是否达到指定的播放时间

@@ -11,11 +11,15 @@
           class="table-tasks"
           :data="currentShowTable.tasks"
           :row-class-name="getTaskClassStyle"
+          :default-sort="currentShowTable.sort"
+          @sort-change="tableSortChange"
           border>
           <el-table-column
             prop="name"
             label="任务名称"
-            sortable
+            :sortable="'custom'"
+            :resizable="true"
+            :show-overflow-tooltip="true"
             width="120">
             <template slot-scope="scope">
               <el-input size="mini" placeholder="请输入任务名称" v-show="scope.row.editing" v-model="scope.row.name"></el-input>
@@ -28,22 +32,43 @@
             width="38">
             <template slot-scope="scope">
               <div class="text-center">
-                <i v-if="scope.row.editing" class="iconfont icon-hj1" style="color: #0087bb" title="您正在编辑任务，保存任务以后才能自动播放"></i>
-                <i v-else-if="scope.row.status == 'normal'" class="iconfont icon-dengdaiqueren" title="任务就绪，等待播放"></i>
-                <i v-else-if="scope.row.status == 'played'" class="iconfont icon-wancheng text-success" title="任务已播放"></i>
-                <i v-else-if="scope.row.status == 'disabled'" class="iconfont icon-dengdaizhihang" style="color:#cacaca" title="任务已禁用，不会自动播放"></i>
-                <i v-else-if="scope.row.status == 'error'" class="iconfont icon-hj1 text-danger" title="任务播放时出现错误"></i>
-                <i v-else-if="scope.row.status == 'playing'" class="iconfont icon-yanchu text-success" title="任务正在播放"></i>
-                <i v-else-if="scope.row.status == 'norule'" class="iconfont icon-hj1 text-warning" title="由于您没有设置任务的播放条件，因此不会自动播放"></i>
-                <i v-else-if="scope.row.status == 'notplay'" class="iconfont icon-zhihangzhong" title="当前计划表今日不播放"></i>
-                <i v-else-if="scope.row.status == 'parent-disabled'" class="iconfont icon-dengdaizhihang" style="color:#cacaca" title="当前计划表已禁用"></i>
+                <el-tooltip v-if="scope.row.editing" placement="right" content="您正在编辑任务，保存任务以后才能自动播放" :open-delay="150">
+                  <i class="iconfont icon-hj1" style="color: #0087bb"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'normal'" placement="right" content="任务就绪，等待播放" :open-delay="150">
+                  <i class="iconfont icon-dengdaiqueren"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'played'" placement="right" content="任务已播放" :open-delay="150">
+                  <i class="iconfont icon-wancheng text-success"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'disabled'" placement="right" content="任务已禁用，不会自动播放" :open-delay="150">
+                  <i class="iconfont icon-dengdaizhihang" style="color:#cacaca"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'error'" placement="right" content="任务播放时出现错误" :open-delay="150">
+                  <i class="iconfont icon-hj1 text-danger"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'playing'" placement="right" content="任务正在播放" :open-delay="150">
+                  <i class="iconfont icon-yanchu text-success"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'norule'" placement="right" content="由于您没有设置任务的播放条件，因此不会自动播放" :open-delay="150">
+                  <i class="iconfont icon-hj1 text-warning"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'notplay'" placement="right" content="当前计划表今日不播放" :open-delay="150">
+                  <i class="iconfont icon-zhihangzhong"></i>
+                </el-tooltip>
+                <el-tooltip v-else-if="scope.row.status == 'parent-disabled'" placement="right" content="当前计划表已禁用" :open-delay="150">
+                  <i class="iconfont icon-dengdaizhihang" style="color:#cacaca"></i>
+                </el-tooltip>
               </div>
             </template>
           </el-table-column>
           <el-table-column
             prop="condition"
-            sortable
+            :sortable="'custom'"
             label="播放条件"
+            :resizable="true"
+            :show-overflow-tooltip="true"
+            :formatter="tableFormatterCondition"
             width="95">
             <template slot-scope="scope">
               <condition-input size="mini" v-show="scope.row.editing" :condition="scope.row.condition"></condition-input>
@@ -51,6 +76,11 @@
             </template>
           </el-table-column>
           <el-table-column
+            :sortable="'custom'"
+            :resizable="true"
+            :show-overflow-tooltip="true"
+            :formatter="tableFormatterMusic"
+            prop="music"
             label="音乐或任务">
             <template slot-scope="scope">
               <el-popover
@@ -191,11 +221,11 @@
                 </div>
                 <div slot="reference" class="no-select"
                   @click="editCommandOrMusicTask(scope.row)">
-                  <span class="no-warp-span cursor-pointer" v-html="scope.row.getPlayTaskString()"></span>
+                  <span class="no-warp-span cursor-pointer" v-html="scope.row.getPlayTaskHtml()"></span>
                   <a class="float-right" style="margin-top: 3px;" href="javascript:;" @click="editCommandOrMusicTask(scope.row)" title="编辑音乐或任务"><i class="iconfont icon-chuangzuo"></i></a>
                 </div>
               </el-popover>
-              <div class="no-warp-span" v-show="!scope.row.editing" v-html="scope.row.getPlayTaskString()"></div>
+              <div class="no-warp-span" v-show="!scope.row.editing" v-html="scope.row.getPlayTaskHtml()"></div>
             </template>
           </el-table-column>
           <el-table-column
@@ -204,7 +234,8 @@
             align="center"
             :min="0"
             :max="100"
-            width="55">
+            :resizable="false"
+            width="52">
             <template slot-scope="scope">
               <el-input-number size="mini" controls-position="right" v-show="scope.row.editing" v-model="scope.row.volume"></el-input-number>
               <span v-show="!scope.row.editing">{{scope.row.volume}}</span>
@@ -216,7 +247,8 @@
             align="center"
             :min="1"
             :max="50"
-            width="55">
+            :resizable="false"
+            width="52">
             <template slot-scope="scope">
               <el-input-number size="mini" controls-position="right" v-show="scope.row.editing" v-model="scope.row.loopCount"></el-input-number>
               <span v-show="!scope.row.editing">{{scope.row.loopCount}}</span>
@@ -225,7 +257,9 @@
           <el-table-column
             label="启用"
             align="center"
-            width="40">
+            :resizable="false"
+            width="45"
+            prop="enabled">
             <template slot-scope="scope">
               <span v-if="scope.row.enabled" class="text-success">是</span>
               <span v-if="!scope.row.enabled" class="text-secondary">否</span>
@@ -234,6 +268,7 @@
           <el-table-column
             label="操作"
             align="center"
+            :resizable="false"
             width="100">
             <template slot-scope="scope">
               <div class="controls text-center no-select" v-show="!scope.row.editing && !currentIsEditTask">
@@ -287,13 +322,23 @@
           @contextmenu="showTableRightMenu(table)"
           @dblclick="editTable(table)"
           :id="'table_item_'+index" >
-          <span class="status" :data-status="table.status" :title="getTableStatusString(table.status)" @click="showTableRightMenu(table)"></span>
+          <el-tooltip placement="top" :content="getTableStatusString(table.status)">
+            <span class="status" :data-status="table.status" @click="showTableRightMenu(table)"></span>
+          </el-tooltip>
           {{ table.name }}
         </table-item>
       </table-list>
       <div class="bottom-right-area">
-        <a v-if="currentShowTable" type="text" class="icon" title="设置计划表属性" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
-        <a v-if="currentShowTable" type="text" class="icon" title="向计划表添加一个任务" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
+        <el-tooltip v-if="currentShowTable"  placement="top" content="设置计划表属性">
+          <a type="text" class="icon" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
+        </el-tooltip>
+        <el-tooltip v-if="currentShowTable" placement="top" content="向计划表添加一个任务">
+          <a type="text" class="icon" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
+        </el-tooltip>
+        <auto-status ref="autoStatus" class="auto-status ml-2"></auto-status>
+      </div>
+      <div class="bottom-right-footer">
+        
       </div>
     </div>
 
@@ -336,6 +381,7 @@ import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-p
 import { PlayTable } from '../model/PlayTable'
 import ConditionInput from '../components/ConditionInput.vue'
 import AudioWave from '../components/AudioWave.vue'
+import AutoTimerStatus from '../components/AutoTimerStatus.vue'
 import TableServices from '../services/TableServices'
 import App from '../App.vue'
 import { Form } from 'element-ui'
@@ -357,7 +403,9 @@ const SortableListTable = {
   template: `
     <ul class="table-tables">
       <slot />
-      <li class="add" title="添加播放计划表" @click="onAddClick"><i class="iconfont icon-xinjiantuopu"></i></li>
+      <el-tooltip placement="top" content="添加播放计划表">
+        <li class="add" @click="onAddClick"><i class="iconfont icon-xinjiantuopu"></i></li>
+      </el-tooltip>
     </ul>
   `,
   methods: {
@@ -407,7 +455,7 @@ const SortableItemCommand = {
     'table-list': <any>SortableListTable,
     'command-item': <any>SortableItemCommand,
     'command-list': <any>SortableListCommand,
-
+    'auto-status': AutoTimerStatus,
   }
 })
 export default class TableView extends Vue {
@@ -446,6 +494,7 @@ export default class TableView extends Vue {
     this.createMenu();
     PlayTask.setGlobalStateChangedCallback(this.globalTaskStateChanged);
     setTimeout(this.autoSwitchCurrentView, 1300);
+    (<AutoTimerStatus>this.$refs['autoStatus']).bindServer(this.autoPlayService);
   }
 
   createMenu() {
@@ -457,6 +506,26 @@ export default class TableView extends Vue {
     this.menuTable.append(new MenuItem({ label: '删除时间表', click: () => this.delTable(this.currentEditTable) }));
     this.menuTable.append(new MenuItem({ type: 'separator' }));
     this.menuTable.append(new MenuItem({ label: '添加时间表', click: () => this.addTable() }));
+  }
+
+  tableSortChange(obj : { column : Number, prop : string, order }) {
+    if(this.currentShowTable) {
+      this.currentShowTable.sort.order = obj.order;
+      this.currentShowTable.sort.prop = obj.prop;
+      this.currentShowTable.doSort();
+    }
+  }
+  tableFilterEnabled(value, row : PlayTask) {
+    return value == row.enabled;
+  }
+  tableFilterStatus(value, row : PlayTask) {
+    return value == row.status;
+  }
+  tableFormatterCondition(row : PlayTask, column, cellValue, index) {
+    return row.condition.toConditionHtml();
+  }
+  tableFormatterMusic(row : PlayTask, column, cellValue, index) {
+    return row.getPlayTaskString();
   }
 
   getCurrentTableCurLeft() {
@@ -762,7 +831,7 @@ export default class TableView extends Vue {
 }
 .bottom-right-area {
   position: absolute;
-  width: 100px;
+  width: 200px;
   top: 0;
   right: 0;
   display: flex;
@@ -795,6 +864,16 @@ export default class TableView extends Vue {
       font-size: 16px;
     }
   }
+}
+.bottom-right-footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 120px;
+  height: 30px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
 }
 .table-tasks {
 

@@ -128,6 +128,7 @@ import TextTime from "./components/TextTime.vue"
 import IconToolBar from "./components/IconToolBar.vue"
 import Calendar from "./components/Calendar.vue"
 import AudioWave from './components/AudioWave.vue'
+import AutoTimerStatus from './components/AutoTimerStatus.vue'
 
 import MusicView from "./views/MusicView.vue"
 import VoiceView from "./views/VoiceView.vue"
@@ -160,6 +161,7 @@ const screen = remote.screen;
     'icon-toolbar': IconToolBar,
     'calendar': Calendar,
     'audio-wave': AudioWave,
+    'auto-status': AutoTimerStatus,
     'music-list': MusicView,
     'voice-view': VoiceView,
     'settings-view': SettingsView,
@@ -295,14 +297,16 @@ export default class App extends Vue {
     }, 1000);
   }
   showRunTimeError(source : string, lineno : number, colno : number, error : Error) { 
-    this.$alert('<div class="display-block font-monospace mt-3 p-3 bg-light-grey overflow-scroll-x scroll-fix-white">' + error + 
-      '</div><div class="display-block font-monospace p-3 bg-light-grey overflow-scroll-x scroll-fix-white">错误位置：<span class="text-important">' + 
-        source + ':' + colno + '</span></div>','程序发生了一个不可预料的错误', {
-      dangerouslyUseHTMLString: true,
-      type: 'error'
-    })
-    this.logger.error(error.message, error, source, lineno, colno)
-    console.error(error, source, lineno, colno);
+    if(error) {
+      this.$alert('<div class="display-block font-monospace mt-3 p-3 bg-light-grey overflow-scroll-x scroll-fix-white">' + error + 
+        '</div><div class="display-block font-monospace p-3 bg-light-grey overflow-scroll-x scroll-fix-white">错误位置：<span class="text-important">' + 
+          source + ':' + colno + '</span></div>','程序发生了一个不可预料的错误', {
+        dangerouslyUseHTMLString: true,
+        type: 'error'
+      })
+      this.logger.error(error.message, error, source, lineno, colno)
+      console.error(error, source, lineno, colno);
+    }
   }
   showStartUpError(message : string, e) {
     $("#global-error-info").show();
@@ -560,6 +564,8 @@ export default class App extends Vue {
     this.currentWindow.setMenuBarVisibility(false);
   }
   initWindowBaseEvents() {
+    this.currentWindow.removeAllListeners('page-title-updated');
+    this.currentWindow.removeAllListeners('session-end');
     this.currentWindow.on('session-end', () => {
       this.logger.info('Session end event received, now exit app');
       this.exitApp()
@@ -598,22 +604,25 @@ export default class App extends Vue {
 
   initWindowEvents() {
     this.switchTimeRun(true);
+    this.uninitWindowEvents();
     this.currentWindow.webContents.addListener('devtools-reload-page', this.onDevToolsReloadPage);
     this.currentWindow.addListener('hide', this.onWindowDeactive);
     this.currentWindow.addListener('minimize', this.onWindowDeactive);
     this.currentWindow.addListener('restore', this.onWindowActive);
     this.currentWindow.addListener('show', this.onWindowActive);
-    this.currentWindow.addListener('focus', this.clearAutoLockCount);
+    this.currentWindow.addListener('focus', this.onWindowFocus);
+    this.currentWindow.addListener('blur', this.onWindowBlur);
   }
   uninitWindowEvents() {
     this.currentWindow.webContents.removeListener('devtools-reload-page', this.onDevToolsReloadPage);
     this.currentWindow.removeAllListeners('page-title-updated');
     this.currentWindow.removeAllListeners('session-end');
-    this.currentWindow.removeListener('focus', this.clearAutoLockCount);
-    this.currentWindow.removeListener('hide', this.onWindowDeactive);
-    this.currentWindow.removeListener('minimize', this.onWindowDeactive);
-    this.currentWindow.removeListener('restore', this.onWindowActive);
-    this.currentWindow.removeListener('show', this.onWindowActive);
+    this.currentWindow.removeAllListeners('focus');
+    this.currentWindow.removeAllListeners('blur');
+    this.currentWindow.removeAllListeners('hide');
+    this.currentWindow.removeAllListeners('minimize');
+    this.currentWindow.removeAllListeners('restore');
+    this.currentWindow.removeAllListeners('show');
   }
   uninit() : Promise<any> {
     clearInterval(this.lockAutoTimer);
@@ -785,8 +794,10 @@ export default class App extends Vue {
     (<TextTime>this.$refs['textTime2']).update();
     this.saveDataOnDayChange();
   }
-  onWindowActive() { this.switchTimeRun(true) }
-  onWindowDeactive() { this.switchTimeRun(false) }
+  onWindowActive() { this.switchTimeRun(true); }
+  onWindowDeactive() { this.switchTimeRun(false); }
+  onWindowFocus() { this.clearAutoLockCount(); /*$('.window').addClass('active');*/ }
+  onWindowBlur() { /*$('.window').removeClass('active');*/ }
   onDevToolsReloadPage() { this.uninitWindowEvents() }
 
   //** 界面控制
