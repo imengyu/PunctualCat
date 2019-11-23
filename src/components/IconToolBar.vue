@@ -3,7 +3,10 @@
     <div :id="'icon-item-'+item.name" v-for="(item,index) in items" :key="index" tabindex="2"
       :class="'icon-item'+(activeItem==item?' active':'')+(' '+arrowDirection)" @click="itemClick(item)" 
       :style="'width:'+itemSize+'px;height: '+itemSize+'px;line-height:'+itemSize+'px'">
-      <span v-if="item.showHotPoint" class="hot-point">{{ item.hotPointCount > 0 ? item.hotPointCount : '' }}</span>
+      <el-tooltip v-if="item.showHotPoint && item.hotPointCountTooltip!=''" :placement="arrowDirection" :content="item.hotPointCountTooltip">
+        <span class="hot-point" v-html="item.hotPointCount"></span>
+      </el-tooltip>
+      <span class="hot-point" v-else-if="item.showHotPoint" v-html="item.hotPointCount"></span>
       <span :class="'iconfont ' + item.content" :style="'font-size:'+(item.fixSize?item.fixSize:'32')+'px'">
         {{ item.type == 'icon' ? '' : item.content }}
       </span>
@@ -76,6 +79,11 @@ export default class IconToolBar extends Vue {
       line-height: 20px;
       top: 0;
       right: 0;
+
+      i {
+        color: #fff!important;
+        font-size: 12px;
+      }
     }
     .iconfont {
       transition: all ease-in-out .2s;

@@ -6,7 +6,7 @@
     </div>
     <div class="block">
       <span class="demonstration">系统音量</span>
-      <el-slider v-model="volumeSystem"></el-slider>
+      <el-slider v-model="volumeSystem" :min="0" :max="100" :disabled="!systemVolMgrCanuse"></el-slider>
     </div>
   </div>
 </template>
@@ -15,14 +15,18 @@
 import { Component, Prop, Vue, Watch } from "vue-property-decorator";
 import SettingsServices from '../services/SettingsServices'
 import $ from 'jquery'
+import Win32Utils from "../utils/Win32Utils";
 
 @Component
 export default class VoiceView extends Vue {
 
 
   @Prop({default:false}) show : boolean;
+  systemVolMgrCanuse = false;
+
   volumeSoft = 50;
   volumeSystem = 50;
+  volumeSystemChangeLock = false;
 
   @Watch('volumeSoft')
   onVolumeSoftChanged(newV) {
@@ -30,6 +34,10 @@ export default class VoiceView extends Vue {
   }
   @Watch('volumeSystem')
   onVolumeSystemChanged(newV) {
+    if(this.volumeSystemChangeLock) {
+      this.volumeSystemChangeLock = false;
+      return;
+    }
     this.$emit('volume-system-changed', newV);
   }
   @Watch('show')
@@ -38,12 +46,16 @@ export default class VoiceView extends Vue {
       $('.voice-view').focus();
     }
   }
+
   onBlur(){
     this.$emit('update:show', false);
   }
   mounted() {
     SettingsServices.addListener('load', () => {
       this.volumeSoft = Math.floor(SettingsServices.getSettingNumber('player.volume') * 100);
+      this.systemVolMgrCanuse = Win32Utils.getSystemVolManagerStatus();
+      this.volumeSystemChangeLock = true;
+      if(this.systemVolMgrCanuse) this.volumeSystem = Win32Utils.getSystemVolume();
     })
   }
 

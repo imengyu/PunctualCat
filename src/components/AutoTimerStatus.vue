@@ -1,8 +1,7 @@
 <template>
 
-  <div :class="'autotimer-status' + (isWarn?' warn':'') + (isHover?' hover':'')" 
-    @mouseenter="isHover=true" @mouseleave="isHover=false">
-    <div v-if="isHover || isWarn" class="toggle">
+  <div :class="'autotimer-status' + (isWarn?' warn':'')">
+    <div class="toggle">
       <el-tooltip
         placement="top"
         :content="autoRunning?'切换自动播放状态':'开启自动播放系统'">
@@ -20,27 +19,26 @@
         <i class="iconfont icon-cuowuhttp"></i>
       </el-tooltip>
     </div>
-    <div v-else-if="isHover" class="warn success">
-      <el-tooltip
-        placement="top"
-        content="提示：自动播放系统正常运行">
-        <i class="iconfont icon-xuanzhong"></i>
-      </el-tooltip>
-    </div>
-    <div id="warp1" v-if="!isWarn && !isHover" class="warp wrap1" :style="'background-color:'+getColor(1, false)+';'" :data-degree="degree1">
-      <div class="inner1" :style="'transform: rotate(' + degree11 + 'deg);background-color:' + getColor(1, true) +';'"></div>
-      <div class="inner2" :style="'transform: rotate(' + degree12 + 'deg);background-color:' + getColor(1, true) +';'"></div>
-      <div class="mask">{{ task1 > 0 ? task1 : '' }}</div>
-    </div>
-    <div id="warp2" v-if="!isWarn && !isHover" class="warp wrap2" :style="'background-color:'+getColor(2, false)+';'" :data-degree="degree2">
-      <div class="inner1" :style="'transform: rotate(' + degree21 + 'deg);background-color:' + getColor(2, true) +';'"></div>
-      <div class="inner2" :style="'transform: rotate(' + degree22 + 'deg);background-color:' + getColor(2, true) +';'"></div>
-      <div class="mask">{{ task2 > 0 ? task2 : '' }}</div>
-    </div>
-    <div id="warp3" v-if="!isWarn && !isHover" class="warp wrap3" :style="'background-color:'+getColor(3, false)+';'" :data-degree="degree3">
-      <div class="inner1" :style="'transform: rotate(' + degree31 + 'deg);background-color:' + getColor(3, true) +';'"></div>
-      <div class="inner2" :style="'transform: rotate(' + degree32 + 'deg);background-color:' + getColor(3, true) +';'"></div>
-      <div class="mask">{{ task3 > 0 ? task3 : '' }}</div>
+    <div v-else class="warn success">
+      <el-popover
+        placement="bottom"
+        width="200"
+        transition="pulse"
+        trigger="manual"
+        v-model="statusVisible">
+        <div class="text-success mt-1 mb-3">
+          <i class="iconfont icon-xuanzhong"></i> 自动播放系统正常运行中 
+          <a href="javascript:;" class="float-right" @click="statusVisible=false" title="隐藏"><i class="iconfont icon-tiaojian-copy"></i></a>
+        </div>
+        <auto-status-circle ref="statusCircle" class="mb-3"
+          :degree1="degree1" :degree2="degree2" :degree3="degree3"
+          :task1="task1" :task2="task2" task3="task3"
+          :colorForegound1="colorForegound1" :colorForegound2="colorForegound2"
+          :colorForegound3="colorForegound3" :colorBackground1="colorBackground1"
+          :colorBackground2="colorBackground2" :colorBackground3="colorForegound3">
+        </auto-status-circle>
+        <i slot="reference" class="iconfont icon-duigou" @click="statusVisible=true"></i>
+      </el-popover>
     </div>
   </div>
 
@@ -51,10 +49,14 @@
 import { Component, Prop, Vue, Watch } from 'vue-property-decorator'
 import AutoPlayService, { AutoPlayServiceStatus, AutoPlayServiceTimerStatus } from '../services/AutoPlayService'
 import $ from 'jquery'
-import { setInterval, clearInterval } from 'timers';
-import { clearLine } from 'readline';
+import AutoTimerStatusCircle from './AutoTimerStatusCircle.vue'
+import { PlayTask } from '../model/PlayTask';
 
-@Component
+@Component({
+  components: {
+    'auto-status-circle': AutoTimerStatusCircle
+  }
+})
 export default class AutoTimerStatus extends Vue {
 
   autoPlayService : AutoPlayService = null;
@@ -63,15 +65,9 @@ export default class AutoTimerStatus extends Vue {
   degree2 : Number = 0;
   degree3 : Number = 0;
 
-  checked1 : Array<Number>  = [];
-  checked2 : Array<Number>  = [];
-  checked3 : Array<Number> = [];
-
   task1 = 0;
   task2 = 0;
   task3 = 0;
-
-  autoRunning = true;
 
   colorBackground1 : string = '#bbb';
   colorForegound1 : string = '#888';
@@ -80,64 +76,20 @@ export default class AutoTimerStatus extends Vue {
   colorBackground3 : string = '#bbb';
   colorForegound3 : string = '#888';
 
-  getColor(index : number, isBackground : boolean) {
-    if(index == 1) {
-      if(this.degree1 < 180)  return isBackground ? this.colorBackground1 : this.colorForegound1 ;
-      else return !isBackground ? this.colorBackground1 : this.colorForegound1 ;
-    }else if(index == 2) {
-      if(this.degree2 < 180)  return isBackground ? this.colorBackground2 : this.colorForegound2 ;
-      else return !isBackground ? this.colorBackground2 : this.colorForegound2 ;
-    }else if(index == 3) {
-      if(this.degree3 < 180)  return isBackground ? this.colorBackground3 : this.colorForegound3;
-      else return !isBackground ? this.colorBackground3 : this.colorForegound3 ;
-    }
-  }
-
-  degree11 : Number = 0;
-  degree12 : Number = 180;
-  degree21 : Number = 0;
-  degree22 : Number = 180;
-  degree31 : Number = 0;
-  degree32 : Number = 180;
+  autoRunning = true;
+  statusVisible = false;
 
   isWarn = false;
-  isHover = false;
-
-  @Watch('degree1')
-  onDegree1Changed(newV) {
-    if(newV < 180) {
-      this.degree11 = 0;
-      this.degree12 = 180 + newV;
-    }else {
-      this.degree11 = 180;
-      this.degree12 = newV;
-    }
-  }
-  @Watch('degree2')
-  onDegree2Changed(newV) {
-    if(newV < 180) {
-      this.degree21 = 0;
-      this.degree22 = 180 + newV;
-    }else {
-      this.degree21 = 180;
-      this.degree22 = newV;
-    }
-  }
-  @Watch('degree3')
-  onDegree3Changed(newV) {
-    if(newV < 180) {
-      this.degree31 = 0;
-      this.degree32 = 180 + newV;
-    }else {
-      this.degree31 = 180;
-      this.degree32 = newV;
-    }
-  }
 
   @Watch('autoRunning')
   onRunningChanged(newV) {
-    if(newV) this.autoPlayService.start();
-    else this.autoPlayService.stop();
+    if(newV) {
+      this.autoPlayService.start();
+    }
+    else { 
+      this.statusVisible = false;
+      this.autoPlayService.stop();
+    }
   }
 
   bindServer(autoPlayService : AutoPlayService) {
@@ -163,14 +115,12 @@ export default class AutoTimerStatus extends Vue {
 
   flashBackground(index : number) {
     if(!this.flashingBackground[index]){
-      this.flashingBackground[index] = true;
-     
+      this.flashingBackground[index] = true;   
       let currloopCount = 0;
       let interval = null;
       let loop = () => {
         currloopCount++;
-        if(currloopCount > 6) {
-          
+        if(currloopCount > 6) {   
           this.flashingBackground[index] = false;
           clearInterval(interval);
           $('#warp' + index).removeClass('flashbg');
@@ -184,13 +134,11 @@ export default class AutoTimerStatus extends Vue {
   flashForeground(index : number) {
     if(!this.flashingForeground[index]){
       this.flashingForeground[index] = true;
-      let degreeOld = this['degree'+index];
       let currloopCount = 0;
       let interval = null;
       let loop = () => {
         currloopCount++;
         if(currloopCount > 6) {
-          this['degree'+index]=degreeOld;
           this.flashingForeground[index] = false;
           clearInterval(interval);
           $('#warp' + index).removeClass('flash');
@@ -198,31 +146,27 @@ export default class AutoTimerStatus extends Vue {
           $('#warp' + index).toggleClass('flash');
         }
       }
-      this['degree'+index]=359;
       interval = setInterval(loop, 800);
     }
   }
 
   onAutoPlayServiceStatusChangedCallback(status : AutoPlayServiceStatus) {
     if(status.workingTimer == 'second') {
-      this.degree1 = Math.floor(status.workingPrecent);
+      this.degree1 = Math.floor(status.workingPrecent * 360);
       this.isWarn = false;
       this.task1 = status.workingCheckedTaskCount;
-      if(status.workingRunChecked) this.checked1.push(status.workingPrecent);
       if(status.workingIsCorrecting) this.colorForegound1 = '#03426a';
       else this.colorForegound1 = '#0a67a3';
     }else if(status.workingTimer == 'minute') {
-      this.degree2 = Math.floor(status.workingPrecent);
+      this.degree2 = Math.floor(status.workingPrecent * 360);
       this.isWarn = false;
       this.task2 = status.workingCheckedTaskCount;
-      if(status.workingRunChecked) this.checked2.push(status.workingPrecent);
       if(status.workingIsCorrecting) this.colorForegound2 = '#006363';
       else this.colorForegound2 = '#009999';
     }else if(status.workingTimer == 'hour') {
-      this.degree3 = Math.floor(status.workingPrecent);
+      this.degree3 = Math.floor(status.workingPrecent * 360);
       this.isWarn = false;
       this.task3 = status.workingCheckedTaskCount;
-      if(status.workingRunChecked) this.checked3.push(status.workingPrecent);
       if(status.workingIsCorrecting) this.colorForegound3 = '#008209';
       else this.colorForegound3 = '#0c90d';
     }else if(status.workingTimer == 'disabled') {
@@ -231,22 +175,24 @@ export default class AutoTimerStatus extends Vue {
   }
   onAutoPlayServiceTimerStatusChangedCallback(status : AutoPlayServiceTimerStatus) {
     if(status.timer == 'hour') {
-      this.checked3 = [];
-      if(status.type=='start') this.flashForeground(3);
+      if(status.type=='start') 
+        this.flashForeground(3);
       else if(status.type=='stop'){ 
         this.flashBackground(3);
-        this.degree2 = 0;
+        this.degree3 = 0;
       }
     }else if(status.timer == 'minute') {
-      this.checked2 = [];
-      if(status.type=='start') this.flashForeground(2);
+      if(status.type=='start') {
+        this.flashForeground(2);
+      }
       else if(status.type=='stop') { 
         this.flashBackground(2);
         this.degree2 = 0;
       }
     }else if(status.timer == 'second') {
-      this.checked1 = [];
-      if(status.type=='start') this.flashForeground(1);
+      if(status.type=='start') { 
+        this.flashForeground(1);
+      }
       else if(status.type=='stop') { 
         this.flashBackground(1);
         this.degree1 = 0;
@@ -272,8 +218,11 @@ export default class AutoTimerStatus extends Vue {
   align-items: center;
   user-select: none;
   border-radius: 15px;
-  background-color: #fff;
-  box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    background-color: #fff;
+    box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.08);
+  }
 
   .toggle {
     display: inline-flex;
@@ -290,89 +239,19 @@ export default class AutoTimerStatus extends Vue {
     display: flex;
     justify-content: center;
     align-items: center;
+    margin-left: 5px;
+    cursor: pointer;
 
+    span {
+      width: 12px;
+      height: 12px;
+    }
     &.success {
       background-color: #06af00;
     }
     i {
       font-size: 12px;
       color: #fff;
-    }
-  }
-
-  $warp-width : 18px;
-
-  .warp {
-    position: relative;
-    border-radius: 50%;
-    opacity: 1;
-    transition: opacity ease-in-out .3s;
-    display: inline-block;
-
-    &.flashbg {
-      opacity: 0.3;
-    }
-    &.flash {
-      .inner1,
-      .inner2 {
-        opacity: 0.5;
-      }
-    }
-
-    .inner1 {
-      position: absolute;
-      transform: rotate(0deg);
-      top: 0;
-      left: 0;
-      border-radius: 50%;
-      transition: opacity ease-in-out .3s;
-      opacity: 1;
-    }
-    .inner2 {
-      position: absolute;
-      transform: rotate(0deg);
-      top: 0;
-      left: 0;
-      border-radius: 50%;
-      transition: opacity ease-in-out .3s;
-      opacity: 1;
-    }
-    .mask {
-      position: absolute;
-      color: #fff;
-      height: $warp-width;
-      line-height: $warp-width;
-      font-size: 15px;
-      font-weight: bold;
-      font-family: "FaktPro-Hair";
-      left: 0;
-      right: 0;
-      top: 0;
-      text-align: center
-    }
-  }
-
-  
-
-  @for $i from 1 through 3 {
-    .wrap#{$i} {
-
-      $warp-width-val : $warp-width;
-      $warp-width-precent : $warp-width-val / 2;
-
-      width: $warp-width-val;
-      height: $warp-width-val;
-
-      .inner1 {
-        width: $warp-width-val;
-        height: $warp-width-val;
-        clip: rect(0px,$warp-width-precent,$warp-width-val,0px);
-      }
-      .inner2 {
-        width: $warp-width-val;
-        height: $warp-width-val;
-        clip: rect(0px,$warp-width-precent,$warp-width-val,0px);
-      }
     }
   }
 }

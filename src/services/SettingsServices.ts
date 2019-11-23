@@ -79,8 +79,8 @@ class SettingsServices extends EventEmitter {
         CommonUtils.cloneValueIfUndefined(this.staticSettings, this.staticSettingsTemplate);
         //Prealloc
         this.emit('afteroad');
-        let arr = this.staticSettings.auto.muteTimes; this.staticSettings.auto.muteTimes = [];
-        arr.forEach(element => this.staticSettings.auto.muteTimes.push(new PlayCondition(null, element)));
+        let arr = this.staticSettings.auto.muteTimes, i = 0; this.staticSettings.auto.muteTimes = [];
+        for(;i<arr.length;i++) this.staticSettings.auto.muteTimes.push(new PlayCondition(null, arr[i]));
       }
       else this.staticSettings = CommonUtils.clone(this.staticSettingsTemplate);
       this.emit('load');
@@ -94,10 +94,11 @@ class SettingsServices extends EventEmitter {
   public saveSettings() : Promise<any> {
     //Prealloc
     this.emit('beforesave');
-    let arr : Array<PlayCondition> = this.staticSettings.auto.muteTimes; this.staticSettings.auto.muteTimes = [];
-    for(var i=0;i<arr.length;i++)this.staticSettings.auto.muteTimes.push(arr[i].saveToJSONObject());
+    let dataClone = CommonUtils.clone(this.staticSettings);
+    let arr : Array<PlayCondition> = dataClone.auto.muteTimes; dataClone.auto.muteTimes = [];
+    for(var i=0;i<arr.length;i++) dataClone.auto.muteTimes.push(arr[i].saveToJSONObject());
     //Save
-    return this.staticDataStorageServices.saveData('settings', this.staticSettings);
+    return this.staticDataStorageServices.saveData('settings', dataClone);
   }
 
 

@@ -28,6 +28,7 @@ const initVue = function() {
   showIntro();
 };
 const showIntro = function() {
+  $('.window-loading').fadeOut();
   $('#intro img').show().addClass(['animated','bounceInDown']);
   $('#intro h3').show().addClass(['animated','bounceInUp']);
   $('#intro .ver-text').show().addClass(['animated','bounceInUp']);

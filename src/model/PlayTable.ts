@@ -109,6 +109,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   public addTask(task : PlayTask) {
     task.parent = this;
     this.tasks.push(task);
+    this.doSort();
   }
   public delTask(task : PlayTask) {
     task.parent = null;

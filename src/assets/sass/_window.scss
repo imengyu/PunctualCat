@@ -48,8 +48,8 @@ $window-padding: 0;
   }
   */
 }
-
 .window-title-bar {
+  display: block;
   height: 30px;
   background: transparent;
   padding: 0;

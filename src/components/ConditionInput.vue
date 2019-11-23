@@ -6,6 +6,7 @@
       <div class="con-stat">
         <el-popover
           v-if="conditionInputBuffer==''|| conditionValidStatus=='unknow'"
+          transition="pulse"
           placement="top-start" width="300" trigger="hover" slot="prepend">
           <span v-if="conditionInputBuffer==''">您没有定义播放条件，该条件 <b>不会被用于判断</b> </span>
           <i slot="reference" :class="'iconfont icon-tanhao'"></i>
@@ -15,6 +16,7 @@
           placement="top-start"
           width="300"
           trigger="hover"
+          transition="pulse"
           slot="prepend">
           <span v-if="conditionValidStatus=='success'">当前条件格式有效</span>
           <span v-else>

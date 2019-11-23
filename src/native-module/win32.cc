@@ -1,5 +1,6 @@
 #include <nan.h>
 #include <Windows.h>
+#include "volume.h"
 
 namespace bells {
 
@@ -134,7 +135,7 @@ namespace bells {
 		v8::Local<v8::String> string = v8::String::NewFromUtf8(isolate, "v1.0", v8::NewStringType::kInternalized).ToLocalChecked();
 		args.GetReturnValue().Set(string);
 	}
-  void MethodMessageBeep(const FunctionCallbackInfo<Value>& args) {
+	void MethodMessageBeep(const FunctionCallbackInfo<Value>& args) {
 		if (args.Length() < 1) {
 			Nan::ThrowTypeError("Wrong number of arguments");
 			return;
@@ -149,6 +150,35 @@ namespace bells {
 
 		args.GetReturnValue().Set(Nan::New(result));
 	}
+	void MethodSetSystemVolume(const FunctionCallbackInfo<Value>& args) {
+
+	  if (args.Length() < 1) {
+		  Nan::ThrowTypeError("Wrong number of arguments");
+		  return;
+	  }
+	  if (!args[0]->IsNumber()) {
+		  Nan::ThrowTypeError("Wrong arguments");
+		  return;
+	  }
+
+	  Isolate* isolate = args.GetIsolate();
+
+	  double arg0 = args[0]->NumberValue();
+	  bool reesult = SetVolume((int)arg0);
+	  args.GetReturnValue().Set(Nan::New(reesult));
+  }
+  void MethodGetSystemVolume(const FunctionCallbackInfo<Value>& args) {
+	  int b = GetVolume();
+	  args.GetReturnValue().Set(Nan::New(b));
+  }
+  void MethodInitSystemVolume(const FunctionCallbackInfo<Value>& args) {
+	  bool b = InitVolume();
+	  args.GetReturnValue().Set(Nan::New(b));
+  }
+  void MethodUnInitSystemVolume(const FunctionCallbackInfo<Value>& args) {
+	  bool b = UnInitVolume();
+	  args.GetReturnValue().Set(Nan::New(b));
+  }
 
 	void Initialize(Local<Object> exports) {
 		NODE_SET_METHOD(exports, "setPowerStateEnable", MethodSetPowerStateEnable);
@@ -159,6 +189,10 @@ namespace bells {
 		NODE_SET_METHOD(exports, "closeMointor", MethodCloseMointor);
 		NODE_SET_METHOD(exports, "openMointor", MethodOpenMointor);
     NODE_SET_METHOD(exports, "messageBeep", MethodMessageBeep);
+	NODE_SET_METHOD(exports, "getSystemVolume", MethodGetSystemVolume);
+	NODE_SET_METHOD(exports, "setSystemVolume", MethodSetSystemVolume);
+	NODE_SET_METHOD(exports, "initSystemVolume", MethodInitSystemVolume);
+	NODE_SET_METHOD(exports, "uninitSystemVolume", MethodUnInitSystemVolume);
 		NODE_SET_METHOD(exports, "version", MethodGetVersion);
 	}
 

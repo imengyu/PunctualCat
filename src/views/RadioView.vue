@@ -81,7 +81,9 @@
         <el-tab-pane label="在线广播电台 FM" name="fm">
           <span class="text-secondary" style="font-size:12px">
             <i class="fa fa-exclamation-triangle mr-2" style="color: #db9411"></i> 
-            抱歉。由于政策以及制作组经费问题，在线广播电台 功能不再随软件提供。<br/>
+            抱歉。由于政策以及制作组经费问题，在线广播电台 功能不再随软件提供。
+          </span>
+          <br/>
             您还可以访问以下在线网站，来播放在线广播（为第三方提供，与本软件无关）：
             <ul>
               <li><a href="http://www.radio366.com/" target="_blank">电台之家</a></li>
@@ -89,7 +91,6 @@
               <li><a href="https://www.qingting.fm/radiopage/" target="_blank">蜻蜓FM电台</a></li>
               <li><a href="https://www.baidu.com/s?&wd=%E5%9C%A8%E7%BA%BF%E5%B9%BF%E6%92%AD" target="_blank">更多在线广播</a></li>
             </ul>
-          </span>
         </el-tab-pane>
       </el-tabs>
     </div>

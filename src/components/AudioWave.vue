@@ -21,6 +21,7 @@ export default class AudioWave extends Vue {
   oW = 0;
   oH = 0;
   stopDrawStarted : boolean = false;
+  stopDrawTimeout = null;
 
   currentMusic : MusicItem = null;
   running = false;
@@ -33,7 +34,7 @@ export default class AudioWave extends Vue {
     if(!this.stopDrawStarted) {
       this.stopDrawStarted = true;
       let fadeMs = staticSettingsServices.getSettingNumber('player.fadeMs');
-      setTimeout(() => {
+      this.stopDrawTimeout = setTimeout(() => {
         this.running = false; 
         this.currentMusic = null;
         this.clear();
@@ -44,6 +45,11 @@ export default class AudioWave extends Vue {
   public startDrawMusic(music : MusicItem) {
 
     this.currentMusic = music;
+ 
+    if(this.stopDrawStarted) {
+      clearInterval(this.stopDrawTimeout);
+      this.stopDrawStarted = false;
+    }
 
     if(music.oCtx == null){
       music.oCtx = new AudioContext();

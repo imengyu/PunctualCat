@@ -3,8 +3,8 @@
           
     <div v-if="chooseMode=='none'" class="music-title">
       <span class="text-secondary">您可以添加一些常用的音乐在此列表中快速进行播放</span>
-      <el-tooltip effect="dark" content="添加音乐" placement="right" :visible-arrow="false">
-        <div v-if="items && items.length > 0" class="btn-add round" @click="addMusicsToHistoryList()"></div>
+      <el-tooltip v-if="items && items.length > 0" content="添加音乐" placement="right">
+        <div class="btn-add round" @click="addMusicsToHistoryList()"></div>
       </el-tooltip>
     </div>
     <div v-else-if="chooseMode=='one'||chooseMode=='multiple'" class="music-title">

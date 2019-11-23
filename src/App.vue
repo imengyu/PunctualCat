@@ -56,13 +56,15 @@
       <radio-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" :app="app" />
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" :app="app" />
+      <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" :app="app" :nativeModuleEnabled="nativeModuleEnabled" />
     </transition>
     <!--底部音乐频谱-->
     <audio-wave ref="audioWave" class="main-audio-wave"></audio-wave>
     <!--音量弹出-->
     <transition enter-active-class="animated bounceInDown anim-fast" leave-active-class="animated fadeOutUp anim-fast">
-      <voice-view v-show="voiceProverVisible" :show.sync="voiceProverVisible" @volume-soft-changed="onVolumeSoftChanged" style="top:120px;right:20px" />
+      <voice-view v-show="voiceProverVisible" :show.sync="voiceProverVisible" :nativeModuleEnabled="nativeModuleEnabled"
+        @volume-soft-changed="onVolumeSoftChanged" @volume-system-changed="onVolumeSystemChanged"
+        style="top:120px;right:20px" />
     </transition>
     <!--音乐列表-->
     <el-drawer
@@ -145,7 +147,7 @@ import { MusicHistoryService, createMusicHistoryService } from "./services/Music
 import { DataStorageServices, createDataStorageServices, destroyDataStorageServices } from "./services/DataStorageServices";
 import GlobalWorker from "./services/GlobalWorker";
 
-import electron, { BrowserWindow, Rectangle } from "electron";
+import electron, { BrowserWindow, Rectangle, shell } from "electron";
 import { Menu, MenuItem } from "electron";
 import Win32Utils from "./utils/Win32Utils";
 import { Logger } from "log4js";
@@ -200,6 +202,8 @@ export default class App extends Vue {
   developerMode = false;
 
   logger : Logger = null;
+  nativeModuleEnabled = false;
+  globalRunning = false;
 
   //Toolbar and menu
   topToolbar: Array<IconToolItem> = [
@@ -267,10 +271,12 @@ export default class App extends Vue {
     let playerTabItem = this.getTopTabByName('music-list');
     if(val > 0) {
       playerTabItem.showHotPoint = true;
-      playerTabItem.hotPointCount = val;
+      playerTabItem.hotPointCount = val.toString();
+      playerTabItem.hotPointCountTooltip = '现在有 ' + val + ' 首音乐正在播放';
     }else{
       playerTabItem.showHotPoint = false;
-      playerTabItem.hotPointCount = 0;
+      playerTabItem.hotPointCount = '0';
+      playerTabItem.hotPointCountTooltip = '';
     }
   }
   @Watch('isMax')
@@ -339,6 +345,7 @@ export default class App extends Vue {
   init() {
     window.app = this;
     //初始化所有服务
+    this.nativeModuleEnabled = Win32Utils.init();
     this.logger = window.appLogger;
     this.currentWindow = remote.getCurrentWindow();
     this.serviceDataStorage = createDataStorageServices();
@@ -380,7 +387,7 @@ export default class App extends Vue {
 
               setPlayingCountChangedCallback((music, count) => this.playingMusicCount = count);
               setMusicWaveStartCallback((music) => {
-                if(SettingsServices.getSettingBoolean('player.enableWave') && this.playingMusicCount == 0 && this.currentWindow.isVisible())
+                if(SettingsServices.getSettingBoolean('player.enableWave') && this.currentWindow.isVisible())
                   (<AudioWave>this.$refs['audioWave']).startDrawMusic(music);
               });
               setMusicWaveStopCallback((music) => { 
@@ -489,6 +496,8 @@ export default class App extends Vue {
     }}));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => ipc.send('main-act-window-control', 'openProcessManager') }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '查看程序运行日志', click: () => shell.openExternal(process.cwd() + '/logs')}));
+    developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制清除数据', click: () => { 
       this.$confirm('警告！这是调试功能，数据清除后不可恢复，是否继续？', {
         title: '调试功能',
@@ -501,9 +510,9 @@ export default class App extends Vue {
         .catch((e) => this.$message({ message: '清除数据失败！错误信息：' + e, type: 'success' }))
       }).catch(() => {});
     } }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制结束进程', accelerator: 'CmdOrCtrl+K', click: () => ipc.send('main-act-quit') }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制重载页面', accelerator: 'CmdOrCtrl+R', click: () => location.reload(true) }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '强制杀死页面', click: () => { location.href = 'chrome://kill/' } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '结束软件进程', accelerator: 'CmdOrCtrl+K', click: () => ipc.send('main-act-quit') }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '重载页面', accelerator: 'CmdOrCtrl+R', click: () => location.reload(true) }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '杀死页面', click: () => { location.href = 'chrome://kill/' } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '错误测试', click: () => { throw new Error('测试异常，抛出错误') } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制跳转到 URL', click: () => { 
       this.$prompt('输入要跳转到的 URL ', 'DEBUG - URL', {
@@ -598,6 +607,7 @@ export default class App extends Vue {
     }
     this.autoPlayService = new AutoPlayService(this.serviceTables);
     this.autoPlayService.on('daychange', this.onDayChange);
+    this.autoPlayService.on('runningchanged', this.onGlobalRunningChanged);
 
     SettingsServices.on('update', this.onSettingsUpdate);
   }
@@ -626,6 +636,7 @@ export default class App extends Vue {
   }
   uninit() : Promise<any> {
     clearInterval(this.lockAutoTimer);
+    if(this.nativeModuleEnabled) Win32Utils.uninit();
     return new Promise((resolve, reject) => {
       this.saveWindowSettings();
       this.saveDatas().then(() => {
@@ -757,7 +768,7 @@ export default class App extends Vue {
   loadSystemSettings() {
     let system = SettingsServices.getSettingObject('system');
     if(system) {
-      Win32Utils.setPowerStateEnable(system.preventSleep);
+      if(this.nativeModuleEnabled) Win32Utils.setPowerStateEnable(system.preventSleep);
       if(system.autoHide && system.autoHideMinute > 0) this.autoHideMinute = system.autoHideMinute; else this.autoHideMinute = 0;
       if(system.autoUpdate) {
         
@@ -787,7 +798,11 @@ export default class App extends Vue {
 
   //** 中央事件回调
 
-  onSettingsUpdate() { this.appilySettings(false); }
+  onSettingsUpdate() { 
+    this.appilySettings(false); 
+    if(!SettingsServices.getSettingBoolean('player.enableWave'))
+      (<AudioWave>this.$refs['audioWave']).stopDrawMusic();
+  }
   onDayChange() {
     (<any>this.$refs['calendar']).forceUpdate();
     (<TextTime>this.$refs['textTime1']).update();
@@ -799,6 +814,22 @@ export default class App extends Vue {
   onWindowFocus() { this.clearAutoLockCount(); /*$('.window').addClass('active');*/ }
   onWindowBlur() { /*$('.window').removeClass('active');*/ }
   onDevToolsReloadPage() { this.uninitWindowEvents() }
+  onGlobalRunningChanged(running : boolean, isMuteTime : boolean) {
+    this.globalRunning = running;
+    if(isMuteTime) {
+      this.topToolbar[0].showHotPoint = true;
+      this.topToolbar[0].hotPointCountTooltip = '现在是静音时段，不会自动播放铃声';
+      this.topToolbar[0].hotPointCount = '<i class="iconfont icon-shengyinguanbi"></i>';
+    }
+    else if(!running) {
+      this.topToolbar[0].showHotPoint = true;
+      this.topToolbar[0].hotPointCountTooltip = '自动播放系统已经关闭，现在不会自动播放铃声';
+      this.topToolbar[0].hotPointCount = '<i class="iconfont icon-cuowuhttp"></i>';
+    }
+    else {
+      this.topToolbar[0].showHotPoint = false;
+    }
+  }
 
   //** 界面控制
 
@@ -932,18 +963,45 @@ export default class App extends Vue {
   //音乐列表事件
   onMusicItemClick(item : MusicItem, mode : MusicAction) {
     if(mode == 'play') {
-      item.play();
+      if(this.autoPlayService.isMuteTime && (item.status == 'normal' || item.status == 'notload')){
+        this.$confirm('现在是静音时段，您是否确定播放音乐? ', '提示', {
+          confirmButtonText: '继续播放',
+          cancelButtonText: '取消',
+          roundButton: true,
+          type: 'warning'
+        }).then(() => item.play()).catch(() => {});
+      }else item.play();
     } else if(mode == 'pause') {
       item.pause();
     } else if(mode == 'stop') {
       item.stop();
     } else if(mode == 'looplay') {
-      item.loopmode = true;
-      item.play();
-    } else if(mode == 'delete') {    
-      this.serviceMusicHistory.removeMusicFromHistoryList(item);
-      item.stop();
-      item.destroy();
+      if(this.autoPlayService.isMuteTime){
+        this.$confirm('现在是静音时段，您是否确定播放音乐? ', '提示', {
+          confirmButtonText: '继续播放',
+          cancelButtonText: '取消',
+          roundButton: true,
+          type: 'warning'
+        }).then(() => {
+          item.loopmode = true;
+          item.play();
+        }).catch(() => {});
+      }else {
+        item.loopmode = true;
+        item.play();
+      }
+    } else if(mode == 'delete') {
+      this.$confirm('确定删除此音乐? ', '提示', {
+        confirmButtonText: '删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: 'el-button--danger',
+        roundButton: true,
+        type: 'warning'
+      }).then(() => {
+        this.serviceMusicHistory.removeMusicFromHistoryList(item);
+        item.stop();
+        item.destroy();
+      }).catch(() => {});
     } 
   }
   onAddMusicToList() { this.chooseMusic({ type: 'addMusicsToHistoryList'}); }
@@ -957,6 +1015,9 @@ export default class App extends Vue {
       if(this.musicHistoryList[i].loaded) 
         this.musicHistoryList[i].setVolume(volume);
     }
+  }
+  onVolumeSystemChanged(newVolume : number) { 
+    if(this.nativeModuleEnabled) console.log('setSystemVolume : ' + Win32Utils.setSystemVolume(newVolume)); 
   }
 
   //** 选择文件扩展

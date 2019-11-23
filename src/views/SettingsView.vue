@@ -16,10 +16,11 @@
             </el-form-item>
             <el-form-item label="开机自动运行本程序">
               当前开机自动运行状态：<span class="text-important">{{ autoStartStatus }}</span><br>
-              <el-button size="mini" type="primary" @click="switchAutoStart(true)" round>设置开机启动</el-button>
-              <el-button size="mini" type="info" @click="switchAutoStart(false)" round>取消开机启动</el-button>
+              <el-button size="mini" type="primary" @click="switchAutoStart(true)" :disabled="!nativeModuleEnabled" round>设置开机启动</el-button>
+              <el-button size="mini" type="info" @click="switchAutoStart(false)" :disabled="!nativeModuleEnabled" round>取消开机启动</el-button>
               <br>
               <span class="text-secondary el-form-span"><i class="fa fa-exclamation-triangle mr-2" style="color: #db9411"></i> 某些安全软件可能会禁止开机启动，请您手动允许。</span>
+              <span v-if="!nativeModuleEnabled" class="text-secondary el-form-span"><i class="fa fa-exclamation-triangle mr-2" style="color: #db9411"></i>现在无法使用此功能，因为本地模块没有正确加载</span>
             </el-form-item>        
             <el-form-item label="本软件长时间无操作时自动隐藏">
               <el-switch v-model="appSettingsBackup.system.autoHide" style="margin: 10px 0;"></el-switch><br>
@@ -50,17 +51,24 @@
             </el-form-item>
             <el-form-item label="开启音乐播放频谱">
               <el-switch v-model="appSettingsBackup.player.enableWave" style="margin: 10px 0;"></el-switch><br>
+              <span class="text-secondary el-form-span"><i class="fa fa fa-info-circle mr-2" style="color: #0b61a4"></i> 
+                音乐频谱只是为了好看。在性能弱的电脑上建议关闭，可以节省性能资源。
+              </span>
             </el-form-item>
             <el-form-item label="同时允许的最大音乐播放数">
               <el-input-number v-model="appSettingsBackup.player.maxPlayingMusic" size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="10"></el-input-number>
-              <span class="text-secondary el-form-span">本软件支持同时播放多首音乐，但同时播放过多音乐容易造成混乱，建议设置该参数限制同时播放音乐的数量。</span>
+              <span class="text-secondary el-form-span"><i class="fa fa fa-info-circle mr-2" style="color: #0b61a4"></i> 
+                本软件支持同时播放多首音乐，但同时播放过多音乐容易造成混乱，建议设置该参数限制同时播放音乐的数量。
+              </span>
             </el-form-item>
             <el-form-item label="任务播放失败时播放错误提示音">
               <el-switch v-model="appSettingsBackup.auto.playTipIfFail" style="margin: 10px 0;"></el-switch><br>
             </el-form-item>
             <el-form-item label="开启静音时段">
               <el-switch v-model="appSettingsBackup.auto.enableMuteTime" style="margin: 10px 0;"></el-switch>
-              <span class="text-secondary el-form-span">您可以开启此选项来开启静音时段，当处于您定义的静音时段时，不会自动播放任务和音乐。</span>
+              <span class="text-secondary el-form-span"><i class="fa fa fa-info-circle mr-2" style="color: #0b61a4"></i> 
+                您可以开启此选项来开启静音时段，当处于您定义的静音时段时，不会自动播放任务和音乐。
+              </span>
             </el-form-item>
             <el-form-item label="静音时段">
               <span class="text-secondary el-form-span">您可以设置一些条件表示静音的时段，例如 “22:00 至 5:50”、“周六 至 周日”、“7/1 至 8/31” 等等。</span>
@@ -71,13 +79,16 @@
                     placement="top"
                     width="160"
                     trigger="click"
+                    transition="pulse"
                     v-model="item.tempBvar1">
                     <p class="mt-0">确定删除此条件？</p>
                     <div style="text-align: right; margin: 0">
                       <el-button size="mini" type="text" @click="item.tempBvar1=false">取消</el-button>
                       <el-button type="primary" size="mini" @click="item.tempBvar1=false;appSettingsBackup.auto.muteTimes.remove(index)">确定</el-button>
                     </div>
-                    <el-button slot="reference" type="danger" size="mini" icon="el-icon-close" title="删除此音乐" circle></el-button>
+                    <el-tooltip slot="reference" placement="right" content="删除此条件" transition="pulse">
+                      <el-button type="danger" size="mini" circle><i class="iconfont icon-shanchu2"></i></el-button>
+                    </el-tooltip>
                   </el-popover>
                 </div>
               </div>
@@ -87,8 +98,9 @@
              
             </el-form-item>
             <el-form-item label="静音时段时设置电脑静音">
-              <el-switch v-model="appSettingsBackup.auto.setSystemMuteAtMuteTime" style="margin: 10px 0;"></el-switch>
-              <span class="text-secondary el-form-span">开启此选项以后在静音时段还会设置电脑声音为静音，防止其他软件发出声音。</span>
+              <el-switch v-model="appSettingsBackup.auto.setSystemMuteAtMuteTime" :disabled="!nativeModuleEnabled" style="margin: 10px 0;"></el-switch>
+              <span class="text-secondary el-form-span">开启此选项以后在静音时段还会设置电脑声音为静音，防止其他软件发出声音。</span><br />
+              <span v-if="!nativeModuleEnabled" class="text-secondary el-form-span"><i class="fa fa-exclamation-triangle mr-2" style="color: #db9411"></i>无法使用此功能，因为本地模块没有正确加载</span>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -131,10 +143,11 @@
           <el-form :model="appSettingsBackup" label-width="110px">
             
             <el-form-item label="数据备份与还原">
-              <span class="text-secondary el-form-span">您可以使用本功能备份数据，以便在数据被意外修改或丢失时将其还原。</span>
-              <el-button size="mini" type="primary" @click="exportData" round>导出数据</el-button>
-              <el-button size="mini" @click="importData" round>导入数据</el-button>
-              <br>
+              <div class="text-secondary el-form-span">您可以使用本功能备份数据，以便在数据被意外修改或丢失时将其还原。</div>
+              <div>
+                <el-button size="mini" type="primary" @click="exportData" round>导出数据</el-button>
+                <el-button size="mini" @click="importData" round>导入数据</el-button>
+              </div>
               <span class="text-secondary el-form-span"><i class="fa fa-exclamation-triangle mr-2" style="color: #db9411"></i> 注意，导入数据时将会强制覆盖当前数据，并且<b>不可恢复</b>，请谨慎操作。</span>
             </el-form-item>
 
@@ -280,6 +293,7 @@ export default class SettingsView extends Vue {
 
   @Prop({default:null}) app : App;
   musicHistoryService : MusicHistoryService = null;
+  @Prop({default:false}) nativeModuleEnabled : boolean;
 
   logger : Logger = null;
 
@@ -465,7 +479,7 @@ export default class SettingsView extends Vue {
         inputType: 'password',
         roundButton: true,
         inputValidator: function(t){
-          if(t=='') return '请输入密码'
+          if(CommonUtils.isNullOrEmpty(t)) return '请输入密码'
           else if(t.length < 6) return '密码长度必须大于等于 6 位'
           return true
         },
@@ -494,17 +508,25 @@ export default class SettingsView extends Vue {
   //开机启动
 
   switchAutoStart(enable){
-    var rs = Win32Utils.setAutoStartEnable(enable);
-    this.autoStartStatus = this.getAutoStartStatus();
-    this.logger.info((enable ? 'Set' : 'cancel') + ' autostart ' + (rs ? 'success' : 'failed'));
-    this.$message({
-      message: (enable ? '设置' : '取消') + '开机启动' + (rs ? '成功' : '失败'),
-      type: rs ? 'success' : 'error'
-    })
+    if(Win32Utils.getNativeCanUse()){
+      var rs = Win32Utils.setAutoStartEnable(enable);
+      this.autoStartStatus = this.getAutoStartStatus();
+      this.logger.info((enable ? 'Set' : 'cancel') + ' autostart ' + (rs ? 'success' : 'failed'));
+      this.$message({
+        message: (enable ? '设置' : '取消') + '开机启动' + (rs ? '成功' : '失败'),
+        type: rs ? 'success' : 'error'
+      })
+    }else {
+      this.$message({
+        message: '无法设置开机启动，因为本地模块没有加载',
+        type: 'error'
+      })
+    }
   }
   getAutoStartStatus(){
     try{
-      return Win32Utils.getAutoStartEnabled() ? '已设置开机启动' : '未设置开机启动';
+      if(this.nativeModuleEnabled) return Win32Utils.getAutoStartEnabled() ? '已设置开机启动' : '未设置开机启动';
+      else return '未知';
     }catch{
       return '未知';
     }
@@ -531,7 +553,13 @@ export default class SettingsView extends Vue {
 
   //数据
 
-  exportData() { this.currentIsImportData = false; this.showImportOrExportDialog = true; } 
+  exportData() { 
+    let noDataMode = localStorage.getItem('noDataMode');
+    if(noDataMode == 'yes') {
+      
+    }
+    else this.currentIsImportData = false; this.showImportOrExportDialog = true; 
+  } 
   exportDataShowSaveDialog() { ipc.send('main-save-file-dialog-json', { type:'chooseData', name: new Date().format('YYYY-MM-DD HH:ii:ss') + ' 导出的数据.json' }); }
   doExportData(path : string) { 
     this.dataExporting = true;

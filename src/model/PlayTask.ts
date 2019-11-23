@@ -9,6 +9,8 @@ import SettingsServices from "../services/SettingsServices";
 import Win32Utils from '../utils/Win32Utils';
 import { Logger } from 'log4js';
 import { threadId } from 'worker_threads';
+import AutoPlayService from '../services/AutoPlayService';
+import CommonUtils from '../utils/CommonUtils';
 
 export type PlayTaskType = 'music'|'command'|'shutdown'|'reboot'|'mutetime'|'setsystemvol'
 
@@ -113,6 +115,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public chooseMusic4 = false;
   public chooseMusic5 = false;
   public chooseMusic6 = false;
+  public lastPlayByAuto = false;
   public editing = false;
   public editingTask = false;
   public typeBackup: PlayTaskType;
@@ -129,23 +132,27 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public loopCount = 1;
 
   public isPlayingTime(type: AutoPlayCheckType) {
-    return this.condition ? this.condition.isPlayingTime(type) : false;
+    return CommonUtils.isNullObject(this.condition) ? false : this.condition.isPlayingTime(type);
   }
   public isStoppingTime(type: AutoPlayCheckType) {
-    return this.condition ? this.condition.isStoppingTime(type) : false;
+    return CommonUtils.isNullObject(this.condition) ? false : this.condition.isStoppingTime(type);
   }
 
-  public play() {
-    if(!this.editing)
+  public play(byAuto : boolean) {
+    if(!this.editing){
+      this.lastPlayByAuto = byAuto;
       switch(this.type){
-        case 'shutdown': GlobalWorker.executeGlobalAction('shutdown'); break;
-        case 'reboot': GlobalWorker.executeGlobalAction('reboot'); break;
+        case 'shutdown': GlobalWorker.executeGlobalAction('shutdown'); this.switchStatus('played'); break;
+        case 'reboot': GlobalWorker.executeGlobalAction('reboot'); this.switchStatus('played'); break;
         case 'command': this.runCommands(); break;
-        case 'music': this.startPlayMusic(); break;
+        case 'music': this.startPlayMusic(byAuto); break;
+        case 'mutetime': GlobalWorker.executeGlobalAction('mutetime'); this.switchStatus('playing'); break;
       }
+    }
   }
   public stop() {
     if(this.type == 'music') this.stopPlayingMusic(true);
+    else if(this.type == 'mutetime') { GlobalWorker.executeGlobalAction('quitmutetime'); this.switchStatus('played') }
   }
   public destroy() {
 
@@ -164,8 +171,12 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   private currentPlayMusicCount = 0;
   private endCallback = null;
   private playerLoop = null;
+  private forcePlayedLock = false;
 
-  private startPlayMusic() {
+  private startPlayMusic(byAuto : boolean) {
+    if(byAuto && AutoPlayService.staticAutoPlayService.isMuteTime)
+      return;
+    this.forcePlayedLock = false;
     this.currentPlayMusicIndex = 0;
     this.currentPlayMusicCount = 0;
     this.switchStatus('playing');
@@ -196,7 +207,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
           this.musics[this.currentPlayMusicIndex].music.play(true, (success) => {
             if(!success){
               this.stopPlayingMusic(false);
-              if(SettingsServices.getSettingBoolean('auto.playTipIfFail'))
+              if(SettingsServices.getSettingBoolean('auto.playTipIfFail') && Win32Utils.getNativeCanUse())
                 Win32Utils.messageBeep(Win32Utils.messageBeepTypes.MB_ICONEXCLAMATION);
               this.logger.error('Play music ' + this.musics[this.currentPlayMusicIndex].music.name + ' failed in task ' + 
                 this.name + ' , ERROR : ' + this.musics[this.currentPlayMusicIndex].music.playError);
@@ -244,11 +255,12 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
       this.musics[this.currentPlayMusicIndex].music.volume = 1.0;
       //停止，index+1
       this.currentPlayMusicIndex++;
-      if(this.playerLoop) this.playerLoop();
+      if(!this.forcePlayedLock && this.playerLoop) this.playerLoop();
     }
   }
 
   private stopPlayingMusic(success : boolean) {
+    this.forcePlayedLock = true;
     this.playerEnded();
     this.switchStatus(success ? 'played' : 'error');
   }

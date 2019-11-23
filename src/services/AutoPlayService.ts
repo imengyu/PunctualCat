@@ -4,6 +4,11 @@ import TableServices from './TableServices'
 import { EventEmitter } from "events";
 import { AutoPlayStatus } from '../model/PlayInterfaces';
 import { Logger } from 'log4js';
+import staticSettingsServices from './SettingsServices';
+import { PlayCondition } from '../model/PlayCondition';
+import GlobalWorker from './GlobalWorker';
+import Win32Utils from '../utils/Win32Utils';
+import { threadId } from 'worker_threads';
 
 export type AutoPlayTickType = 'hour'|'minute'|'second'|'run';
 
@@ -36,6 +41,7 @@ export default class AutoPlayService extends EventEmitter {
    * 获取播放服务是否已启动
    */
   public globalRunning = false;
+  public static staticAutoPlayService : AutoPlayService = null;
   private tables : Array<PlayTable> = null;
   private tableServices : TableServices;
   private logger : Logger = null;
@@ -44,9 +50,13 @@ export default class AutoPlayService extends EventEmitter {
 
   public constructor(tableServices : TableServices) {
     super();
+    AutoPlayService.staticAutoPlayService = this;
     this.tableServices = tableServices;
     this.tables = tableServices.getData();
     this.logger = window.appAutoLogger;
+    staticSettingsServices.addListener('update', () => this.reloadSettings());
+    GlobalWorker.registerGlobalAction('mutetime', () => this.mute())
+    GlobalWorker.registerGlobalAction('quitmutetime', () => this.unMute())
   }
 
   /**
@@ -54,8 +64,10 @@ export default class AutoPlayService extends EventEmitter {
    */
   public start() {
     if (!this.globalRunning) {
+      this.loadAutoMuteTasks();
       this.startCorrectSequence();
       this.globalRunning = true;
+      this.emit('runningchanged', this.globalRunning, this.isMuteTime);
     }
   }
   /**
@@ -66,6 +78,8 @@ export default class AutoPlayService extends EventEmitter {
     if (this.globalRunning) {
       this.stopTimer();
       this.globalRunning = false;
+      if(this.isMuteTime) this.unMute(false);
+      this.emit('runningchanged', this.globalRunning, this.isMuteTime);
     }
 
   }
@@ -86,6 +100,26 @@ export default class AutoPlayService extends EventEmitter {
 
   public flushTable(table : PlayTable) { this.taskTickLateUpdate(); }
   public flush(force = false) { this.taskTickLateUpdate(force); }
+
+  public isMuteTime = false;
+
+  private unMute(emitEvent = true) {
+    if(this.isMuteTime) {
+      this.isMuteTime = false;
+      if(staticSettingsServices.getSettingBoolean('auto.setSystemMuteAtMuteTime') && Win32Utils.getNativeCanUse())
+        Win32Utils.unmuteSystem();
+      if(emitEvent) this.emit('runningchanged', this.globalRunning, this.isMuteTime);
+    }
+  }
+  private mute() {
+    if(!this.isMuteTime) {
+      this.isMuteTime = true;
+      if(staticSettingsServices.getSettingBoolean('auto.setSystemMuteAtMuteTime') && Win32Utils.getNativeCanUse())
+        Win32Utils.muteSystem();
+      this.stopAllPlayingTask();
+      this.emit('runningchanged', this.globalRunning, this.isMuteTime);
+    }
+  }
 
   private logInfo(...args) {
     let buf = '', i = 0;
@@ -126,6 +160,8 @@ export default class AutoPlayService extends EventEmitter {
   private thisMinutePlayTask : PlayTask[] = [];
   private thisSecondPlayTask : PlayTask[] = [];
   private thisSecondStopTask : PlayTask[] = [];
+
+  private muteTask : PlayTask[] = [];
 
   /**
    * 开始时钟校准序列
@@ -180,6 +216,37 @@ export default class AutoPlayService extends EventEmitter {
     this.logInfo('All timers stopped');
   }
 
+  private reloadSettings() {
+    this.loadAutoMuteTasks();
+  }
+  private loadAutoMuteTasks() {
+    if(staticSettingsServices.getSettingBoolean('auto.enableMuteTime')) {
+      let muteTimes : PlayCondition[] = (<Array<PlayCondition>>staticSettingsServices.getSettingObject('auto.muteTimes'));
+      if(muteTimes.length > 0){
+        this.muteTask = [];
+        for(var i = 0; i < muteTimes.length; i++) {
+          let task = new PlayTask();
+          task.type = 'mutetime';
+          task.condition = muteTimes[i];
+          task.name = 'automute';
+          this.muteTask.push(task);
+        }
+        this.taskTickLateUpdate();
+      }else { 
+        this.muteTask = [];
+        this.taskTickLateUpdate();
+      }
+    }else this.unMute(true);
+  }
+  private stopAllPlayingTask() {
+    for (var j = 0, d = this.tables.length; j < d; j++) {
+      var table = this.tables[j];
+      for (var k = 0, f = table.tasks.length; k < f; k++) {
+        if(table.tasks[k].status == 'playing') table.tasks[k].stop();
+      }
+    } 
+  }
+
   /*时钟主控*/
 
   private timerTickSec(updateTime = true) {
@@ -187,7 +254,7 @@ export default class AutoPlayService extends EventEmitter {
     var seconds = timeNow.getSeconds();
     var minute = timeNow.getMinutes();
     if(!this.timerMinuteCorrected){
-      this.runStatusCallback('second', (seconds / 60) * 360, true);
+      this.runStatusCallback('minute', (minute / 60), true);
       if(seconds == 0){
         clearInterval(this.timerSec);
         this.timerSec = null;
@@ -204,7 +271,7 @@ export default class AutoPlayService extends EventEmitter {
     }
     if(minute == this.timerMinuteWkCurrent){  
       let checked = this.taskTick('second');
-      this.runStatusCallback('second', (seconds / 60) * 360, false, checked, this.thisSecondPlayTask.length + this.thisSecondStopTask.length);
+      this.runStatusCallback('second', (seconds / 60), false, checked, this.thisSecondPlayTask.length + this.thisSecondStopTask.length);
       if(checked) this.taskTick('run');
     }else if(this.timerMinuteCorrected) {
       clearInterval(this.timerSec);
@@ -231,22 +298,21 @@ export default class AutoPlayService extends EventEmitter {
     }
     //console.log('Timer minute tick at : ' + timeNow.format('HH:ii:ss'));
     if(!this.timerHourCorrected){
-      this.runStatusCallback('minute', (minute / 60 * 365), true);
+      this.runStatusCallback('hour', hour <= 12 ? (hour / 12) : ((hour - 12) / 12), true);
       if(minute == 0){
         clearInterval(this.timerMinute);
         this.timerMinute = null;
         this.timerHourCorrected = true;
         this.runTimerStatusCallback('minute', 'stop');
         if(this.timerHour == null) {
-          this.timerHour = setInterval(() => this.timerTickHour(), 3600000);
+          this.timerHour = setInterval(() => this.timerTickHour(), 1800000);
           this.timerTickHour(false);
         }
         this.runTimerStatusCallback('hour', 'corrected');
         this.runTimerStatusCallback('hour', 'start');
       }
       //0 点需要重新切换列表状态
-      if(hour == 0 && minute == 0)
-        this.onDayChange();
+      if(hour == 0 && minute == 0) this.onDayChange();
     }
     if(hour == this.timerHourWkCurrent){
       if(this.taskTick('minute')){
@@ -256,9 +322,9 @@ export default class AutoPlayService extends EventEmitter {
           this.timerSec = setInterval(() => this.timerTickSec(), 1000);
           this.timerTickSec(false);
         }
-        this.runStatusCallback('minute', (minute / 60 * 365), false, true, this.thisMinutePlayTask.length);
+        this.runStatusCallback('minute', (minute / 60), false, true, this.thisMinutePlayTask.length);
         this.runTimerStatusCallback('second', 'start');
-      } else this.runStatusCallback('minute', (minute / 60 * 365), false, false);
+      } else this.runStatusCallback('minute', (minute / 60), false, false);
     }else if(this.timerHourCorrected) {
       clearInterval(this.timerMinute);
       this.timerMinute = null;
@@ -281,9 +347,9 @@ export default class AutoPlayService extends EventEmitter {
         }, 60000);
         this.timerTickMinute(false);
       }
-      this.runStatusCallback('hour', (hour / 24 * 365), false, true, this.thisHourPlayTask.length);
+      this.runStatusCallback('hour', (hour / 24), false, true, this.thisHourPlayTask.length);
       this.runTimerStatusCallback('minute', 'start');
-    } else this.runStatusCallback('hour', (hour / 24 * 365), false, false);
+    } else this.runStatusCallback('hour', hour <= 12 ? (hour / 12) : ((hour - 12) / 12), false, false);
     //0 点需要重新切换列表状态，和执行数据保存任务
     if(hour == 0) this.onDayChange();
   }
@@ -329,24 +395,36 @@ export default class AutoPlayService extends EventEmitter {
   }
 
   private taskTickHour() : boolean {
-    this.thisHourPlayTask = [];    
+    this.thisHourPlayTask = [];  
     let result = false;
     for (var j = 0, d = this.tables.length; j < d; j++) {
       //正在播放的时间表
       var table = this.tables[j];
       if(table.status == 'playing'){
         for (var k = 0, f = table.tasks.length; k < f; k++){
-          if(table.tasks[k].isPlayingTime('hour')){
+          if(table.tasks[k].status != 'playing' && table.tasks[k].isPlayingTime('hour')){
             this.thisHourPlayTask.push(table.tasks[k]);
             result = true;
           }
-          else if(table.tasks[k].isStoppingTime('hour')){
+          else if(table.tasks[k].status == 'playing' && table.tasks[k].isStoppingTime('hour')){
             this.thisHourPlayTask.push(table.tasks[k]);
             result = true;
           }
         }
       }
-    }    
+    }   
+    if(this.muteTask.length > 0) {
+      for (var k = 0, f = this.muteTask.length; k < f; k++){
+        if(this.muteTask[k].isPlayingTime('hour')){
+          this.thisHourPlayTask.push(this.muteTask[k]);
+          result = true;
+        }
+        else if(this.muteTask[k].isStoppingTime('hour')){
+          this.thisHourPlayTask.push(this.muteTask[k]);
+          result = true;
+        }
+      }
+    }
     return result
   }
   private taskTickMinute() : boolean {
@@ -355,11 +433,11 @@ export default class AutoPlayService extends EventEmitter {
     var result = false;
     //搜索当前小时播放的任务
     for (var k = 0, f = this.thisHourPlayTask.length; k < f; k++){
-      if(this.thisHourPlayTask[k].isPlayingTime('minute')){
+      if(this.thisHourPlayTask[k].status != 'playing' && this.thisHourPlayTask[k].isPlayingTime('minute')){
         this.thisMinutePlayTask.push(this.thisHourPlayTask[k]);
         result = true;
       }
-      else if(this.thisHourPlayTask[k].isStoppingTime('minute')){
+      else if(this.thisHourPlayTask[k].status == 'playing' && this.thisHourPlayTask[k].isStoppingTime('minute')){
         this.thisMinutePlayTask.push(this.thisHourPlayTask[k]);
         result = true;
       }
@@ -375,11 +453,11 @@ export default class AutoPlayService extends EventEmitter {
       this.thisSecondPlayTask = [];
       this.thisSecondStopTask = [];
       for (var k = 0, f = this.thisMinutePlayTask.length; k < f; k++){
-        if(this.thisMinutePlayTask[k].isPlayingTime('full')){
+        if(this.thisMinutePlayTask[k].status != 'playing' && this.thisMinutePlayTask[k].isPlayingTime('full')){
           this.thisSecondPlayTask.push(this.thisMinutePlayTask[k]);
           rs = true;
         }
-        if(this.thisMinutePlayTask[k].isStoppingTime('full')){
+        if(this.thisMinutePlayTask[k].status == 'playing' && this.thisMinutePlayTask[k].isStoppingTime('full')){
           this.thisHourPlayTask.push(this.thisMinutePlayTask[k]);
           rs = true;
         }
@@ -387,7 +465,7 @@ export default class AutoPlayService extends EventEmitter {
     } 
     else if(type == 'run') {
       if(this.thisSecondPlayTask.length > 0) for (var k = 0, f = this.thisSecondPlayTask.length; k < f; k++){
-        this.thisSecondPlayTask[k].play();
+        this.thisSecondPlayTask[k].play(true);
         this.logInfo('Auto start task ' + this.thisSecondPlayTask[k].name);
       }
       if(this.thisSecondStopTask.length > 0) for (var k = 0, f = this.thisSecondStopTask.length; k < f; k++){

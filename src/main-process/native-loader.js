@@ -1,8 +1,10 @@
 if (typeof require == "undefined") {
   window.onload = function() {
-      document.getElementById("intro").setAttribute("style", "display:none");
-      document.getElementById("global-error-info").setAttribute("style", "");
-      document.getElementById("global-error-info-text").innerText = "本应用不能在浏览器中运行!"
+    document.getElementById("window-loading").setAttribute("style", "display:none");
+    document.querySelectorAll(".window-title-bar")[0].setAttribute("style", "display:none");
+    document.getElementById("intro").setAttribute("style", "display:none");
+    document.getElementById("global-error-info").setAttribute("style", "");
+    document.getElementById("global-error-info-text").innerText = "本应用不能在浏览器中运行!"
   };
   throw Error("本应用不能在浏览器中运行! App must run in Electron")
 }

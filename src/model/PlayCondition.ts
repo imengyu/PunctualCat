@@ -580,7 +580,16 @@ export class PlayConditionActuator implements AutoPlayable {
           return this.timeValueRange.end.hours == dateNow.getHours() &&
             this.timeValueRange.end.minute == dateNow.getMinutes();
       }
-
+      case 'group': {
+        //(a && b || c)  (a || b && c)
+        let i = 0, evalStr = '';
+        for(; i < this.childList.length; i++)
+        {
+          if(i == 0) evalStr += (this.childList[i].isStoppingTime(type) ? 'true' : 'false');
+          else evalStr += this.childList[i].getLogicEvalStr() + (this.childList[i].isStoppingTime(type) ? 'true' : 'false');
+        }
+        return eval(evalStr);
+      }
     }
     return false;
   }

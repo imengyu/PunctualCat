@@ -87,6 +87,7 @@
                 v-if="scope.row.editing"
                 placement="top"
                 trigger="manual"
+                transition="pulse"
                 width="500"
                 popper-class="propever-commands"
                 v-model="scope.row.editingTask">
@@ -114,6 +115,7 @@
                         placement="top"
                         width="150"
                         trigger="click"
+                        transition="pulse"
                         v-model="scope.row.chooseMusic2">
                         <p class="mt-0">选择音乐来源：</p>
                         <el-button size="mini" type="text" class="display-block m-0" 
@@ -127,6 +129,7 @@
                         placement="top"
                         width="160"
                         trigger="click"
+                        transition="pulse"
                         v-model="scope.row.chooseMusic3">
                         <p class="mt-0">确定删除此音乐？</p>
                         <div style="text-align: right; margin: 0">
@@ -139,6 +142,7 @@
                         placement="top"
                         width="220"
                         trigger="click"
+                        transition="pulse"
                         v-model="scope.row.chooseMusic4">
                         <p class="mt-0">设置音乐的起始播放时间。此时间不能超过音乐的长度，否则音乐不会播放</p>
                         <div class="mb-2">
@@ -155,6 +159,7 @@
                         placement="top"
                         width="220"
                         trigger="click"
+                        transition="pulse"
                         v-model="scope.row.chooseMusic5">
                         <p class="mt-0">设置音乐的最大播放时长，超过这个时间以后此音乐将会自动停止</p>
                         <div class="mb-2">
@@ -195,6 +200,7 @@
                       placement="top"
                       width="150"
                       trigger="click"
+                      transition="pulse"
                       v-model="scope.row.chooseMusic1">
                       <p class="mt-0">选择音乐来源：</p>
                       <el-button size="mini" type="text" class="display-block m-0" 
@@ -573,6 +579,7 @@ export default class TableView extends Vue {
     }).catch(() => {});
   } 
   editTable(table : PlayTable) {
+    this.currentEditTable = table;
     this.currentEditTableBackUp = CommonUtils.clone(this.currentEditTable);
     this.currentIsNewTable = false;
     this.currentIsEditTable = true;
@@ -722,18 +729,16 @@ export default class TableView extends Vue {
     this.autoPlayService.flushTable(task.parent);
   }
   playTask(task : PlayTask) {
-    this.$confirm('确定开始播放此任务？', '提示', {
-      confirmButtonText: '开始',
+    this.$confirm(this.autoPlayService.isMuteTime ? '现在是静音时段，确定继续播放此任务？' : '确定开始播放此任务？', '提示', {
+      confirmButtonText: '播放',
       cancelButtonText: '取消',
       roundButton: true,
       type: 'warning'
-    }).then(() => {
-      task.play();
-    }).catch(() => {});
+    }).then(() => task.play(false)).catch(() => {});
   }
   stopTask(task : PlayTask) {
     this.$confirm('确定停止播放此任务？', '提示', {
-      confirmButtonText: '开始',
+      confirmButtonText: '停止',
       cancelButtonText: '取消',
       roundButton: true,
       type: 'warning'
@@ -742,14 +747,16 @@ export default class TableView extends Vue {
     }).catch(() => {});
   }
   flashTak(task : PlayTask, type : 'success'|'warn'|'error', time = 1600, feq = 300) {
-    let name = '.task-' + task.parent.tasks.indexOf(task);
-    let row = $(name);
-    let timer = setInterval(() => row.toggleClass('flash-task-' + type), feq);
-    row.addClass('flash-task-' + type);
-    setTimeout(() => { 
-      row.removeClass('flash-task-' + type);
-      clearInterval(timer);
-    }, time);
+    if(task.parent && task.parent == this.currentShowTable) {
+      let name = '.task-' + task.parent.tasks.indexOf(task);
+      let row = $(name);
+      let timer = setInterval(() => row.toggleClass('flash-task-' + type), feq);
+      row.addClass('flash-task-' + type);
+      setTimeout(() => { 
+        row.removeClass('flash-task-' + type);
+        clearInterval(timer);
+      }, time);
+    }
   }
   editCommandOrMusicTask(task : PlayTask) { 
     task.typeBackup = task.type;
