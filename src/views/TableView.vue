@@ -35,7 +35,7 @@
                 <el-tooltip v-if="scope.row.editing" placement="right" content="您正在编辑任务，保存任务以后才能自动播放" :open-delay="150">
                   <i class="iconfont icon-hj1" style="color: #0087bb"></i>
                 </el-tooltip>
-                <el-tooltip v-else-if="scope.row.status == 'normal'" placement="right" content="任务就绪，等待播放" :open-delay="150">
+                <el-tooltip v-else-if="scope.row.status == 'normal'" placement="right" content="任务就绪，等待播放" :open-delay="400">
                   <i class="iconfont icon-dengdaiqueren"></i>
                 </el-tooltip>
                 <el-tooltip v-else-if="scope.row.status == 'played'" placement="right" content="任务已播放" :open-delay="150">
@@ -44,8 +44,8 @@
                 <el-tooltip v-else-if="scope.row.status == 'disabled'" placement="right" content="任务已禁用，不会自动播放" :open-delay="150">
                   <i class="iconfont icon-dengdaizhihang" style="color:#cacaca"></i>
                 </el-tooltip>
-                <el-tooltip v-else-if="scope.row.status == 'error'" placement="right" content="任务播放时出现错误" :open-delay="150">
-                  <i class="iconfont icon-hj1 text-danger"></i>
+                <el-tooltip v-else-if="scope.row.status == 'error'" placement="right" content="任务播放时出现错误，点击查看错误信息" :open-delay="150">
+                  <i class="iconfont icon-hj1 text-danger cursor-pointer" @click="showTaskLatestErrLog(scope.row)"></i>
                 </el-tooltip>
                 <el-tooltip v-else-if="scope.row.status == 'playing'" placement="right" content="任务正在播放" :open-delay="150">
                   <i class="iconfont icon-yanchu text-success"></i>
@@ -53,10 +53,10 @@
                 <el-tooltip v-else-if="scope.row.status == 'norule'" placement="right" content="由于您没有设置任务的播放条件，因此不会自动播放" :open-delay="150">
                   <i class="iconfont icon-hj1 text-warning"></i>
                 </el-tooltip>
-                <el-tooltip v-else-if="scope.row.status == 'notplay'" placement="right" content="当前计划表今日不播放" :open-delay="150">
+                <el-tooltip v-else-if="scope.row.status == 'notplay'" placement="right" content="当前计划表今日不播放" :open-delay="400">
                   <i class="iconfont icon-zhihangzhong"></i>
                 </el-tooltip>
-                <el-tooltip v-else-if="scope.row.status == 'parent-disabled'" placement="right" content="当前计划表已禁用" :open-delay="150">
+                <el-tooltip v-else-if="scope.row.status == 'parent-disabled'" placement="right" content="当前计划表已禁用" :open-delay="400">
                   <i class="iconfont icon-dengdaizhihang" style="color:#cacaca"></i>
                 </el-tooltip>
               </div>
@@ -96,6 +96,7 @@
                   <el-radio-button label="command">执行 CMD 命令</el-radio-button>
                   <el-radio-button label="reboot">重启电脑</el-radio-button>
                   <el-radio-button label="shutdown">关闭电脑</el-radio-button>
+                  <el-radio-button label="mutetime">静音时段</el-radio-button>
                 </el-radio-group>
                 <div v-if="scope.row.type=='music'" class="propever-taskarea">
                   <div class="text-secondary">设置当前任务的最大播放时长，超过这个时间以后此任务将会自动停止</div>
@@ -178,6 +179,7 @@
                 </div>
                 <div v-else-if="scope.row.type=='command'" class="propever-taskarea">
                   <div class="text-secondary">任务将会按您设置的 CMD 命令顺序执行，通常，您可以使用此功能来启动您自己的程序。</div>
+                  <el-checkbox v-model="scope.row.anyCommandErrStop">任意一个命令未成功执行则停止后续命令的执行</el-checkbox>
                   <command-list v-if="scope.row.commands && scope.row.commands.length > 0" lockAxis="y" axis="y" v-model="scope.row.commands">
                     <command-item v-for="(conmmand, index) in scope.row.commands" :index="index" :key="index">
                       <el-input size="mini" v-model="scope.row.commands[index]" placeholder="输入您要执行 CMD 命令">
@@ -193,6 +195,13 @@
                 <div v-else-if="scope.row.type=='reboot'" class="propever-taskarea">
                   <div class="text-secondary">此任务将会重启计算机</div>
                 </div>
+                <div v-else-if="scope.row.type=='mutetime'" class="propever-taskarea">
+                  <div class="text-secondary">
+                    <span class="text-important">提示：</span>
+                    此任务用于控制系统是否处于静音模式，必须将条件设置为时间段才能执行，例如：“19:00-24:00”、“12:00-13:00” 等等。
+                  </div>
+                </div>
+
 
                 <div class="propever-buttons">
                   <div v-if="scope.row.type=='music'">                 
@@ -757,6 +766,9 @@ export default class TableView extends Vue {
         clearInterval(timer);
       }, time);
     }
+  }
+  showTaskLatestErrLog(task : PlayTask) {
+
   }
   editCommandOrMusicTask(task : PlayTask) { 
     task.typeBackup = task.type;

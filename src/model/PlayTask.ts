@@ -8,9 +8,10 @@ import { getMusicHistoryService, MusicHistoryService  } from '../services/MusicH
 import SettingsServices from "../services/SettingsServices";
 import Win32Utils from '../utils/Win32Utils';
 import { Logger } from 'log4js';
-import { threadId } from 'worker_threads';
 import AutoPlayService from '../services/AutoPlayService';
 import CommonUtils from '../utils/CommonUtils';
+import { UserLogService, UserLog } from '../services/UserLogService';
+import child_process from 'child_process'
 
 export type PlayTaskType = 'music'|'command'|'shutdown'|'reboot'|'mutetime'|'setsystemvol'
 
@@ -37,6 +38,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
       commands: [],
       loopCount: this.loopCount,
       volume: this.volume,
+      anyCommandErrStop: this.anyCommandErrStop,
       musics: [],
       condition: this.condition.saveToJSONObject()
     };
@@ -58,6 +60,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     this.volume = json.volume;
     this.timeLimit = json.timeLimit;
     this.loopCount = json.loopCount;
+    this.anyCommandErrStop = json.anyCommandErrStop;
     this.condition = new PlayCondition(null, json.condition, {
       intervalType: 'any',
       timeType: 'point',
@@ -122,7 +125,20 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public musicsBackup : Array<MusicTask>;
   public commandsBackup : Array<string>;
   private lockedByDestroy = false;
+  public currentPlayLogItem : UserLog = null;
 
+  public typeToString(type : PlayTaskType) {
+    switch(type) {
+      case 'command': return '执行命令';
+      case 'music': return '播放音乐';
+      case 'mutetime': return '静音时段';
+      case 'reboot': return '重启计算机';
+      case 'setsystemvol': return '设置系统音量';
+      case 'shutdown': return '关闭计算机';
+    }
+  }
+
+  public anyCommandErrStop = true;
   public volume = 100;
   public timeLimit = {
     hours: 0,
@@ -141,16 +157,25 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public play(byAuto : boolean) {
     if(!this.editing){
       this.lastPlayByAuto = byAuto;
+      this.currentPlayLogItem = UserLogService.writeLog(`执行任务 ${this.name} (类型：${this.typeToString(this.type)})`);
       switch(this.type){
         case 'shutdown': GlobalWorker.executeGlobalAction('shutdown'); this.switchStatus('played'); break;
         case 'reboot': GlobalWorker.executeGlobalAction('reboot'); this.switchStatus('played'); break;
         case 'command': this.runCommands(); break;
         case 'music': this.startPlayMusic(byAuto); break;
-        case 'mutetime': GlobalWorker.executeGlobalAction('mutetime'); this.switchStatus('playing'); break;
+        case 'mutetime': {
+          let type = this.condition.getConditionType();
+          if(type == 'time-range' || type == 'day-range') {
+            GlobalWorker.executeGlobalAction('mutetime'); 
+            this.switchStatus('playing'); 
+          }else UserLogService.writeLog(`无法执行静音时段任务 ${this.name}，因为条件不是一个时间段`, '必须将条件设置为时间段才能执行', 'warn',  this.currentPlayLogItem);
+          break;
+        }
       }
     }
   }
   public stop() {
+    this.currentPlayLogItem = UserLogService.writeLog(`停止任务 ${this.name}`);
     if(this.type == 'music') this.stopPlayingMusic(true);
     else if(this.type == 'mutetime') { GlobalWorker.executeGlobalAction('quitmutetime'); this.switchStatus('played') }
   }
@@ -160,9 +185,26 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
   public destroyLock() { this.lockedByDestroy = true; }
 
   private runCommands() {
-    this.logger.info('Run commands for task : ' + this.name)
-    GlobalWorker.executeGlobalAction('runcommands', this.commands)
-    this.switchStatus('played');
+    this.logger.info('Run commands for task : ' + this.name);
+    this.switchStatus('playing');
+
+    UserLogService.writeLog(`开始执行任务命令`, `共有 ${this.commands.length} 条命令`, 'info', this.currentPlayLogItem);
+    GlobalWorker.executeGlobalAction('runcommands', this.commands, 
+      (command : string, fininshTime : number, error : child_process.ExecException, stdout : string, stderr : string) => {
+        if(error) {
+          this.logger.error('Run command ' + command + ' in task ' + this.name + ' failed, \nError : ' + error + 
+            '\nStdOut: ' + stdout + '\nStdErr: ' + stderr);
+          UserLogService.writeLog('执行命令 ' + command + ' 失败', '错误信息：' + error + '<br/>程序回显：' + stdout, 'error', this.currentPlayLogItem);
+          return this.anyCommandErrStop ? false : true;
+        }else {
+          this.logger.info('Run command ' + command + ' in task ' + this.name + ' success (' + fininshTime + 's), \n' + 
+            '\nStdOut: ' + stdout + '\nStdErr: ' + stderr);
+          UserLogService.writeLog('执行命令 ' + command + ' 成功', '执行时长：' + fininshTime + ' 秒<br/>程序回显：' + stdout, 'info', this.currentPlayLogItem);
+          return true;
+        }
+      },
+      (success: boolean) => this.switchStatus(success ? 'played' : 'error')
+    )
   }
 
   private currentPlayTaskTimeLimitTimer = null;
@@ -185,32 +227,40 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
       //最大播放时长
       let maxSec = this.timeLimit.hours * 3600 + this.timeLimit.minute * 60 + this.timeLimit.second;
       this.playerLoop = () => {
-        if(this.currentPlayMusicIndex < this.musics.length) {
+        let index = this.currentPlayMusicIndex;
+        if(index < this.musics.length) {
 
           //设置一些初始参数
-          let startSec = this.musics[this.currentPlayMusicIndex].startPos.getSec();
-          let maxLength = this.musics[this.currentPlayMusicIndex].maxLength.getSec();
+          let startSec = this.musics[index].startPos.getSec();
+          let maxLength = this.musics[index].maxLength.getSec();
           if(maxLength > 0) {
             if(this.currentPlayMusicTimeLimitTimer) clearTimeout(this.currentPlayMusicTimeLimitTimer);
             this.currentPlayMusicTimeLimitTimer = setTimeout(() => {
               this.currentPlayMusicTimeLimitTimer = null;
               this.playerEnded();
               this.logger.info('Play music task ' + this.name + ' on music ' + 
-                this.musics[this.currentPlayMusicIndex].music.name + 
+                this.musics[index].music.name + 
                 ' is length limit exceeded, no stop music');
+              UserLogService.writeLog(`音乐 ${this.musics[index].music.name} 播放超过了指定的时长 (${maxLength} 秒)，现在停止`, 
+                '', 'info', this.currentPlayLogItem)
             }, 1000 * maxLength);
           }
           this.endCallback = () => this.playerEnded();
           
-          this.musics[this.currentPlayMusicIndex].music.volume = this.volume / 100.0;
-          this.musics[this.currentPlayMusicIndex].music.on('ended', this.endCallback);
-          this.musics[this.currentPlayMusicIndex].music.play(true, (success) => {
+          UserLogService.writeLog(`开始播放音乐 ${this.musics[index].music.name} (${index}/${this.musics.length}) `, '', 'info', this.currentPlayLogItem);
+
+          this.musics[index].music.volume = this.volume / 100.0;
+          this.musics[index].music.on('ended', this.endCallback);
+          this.musics[index].music.play(true, (success) => {
             if(!success){
               this.stopPlayingMusic(false);
               if(SettingsServices.getSettingBoolean('auto.playTipIfFail') && Win32Utils.getNativeCanUse())
                 Win32Utils.messageBeep(Win32Utils.messageBeepTypes.MB_ICONEXCLAMATION);
-              this.logger.error('Play music ' + this.musics[this.currentPlayMusicIndex].music.name + ' failed in task ' + 
-                this.name + ' , ERROR : ' + this.musics[this.currentPlayMusicIndex].music.playError);
+              UserLogService.writeLog(`播放任务 ${this.name} 失败`, 
+                `播放任务失败，因为播放任务的音乐 ${this.musics[index].music.name} 失败，错误信息：${this.musics[index].music.playError}`, 
+                'error', this.currentPlayLogItem)
+              this.logger.error('Play music ' + this.musics[index].music.name + ' failed in task ' + 
+                this.name + ' , ERROR : ' + this.musics[index].music.playError);
             }
           }, startSec);
 
@@ -219,11 +269,14 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
           if(this.currentPlayMusicCount >= this.loopCount){
             this.stopPlayingMusic(true);//循环次数超过，停止
             this.logger.info('Play music task ' + this.name + ' finished');
+            UserLogService.writeLog(`任务 ${this.name} 播放完成`, '', 'info', this.currentPlayLogItem)
           }
           else {
             this.currentPlayMusicIndex = 0;
             this.playerLoop();//重新开始一次循环
             this.logger.info('Play music task ' + this.name + ' to next loop ('+ this.currentPlayMusicIndex+'/' + this.loopCount +')');
+            UserLogService.writeLog(`任务 ${this.name} 播放完成一次，开始下一次循环 (${this.currentPlayMusicIndex}/${this.loopCount})`,
+              '', 'info', this.currentPlayLogItem)
           }
         }
       };
@@ -232,6 +285,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
           this.currentPlayTaskTimeLimitTimer = null;
           this.stopPlayingMusic(true);
           this.logger.info('Play music task ' + this.name + ' is length limit exceeded, no stop task');
+          UserLogService.writeLog(`任务 ${this.name} 播放超过了指定的时长 (${maxSec} 秒)，现在停止`, '', 'info', this.currentPlayLogItem)
         }, 1000 * maxSec);
       }
       this.playerLoop();

@@ -3,7 +3,7 @@
     "auto": {
       "type": "dateFile",
       "filename": "logs/auto.log",
-      "pattern": "-yyyy-MM-dd",
+      "pattern": "yyyy.MM.dd.log",
       "category": "http"
     },
     "app": {

@@ -32,7 +32,7 @@ const showIntro = function() {
   $('#intro img').show().addClass(['animated','bounceInDown']);
   $('#intro h3').show().addClass(['animated','bounceInUp']);
   $('#intro .ver-text').show().addClass(['animated','bounceInUp']);
-  $('#intro-ver').text(appVesrsion + ' ' + appBuildDate);
+  $('#intro-ver').text(window.appVesrsion + ' ' + window.appBuildDate);
 }
 const showErr = function(source, lineno, colno, error) {
   $('#global-error-info-content').html('<div class="text-blod">' + error + '</div>' + 

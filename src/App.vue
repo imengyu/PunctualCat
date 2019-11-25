@@ -125,6 +125,7 @@ import Win32Helper from "./utils/Win32Utils";
 import CommonUtils from "./utils/CommonUtils";
 import $ from "jquery";
 import fs from 'fs';
+import child_process from 'child_process';
 
 import TextTime from "./components/TextTime.vue"
 import IconToolBar from "./components/IconToolBar.vue"
@@ -151,7 +152,7 @@ import electron, { BrowserWindow, Rectangle, shell } from "electron";
 import { Menu, MenuItem } from "electron";
 import Win32Utils from "./utils/Win32Utils";
 import { Logger } from "log4js";
-
+import { UserLogService } from "./services/UserLogService";
 
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
@@ -365,18 +366,12 @@ export default class App extends Vue {
         let initInternal = () => {
 
           //Load actions
-          GlobalWorker.registerGlobalAction('shutdown', () => {
-            this.logger.info('Execute shutdown action by auto task');
-            this.shutdownByUser();
-          });
-          GlobalWorker.registerGlobalAction('reboot', () => {
-            this.logger.info('Execute reboot action by auto task');
-            this.rebootByUser();
-          });
+          this.initGlobalActions();
+          
           //music history
           this.serviceMusicHistory = createMusicHistoryService(this.musicHistoryList);
           //Devtools
-          if(SettingsServices.getSettingBoolean('system.developerMode'))
+          if(process.env.NODE_ENV == 'developnment' || SettingsServices.getSettingBoolean('system.developerMode'))
             this.currentWindow.webContents.openDevTools();
 
           this.loadAllDatas(() => {
@@ -494,7 +489,7 @@ export default class App extends Vue {
       if(this.currentWindow.webContents.isDevToolsOpened()) this.currentWindow.webContents.closeDevTools();
       else this.currentWindow.webContents.openDevTools();
     }}));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => ipc.send('main-act-window-control', 'openProcessManager') }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => {} }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '查看程序运行日志', click: () => shell.openExternal(process.cwd() + '/logs')}));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
@@ -571,6 +566,38 @@ export default class App extends Vue {
 
     this.currentWindow.setMenu(this.menuSettings);
     this.currentWindow.setMenuBarVisibility(false);
+  }
+  initGlobalActions() {
+    GlobalWorker.registerGlobalAction('shutdown', () => {
+      UserLogService.writeLog('执行关机命令');
+      this.logger.info('Execute shutdown action by auto task');
+      this.shutdownByUser();
+    });
+    GlobalWorker.registerGlobalAction('reboot', () => {
+      UserLogService.writeLog('执行重启命令');
+      this.logger.info('Execute reboot action by auto task');
+      this.rebootByUser();
+    });
+    GlobalWorker.registerGlobalAction('runcommands', (commands : Array<string>, 
+      callback : (command : string, fininshTime : number, err, stdout : string, stderr : string) => boolean, 
+      finishCallback : (success: boolean) => void) => {
+        let currentCommandIndex = 0;
+        let startTime : Date = null;
+        let execCommand = () => {
+          if(currentCommandIndex < commands.length){
+            startTime = new Date();
+            child_process.exec(commands[currentCommandIndex], (error, stdout, stderr) => {
+              let sec = startTime.getTime() - new Date().getTime();
+              if(callback(commands[currentCommandIndex], sec, error, stdout, stderr)) {
+                currentCommandIndex++;
+                execCommand();
+              }else finishCallback(false);
+            })
+          }else finishCallback(true);
+        }
+        execCommand()
+      }
+    );
   }
   initWindowBaseEvents() {
     this.currentWindow.removeAllListeners('page-title-updated');
@@ -761,7 +788,7 @@ export default class App extends Vue {
     else this.currentWindow.setTitle('PunctualCat')
     this.background = window.background;
     this.backgroundOpacity = window.backgroundOpacity;
-    this.developerMode = SettingsServices.getSettingBoolean('system.developerMode');
+    this.developerMode = process.env.NODE_ENV == 'developnment' || SettingsServices.getSettingBoolean('system.developerMode');
     if(this.menuItemDeveloper != null)
       this.menuItemDeveloper.visible = this.developerMode;
   }
@@ -898,7 +925,8 @@ export default class App extends Vue {
         }).then(() => this.goToSettingsPage('security')).catch(() => {});
       } else { 
         this.locked = true;
-        this.logger.info('System locked by ' + (bySystem ? 'system' : 'user'));
+        this.logger.info('System locked by ' + (bySystem ? 'auto' : 'user'));
+        UserLogService.writeLog('系统已被 ' + (bySystem ? '自动' : '管理员') + ' 锁定')
       }
     } else {
       if(!bySystem) 
@@ -919,11 +947,14 @@ export default class App extends Vue {
       this.lockedEnterPassword = '';
       this.lockedLasswordErr = '';
       this.logger.info('System unlocked');
+      UserLogService.writeLog('系统锁定已解除');
     }
     else {
       this.lockedLasswordErr = this.lockedEnterPassword == '' ? '请输入密码！' : '密码不正确，请检查';
-      if(this.lockedEnterPassword != '')
+      if(this.lockedEnterPassword != ''){
         this.logger.info('Try to unlock system failed because password error');
+        UserLogService.writeLog('登录失败，错误的密码', '', 'warn');
+      }
       $('#password-input').prop('class', 'shake animated error anim-500ms');
       setTimeout(() => {
         $('#password-input').prop('class', 'error');
@@ -969,8 +1000,14 @@ export default class App extends Vue {
           cancelButtonText: '取消',
           roundButton: true,
           type: 'warning'
-        }).then(() => item.play()).catch(() => {});
-      }else item.play();
+        }).then(() => {
+          UserLogService.writeLog('手动播放音乐：' + item.name);
+          item.play()
+        }).catch(() => {});
+      }else { 
+        UserLogService.writeLog('手动播放音乐：' + item.name);
+        item.play();
+      }
     } else if(mode == 'pause') {
       item.pause();
     } else if(mode == 'stop') {
@@ -983,10 +1020,12 @@ export default class App extends Vue {
           roundButton: true,
           type: 'warning'
         }).then(() => {
+          UserLogService.writeLog('手动播放音乐：' + item.name);
           item.loopmode = true;
           item.play();
         }).catch(() => {});
       }else {
+        UserLogService.writeLog('手动播放音乐：' + item.name);
         item.loopmode = true;
         item.play();
       }
@@ -1074,12 +1113,14 @@ export default class App extends Vue {
     clearInterval(this.shutdownTimer);
     this.shutdownTimer = null;
     this.logger.info('Shutdown is canceled by user');
+    UserLogService.writeLog('关机命令被用户取消');
   }
   rebootCancel() {
     this.rebootNowDialog = false;
     clearInterval(this.shutdownTimer);
     this.shutdownTimer = null;
     this.logger.info('Reboot is canceled by user');
+    UserLogService.writeLog('重启命令被用户取消');
   }
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }

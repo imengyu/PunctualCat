@@ -280,6 +280,7 @@ import Win32Utils from "../utils/Win32Utils";
 import fs from 'fs';
 import { PlayCondition } from "../model/PlayCondition";
 import { Logger } from "log4js";
+import { UserLogService } from "../services/UserLogService";
 
 const ipc = electron.ipcRenderer;
 const process = require('process');
@@ -388,6 +389,7 @@ export default class SettingsView extends Vue {
   }
   saveSettings() {
     SettingsServices.setData(this.appSettingsBackup);
+    UserLogService.writeLog('设置已更新');
     this.logger.info('Settings have been updated');
     this.$message({ type: 'success', message: '设置已保存' });
   }
@@ -410,6 +412,7 @@ export default class SettingsView extends Vue {
       type: 'warning'
     }).then(() => {
       SettingsServices.resetDefault();
+      UserLogService.writeLog('设置已更新恢复默认');
       this.logger.info('Settings have been reset to default values');
       this.$message({ type: 'success', message: '已恢复默认设置' });
     }).catch(() => {});
@@ -434,6 +437,7 @@ export default class SettingsView extends Vue {
             this.showEditManagerPasswordDialog = false;
             this.$message({ message: '修改管理员密码成功 !', type: 'success' });
             this.logger.info('Manager password has been updated');
+            UserLogService.writeLog('管理员密码已成功修改');
             if(!this.appSettingsBackup.security.preventAnymouseUse) {
               this.$confirm('您真已经成功设置管理员密码，现在是否要开启安全保护功能? ', '提示', {
                 confirmButtonText: '开启',
@@ -455,9 +459,11 @@ export default class SettingsView extends Vue {
               this.$message({ message: '修改管理员密码成功 !', type: 'success' })
               this.showEditManagerPasswordDialog = false;
               this.logger.info('Manager password has been updated');
+              UserLogService.writeLog('管理员密码已成功修改');
             }else{
               this.logger.info('Manager password update failed because old password error');
               this.$message({ message: '无法修改管理员密码，旧密码错误', type: 'error' })
+              UserLogService.writeLog('管理员密码已修改失败，因为旧密码错误', '', 'warn');
             }
           }
         } else {
@@ -487,12 +493,13 @@ export default class SettingsView extends Vue {
         cancelButtonText: '取消',
       }).then((data : MessageBoxInputData) => {
         if(data.value == this.appSettingsBackup.security.managerPassword){
-
+          UserLogService.writeLog('管理员密码已删除');
           SettingsServices.setSetting('security.managerPassword', '')
           this.appSettingsBackup.security.managerPassword = '';
           this.logger.info('Manager password has been cleared');
           this.$message({ type: 'success', message: '删除管理员密码成功！ ' });
         }else {
+          UserLogService.writeLog('管理员密码没有成功删除，因为旧密码不正确', '', 'warn');
           this.logger.info('Manager password clear failed because old password error');
           this.$alert('管理员密码不正确', '修改密码提示', { type: 'error' })
         }

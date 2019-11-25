@@ -235,6 +235,13 @@
   }
 }
 
+.v-modal {
+  outline: none;
+
+  &:focus {
+    outline: none;
+  }
+}
 
 .pulse-enter-active, .pulse-leave-active {
   animation: pulse 200ms cubic-bezier(0,0,.2,1) forwards;
@@ -251,7 +258,6 @@
 .pulse-enter-to {
   //animation-play-state: paused;
 }
-
 
 @keyframes pulse {
 	0% {

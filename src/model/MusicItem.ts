@@ -3,6 +3,7 @@ import SettingsServices from "../services/SettingsServices";
 import CommonUtils from "../utils/CommonUtils";
 import { EventEmitter } from "events";
 import { Logger } from 'log4js';
+import fs from 'fs';
 
 let staticPlayingCount = 0;
 let staticPlayingCountChangedCallback : (music : MusicItem, count : number) => void = null;
@@ -189,32 +190,42 @@ export class MusicItem extends EventEmitter {
     }
     try {
       this.playError = null;
-      this.audio.load();
-      setTimeout(() => {
-        if(this.audio.error != null){
-          var err = '未知错误';
-          switch(this.audio.error.code) {
-            case 1: err = '操作被终止';break;
-            case 2: err = '打开文件时出现了错误';break;
-            case 3: err = '无法解码该文件';break;
-            case 4: err = '不支持的音频格式';break;
-          }
-          this.playError = err;
-          this.updateStatus(this.audio.error.code == 2 ? 'lost' : 'playerr');
+      fs.exists(this.fullPath, (exists) => {
+        if(exists) {
+          this.audio.load();
+          setTimeout(() => {
+            if(this.audio.error != null){
+              var err = '未知错误';
+              switch(this.audio.error.code) {
+                case 1: err = '操作被终止';break;
+                case 2: err = '打开文件时出现了错误';break;
+                case 3: err = '无法解码该文件';break;
+                case 4: err = '不支持的音频格式';break;
+              }
+              this.playError = err;
+              this.updateStatus(this.audio.error.code == 2 ? 'lost' : 'playerr');
+              this.loaded = false;
+              this.loading = false;
+              if(typeof callback == 'function') callback(false);
+
+            }else {
+              this.updateStatus('normal');
+              this.playError = null;
+              this.loaded = true;
+              this.loading = false;
+              this.audioDurtion = this.audio.duration;
+              this.audioDurtionString = CommonUtils.getTimeStringSec(this.audio.duration);
+              if(typeof callback == 'function') callback(true);
+            }
+          }, 600);
+        }else {
+          this.playError = '找不到文件';
+          this.updateStatus('lost');
           this.loaded = false;
           this.loading = false;
           if(typeof callback == 'function') callback(false);
-
-        }else {
-          this.updateStatus('normal');
-          this.playError = null;
-          this.loaded = true;
-          this.loading = false;
-          this.audioDurtion = this.audio.duration;
-          this.audioDurtionString = CommonUtils.getTimeStringSec(this.audio.duration);
-          if(typeof callback == 'function') callback(true);
         }
-      }, 600);
+      })
     }catch(e) {
       this.playError = e;
       this.updateStatus('playerr');

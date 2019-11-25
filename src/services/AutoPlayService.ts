@@ -9,6 +9,7 @@ import { PlayCondition } from '../model/PlayCondition';
 import GlobalWorker from './GlobalWorker';
 import Win32Utils from '../utils/Win32Utils';
 import { threadId } from 'worker_threads';
+import { UserLogService } from './UserLogService';
 
 export type AutoPlayTickType = 'hour'|'minute'|'second'|'run';
 
@@ -68,6 +69,7 @@ export default class AutoPlayService extends EventEmitter {
       this.startCorrectSequence();
       this.globalRunning = true;
       this.emit('runningchanged', this.globalRunning, this.isMuteTime);
+      UserLogService.writeLog('启动自动播放系统');
     }
   }
   /**
@@ -80,6 +82,7 @@ export default class AutoPlayService extends EventEmitter {
       this.globalRunning = false;
       if(this.isMuteTime) this.unMute(false);
       this.emit('runningchanged', this.globalRunning, this.isMuteTime);
+      UserLogService.writeLog('停止自动播放系统');
     }
 
   }
@@ -109,6 +112,7 @@ export default class AutoPlayService extends EventEmitter {
       if(staticSettingsServices.getSettingBoolean('auto.setSystemMuteAtMuteTime') && Win32Utils.getNativeCanUse())
         Win32Utils.unmuteSystem();
       if(emitEvent) this.emit('runningchanged', this.globalRunning, this.isMuteTime);
+      UserLogService.writeLog('退出静音时段');
     }
   }
   private mute() {
@@ -118,6 +122,7 @@ export default class AutoPlayService extends EventEmitter {
         Win32Utils.muteSystem();
       this.stopAllPlayingTask();
       this.emit('runningchanged', this.globalRunning, this.isMuteTime);
+      UserLogService.writeLog('进入静音时段');
     }
   }
 
@@ -228,7 +233,7 @@ export default class AutoPlayService extends EventEmitter {
           let task = new PlayTask();
           task.type = 'mutetime';
           task.condition = muteTimes[i];
-          task.name = 'automute';
+          task.name = '自动静音';
           this.muteTask.push(task);
         }
         this.taskTickLateUpdate();

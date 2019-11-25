@@ -13,6 +13,7 @@ declare global {
     appBuildDate : string;
     appVesrsion : string;
     initLogs : Function;
+    initVue : Function;
     destroyLogs : Function;
   }
 }

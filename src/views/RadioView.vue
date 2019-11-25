@@ -106,6 +106,7 @@ import axios from 'axios'
 import { Loading } from "element-ui";
 import { MusicStatus } from "../model/MusicItem";
 import staticSettingsServices from "../services/SettingsServices";
+import { UserLogService, UserLog } from "../services/UserLogService";
 
 @Component({
   components: {
@@ -172,8 +173,10 @@ export default class RadioView extends Vue {
   readAloudCurrentAudioStatus : MusicStatus = 'normal';
   readAloudLoopCurrent = 0;
   readAloudVolLocal = 100;
+  readAloudLogItem : UserLog = null;
 
   mounted() {
+    this.readAloudLogItem = UserLogService.writeLog('语音系统播放日志');
     this.readAloudVolLocal = staticSettingsServices.getSettingNumber('player.readAloudVolume');
     staticSettingsServices.addListener('beforesave', () => {
       staticSettingsServices.setSettingNumber('player.readAloudVolume', this.readAloudVolLocal);
@@ -234,6 +237,7 @@ export default class RadioView extends Vue {
       this.readAloudCurrentAudio = audio;
       this.readAloudCurrentAudioStatus = 'normal';
       this.readAloudSwitch('playing');
+      UserLogService.writeLog('手动播放语音', '语音内容：' + this.readAloudContent, 'info', this.readAloudLogItem);
     }).catch((reason) => {
       loadingInstance.close();
       this.readAloudCurrentAudio = null;
