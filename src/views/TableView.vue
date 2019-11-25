@@ -407,6 +407,7 @@ import { PlayTask } from "../model/PlayTask";
 import AutoPlayService from "../services/AutoPlayService";
 import { AutoPlayStatus } from "../model/PlayInterfaces";
 import { MusicTask } from "../model/MusicItem";
+import { loadMenuIcon } from "../utils/MenuUtils";
 
 const electron = require('electron');
 const remote = electron.remote;
@@ -515,12 +516,11 @@ export default class TableView extends Vue {
   createMenu() {
     this.menuTable = new Menu();
     this.menuTable.append(new MenuItem({ label: '编辑时间表', click: () => this.editTable(this.currentEditTable) }));
-    this.menuTable.append(new MenuItem({ label: '删除时间表', click: () => this.delTable(this.currentEditTable) }));
-    this.menuTable.append(new MenuItem({ label: '禁用时间表', click: () => this.enableTable(this.currentEditTable, false) }));
-    this.menuTable.append(new MenuItem({ label: '启用时间表', click: () => this.enableTable(this.currentEditTable, true) }));
-    this.menuTable.append(new MenuItem({ label: '删除时间表', click: () => this.delTable(this.currentEditTable) }));
+    this.menuTable.append(new MenuItem({ label: '禁用时间表', click: () => this.enableTable(this.currentEditTable, false), icon: loadMenuIcon(require('../assets/images/menu/ban.png')) }));
+    this.menuTable.append(new MenuItem({ label: '启用时间表', click: () => this.enableTable(this.currentEditTable, true), icon: loadMenuIcon(require('../assets/images/menu/play.png')) }));
+    this.menuTable.append(new MenuItem({ label: '删除时间表', click: () => this.delTable(this.currentEditTable), icon: loadMenuIcon(require('../assets/images/menu/delete.png')) }));
     this.menuTable.append(new MenuItem({ type: 'separator' }));
-    this.menuTable.append(new MenuItem({ label: '添加时间表', click: () => this.addTable() }));
+    this.menuTable.append(new MenuItem({ label: '添加时间表', click: () => this.addTable(), icon: loadMenuIcon(require('../assets/images/menu/add.png')) }));
   }
 
   tableSortChange(obj : { column : Number, prop : string, order }) {
@@ -642,8 +642,8 @@ export default class TableView extends Vue {
   showTable(table : PlayTable) { this.currentEditTable = this.currentShowTable = table; }
   showTableRightMenu(table : PlayTable) { 
     this.currentEditTable = table; 
-    this.menuTable.items[2].enabled = table.enabled;
-    this.menuTable.items[3].enabled = !table.enabled;
+    this.menuTable.items[1].visible = table.enabled;
+    this.menuTable.items[2].visible = !table.enabled;
     this.menuTable.popup(); 
   }
 

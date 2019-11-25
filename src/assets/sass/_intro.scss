@@ -39,13 +39,11 @@
 
 /*错误区域*/
 .error-area {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
+  display: block;
+  text-align: center;;
   z-index: 1000;
   background: #fff;
-  padding: 30px 20px 50px 20px;
+  padding: 60px 20px;
   overflow: hidden;
   overflow-y: scroll!important;
 

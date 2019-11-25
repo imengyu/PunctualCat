@@ -1,11 +1,11 @@
 /.vscode/
+.vs/
 /data/
 /musics/
-/dist/
 /logs/
-node_modules/
-.vs/
-/src/node_modules/
+/dist/
+/dist-build/
 /src/native-module/build/
-
+/src/node_modules/
+node_modules/
 package-lock.json

@@ -1,6 +1,7 @@
 import electron, { app, BrowserWindow, dialog, shell } from 'electron'
 import path from "path"
 import url from 'url'
+import fs from 'fs'
 import process from 'process'
 import child_process from 'child_process'
 import Electron from 'electron'
@@ -17,6 +18,8 @@ const exec = child_process.exec;
 var appTray : Electron.Tray = null;
 var appQuit = false
 var appIco : Electron.NativeImage = null;
+var appDir = process.cwd();
+var appCanQuit = false;
 
 function createMainWindow () {
 
@@ -38,7 +41,7 @@ function createMainWindow () {
   })
   mainWindow.setMenu(null)
   mainWindow.loadURL(url.format({
-    pathname: path.join(__dirname, 'index.html'),
+    pathname: path.join(appDir, 'index.html'),
     protocol: 'file:',
     slashes: true
   }))
@@ -50,7 +53,7 @@ function createMainWindow () {
     else {
       /*
       mainWindow.webContents.loadURL(url.format({
-        pathname: path.join(__dirname, 'pages/index.html'),
+        pathname: path.join(appDir, 'pages/index.html'),
         protocol: 'file:',
         slashes: true
       }))
@@ -60,7 +63,7 @@ function createMainWindow () {
       //Reload
       setTimeout(() => {
         mainWindow.loadURL(url.format({
-          pathname: path.join(__dirname, 'index.html'),
+          pathname: path.join(appDir, 'index.html'),
           protocol: 'file:',
           slashes: true
         }))
@@ -105,7 +108,10 @@ function createMainWindow () {
       mainWindow.hide();
     } 
   });
-  mainWindow.once('ready-to-show', () => mainWindow.show())
+  mainWindow.once('ready-to-show', () => {
+    appCanQuit = true;
+    mainWindow.show();
+  })
 
   var trayMenuTemplate = [
     {
@@ -115,8 +121,19 @@ function createMainWindow () {
     {
       label: '退出',
       click: function () { 
-        mainWindow.show(); 
-        mainWindow.webContents.send('main-window-act', 'show-exit-dialog');
+        if(appCanQuit) {
+          mainWindow.show(); 
+          mainWindow.webContents.send('main-window-act', 'show-exit-dialog');
+        }else {
+          dialog.showMessageBox(mainWindow, {
+            message: '是否要退出程序',
+            noLink: true,
+            buttons: [ '取消', '退出' ]
+          }).then((value) => {
+            if(value.response == 1)
+              app.quit();
+          }).catch(() => {})
+        }
       }
     }
   ];
@@ -130,6 +147,7 @@ function createMainWindow () {
 }
 function destroyMainWindow() {
   appQuit = true;
+  appCanQuit = false;
   mainWindow.removeAllListeners();
   mainWindow.close();
 }
@@ -143,7 +161,7 @@ function showCrashedWindow() {
     fullscreen: false,
     resizable: false,
     minimizable: false,
-    icon: path.join(__dirname, 'main.ico'),
+    icon: path.join(appDir, 'main.ico'),
     webPreferences: {
       webSecurity: false,
       nodeIntegration: true,
@@ -152,7 +170,7 @@ function showCrashedWindow() {
   })
   crashedWindow.setMenu(null)
   crashedWindow.loadURL(url.format({
-    pathname: path.join(__dirname, 'pages/crashed.html'),
+    pathname: path.join(appDir, 'pages/crashed.html'),
     protocol: 'file:',
     slashes: true
   }));
@@ -162,7 +180,7 @@ function showCrashedWindow() {
 }
 function showHelpWindow(anchorPos) {
   let targetUrl = url.format({
-    pathname: path.join(__dirname, 'pages/docs.html'),
+    pathname: path.join(appDir, 'pages/docs.html'),
     protocol: 'file:',
     slashes: true,
     hash: anchorPos ? anchorPos : '',
@@ -175,7 +193,7 @@ function showHelpWindow(anchorPos) {
       height: 660,
       frame: true,
       show: false,
-      icon: path.join(__dirname, 'main.ico'),
+      icon: path.join(appDir, 'main.ico'),
       webPreferences: { nodeIntegration: true, webSecurity: false },
     })
     helpWindow.setMenu(null)
@@ -190,11 +208,19 @@ function showHelpWindow(anchorPos) {
   }
 }
 
+
+function initBasePath(callback : () => void) {
+  if(fs.existsSync(appDir + '/dist/index.html')) appDir = appDir + '/dist';
+  else if(fs.existsSync(appDir + '/resources/app/index.html')) appDir = appDir + '/resources/app';
+  else if(fs.existsSync(appDir + '/resources/app.asar')) appDir = appDir + '/resources/app.asar';
+  callback();
+}
 function initApp() {
 
-  appIco = Electron.nativeImage.createFromPath(require('./assets/images/logo.ico'));
-
-  app.on('ready', () => createMainWindow())
+  app.on('ready', () => {
+    appIco = Electron.nativeImage.createFromPath(path.posix.join(appDir, require('./assets/images/logo.ico')));
+    createMainWindow();
+  })
   app.on('window-all-closed', () =>  {
     // On OS X it is common for applications and their menu bar
     // to stay active until the user quits explicitly with Cmd + Q
@@ -207,17 +233,25 @@ function initApp() {
   })
   app.on('web-contents-created', (event, contents) => {
     
+    let errCount = 0;
+
     contents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL, isMainFrame, frameProcessId, frameRoutingId) => {
+      
+      if(contents == mainWindow.webContents)
+        appCanQuit = false;
+      
       let failedPageUrl = url.format({
-        pathname: path.join(__dirname, 'pages/failed.html'),
+        pathname: path.join(appDir, 'pages/failed.html'),
         protocol: 'file:',
         slashes: true
       });
-      if(contents.getURL() != failedPageUrl) {
+      errCount ++;
+      if(errCount < 10 && contents.getURL() != failedPageUrl) {
         contents.loadURL(failedPageUrl);
         contents.executeJavaScript('document.getElementById(\'global-error-info-code\').innerText = \''+errorDescription+'('+errorCode+')\'');
       }else {
-        dialog.showErrorBox('发生了错误', '加载页面时发生连环错误');
+        dialog.showErrorBox('发生了错误', '加载页面时发生错误\nURL: ' + 
+          validatedURL + '\n错误代码: ' + errorDescription + ' (' + errorCode + ')');
       }
     });
 
@@ -313,9 +347,9 @@ function initIpcs() {
   });
   ipc.on('main-act-reload', (event) => {
     if(mainWindow && event.sender == mainWindow.webContents) 
-      mainWindow.webContents.loadURL(url.format({ pathname: path.join(__dirname, 'index.html'), protocol: 'file:', slashes: true }))
+      mainWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'index.html'), protocol: 'file:', slashes: true }))
     else if(helpWindow && event.sender == helpWindow.webContents) {
-      helpWindow.webContents.loadURL(url.format({ pathname: path.join(__dirname, 'pages/docs.html'), protocol: 'file:', slashes: true }))
+      helpWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'pages/docs.html'), protocol: 'file:', slashes: true }))
     }
   });
 
@@ -343,5 +377,7 @@ function initIpcs() {
   });
 }
 
-initApp();
-initIpcs();
+initBasePath(() => {
+  initApp();
+  initIpcs();
+})

@@ -9,7 +9,6 @@ function resolve (dir) {
 }
 
 const rendererConfig = {
-  context: resolve('/'),
   entry: {
     renderer: resolve('/src/renderer.ts'),
   },
@@ -38,7 +37,7 @@ const rendererConfig = {
           {
             loader: 'url-loader',
             options: {
-              limit: 4096,
+              limit: 0,
               outputPath: 'assets',
             }
           }
@@ -94,7 +93,6 @@ const rendererConfig = {
   plugins: []
 }
 const mainConfig = {
-  context: resolve('/'),
   entry: {
     main: resolve('/src/main.ts'),
   },
@@ -117,7 +115,7 @@ const mainConfig = {
           {
             loader: 'url-loader',
             options: {
-              limit: 4096,
+              limit: 0,
               outputPath: 'assets',
             }
           }

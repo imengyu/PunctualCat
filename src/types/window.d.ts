@@ -10,6 +10,7 @@ declare global {
     appInited : boolean;
     appDb : Datastore;
     appWin32 : any;
+    appDir : string;
     appBuildDate : string;
     appVesrsion : string;
     initLogs : Function;

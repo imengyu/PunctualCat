@@ -27,6 +27,7 @@ class SettingsServices extends EventEmitter {
     },
     system: {
       developerMode: false,
+      autoOpenDevTools: true,
       autoUpdate: true,
       autoHide: true,
       autoHideMinute: 10,

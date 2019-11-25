@@ -23,6 +23,12 @@ export class UserLogService {
   public clearLog() {
     this.logs = [];
   }
+  public destroy() {
+    for(var i = 0;i<this.logs.length;i++)
+      this.logs[i].chils = [];
+    this.clearLog();
+    this.logs = undefined;
+  }
 }
 
 export type UserLogType = 'info'|'warn'|'error'|'text';
@@ -33,7 +39,7 @@ export class UserLog {
   public text : string;
   public type : UserLogType;
   public time : string;
-  public chils : Array<UserLog>;
+  public chils : Array<UserLog> = [];
 
   public constructor(title : string, text = '', type : UserLogType = 'info') {
     this.title = title;

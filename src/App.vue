@@ -153,6 +153,7 @@ import { Menu, MenuItem } from "electron";
 import Win32Utils from "./utils/Win32Utils";
 import { Logger } from "log4js";
 import { UserLogService } from "./services/UserLogService";
+import { loadMenuIcon } from "./utils/MenuUtils";
 
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
@@ -203,6 +204,7 @@ export default class App extends Vue {
   developerMode = false;
 
   logger : Logger = null;
+  userLogger : UserLogService = null;
   nativeModuleEnabled = false;
   globalRunning = false;
 
@@ -346,6 +348,7 @@ export default class App extends Vue {
   init() {
     window.app = this;
     //初始化所有服务
+    this.userLogger = new UserLogService()
     this.nativeModuleEnabled = Win32Utils.init();
     this.logger = window.appLogger;
     this.currentWindow = remote.getCurrentWindow();
@@ -461,7 +464,7 @@ export default class App extends Vue {
   initMenus() {
     this.menuSettings = new electron.remote.Menu();
     
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => this.lock() }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '锁定软件', accelerator: 'CmdOrCtrl+L', click: () => this.lock(), icon: loadMenuIcon(require('./assets/images/menu/lock.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }));
 
     let noDataMode = localStorage.getItem('noDataMode');
@@ -480,18 +483,31 @@ export default class App extends Vue {
           this.logger.error('保存数据失败', e);
         })
     }}));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', click: () => {  } }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', click: () => {  }, icon: loadMenuIcon(require('./assets/images/menu/log.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => {  } }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => {  }, icon: loadMenuIcon(require('./assets/images/menu/tip.png')) }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '帮助', click: () => {  }, icon: loadMenuIcon(require('./assets/images/menu/help.png')) }));
+    this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global'), icon: loadMenuIcon(require('./assets/images/menu/settings.png')) }));
 
     var developerSubMenu = new electron.remote.Menu();
+    var developerSubMenuAutoOpenDevTools = new electron.remote.MenuItem({ 
+      label: '启动时开启开发者工具', 
+      click: () => {
+        let val = !SettingsServices.getSettingBoolean('system.autoOpenDevTools')
+        SettingsServices.setSettingBoolean('system.autoOpenDevTools', val);
+        developerSubMenuAutoOpenDevTools.checked = val;
+      }, checked: SettingsServices.getSettingBoolean('system.autoOpenDevTools'),
+      type: 'checkbox'
+    });
     developerSubMenu.append(new electron.remote.MenuItem({ label: '切换开发者工具', click: () => { 
       if(this.currentWindow.webContents.isDevToolsOpened()) this.currentWindow.webContents.closeDevTools();
       else this.currentWindow.webContents.openDevTools();
-    }}));
+    }, icon: loadMenuIcon(require('./assets/images/menu/dev.png')) }));
+    developerSubMenu.append(developerSubMenuAutoOpenDevTools);
     developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => {} }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '查看程序运行日志', click: () => shell.openExternal(process.cwd() + '/logs')}));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '查看程序运行日志', click: () => shell.openExternal(process.cwd() + '/logs'), icon: loadMenuIcon(require('./assets/images/menu/log2.png')) }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制清除数据', click: () => { 
       this.$confirm('警告！这是调试功能，数据清除后不可恢复，是否继续？', {
@@ -504,7 +520,7 @@ export default class App extends Vue {
         this.serviceDataStorage.clearData().then(() => this.$message({ message: '清除数据成功！', type: 'success' }))
         .catch((e) => this.$message({ message: '清除数据失败！错误信息：' + e, type: 'success' }))
       }).catch(() => {});
-    } }));
+    }, icon: loadMenuIcon(require('./assets/images/menu/cleardata.png')) }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '结束软件进程', accelerator: 'CmdOrCtrl+K', click: () => ipc.send('main-act-quit') }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '重载页面', accelerator: 'CmdOrCtrl+R', click: () => location.reload(true) }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '杀死页面', click: () => { location.href = 'chrome://kill/' } }));
@@ -514,25 +530,37 @@ export default class App extends Vue {
         confirmButtonText: '跳转',
         cancelButtonText: '取消',
         roundButton: true,
-        inputValue: location.href
+        inputValue: location.href,
+        inputType: 'textArea',
+        inputPlaceholder: '输入 URL',
+        closeOnClickModal: false,
+        closeOnPressEscape: false,
+        showClose: false
       }).then((data : MessageBoxInputData) => {
         location.href = data.value;
       }).catch(() => {});
     } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '关闭开发者模式', click: () => { 
+      SettingsServices.setSettingBoolean('system.developerMode', false);
+      if(this.currentWindow.webContents.isDevToolsOpened())
+        this.currentWindow.webContents.closeDevTools();
+      this.menuItemDeveloper.visible = false;
+    }, icon: loadMenuIcon(require('./assets/images/menu/ban.png')) }));
 
-    this.menuItemDeveloper = new electron.remote.MenuItem({ label: '开发者选项', submenu: developerSubMenu });
+    this.menuItemDeveloper = new electron.remote.MenuItem({ label: '开发者选项', submenu: developerSubMenu, icon: loadMenuIcon(require('./assets/images/menu/bug.png')) });
     if(!this.developerMode) this.menuItemDeveloper.visible = false;
     this.menuSettings.append(this.menuItemDeveloper);
     
     var powerSubMenu = new electron.remote.Menu();
-    powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭计算机', click: () => this.shutdownByUser() }));
-    powerSubMenu.append(new electron.remote.MenuItem({ label: '重启计算机', click: () => this.rebootByUser() }));
+    powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭计算机', click: () => this.shutdownByUser(), icon: loadMenuIcon(require('./assets/images/menu/shutdown.png')) }));
+    powerSubMenu.append(new electron.remote.MenuItem({ label: '重启计算机', click: () => this.rebootByUser(), icon: loadMenuIcon(require('./assets/images/menu/reboot.png')) }));
     powerSubMenu.append(new electron.remote.MenuItem({ label: '关闭显示器', click: () => this.closeMointor() }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global') }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '系统电源', submenu: powerSubMenu }));
+
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '系统电源', submenu: powerSubMenu, icon: loadMenuIcon(require('./assets/images/menu/power.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '关于软件', click: () => this.goToSettingsPage('about') }));    
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '退出程序', click: () => this.exitAppWithAsk() }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '退出程序', click: () => this.exitAppWithAsk(), icon: loadMenuIcon(require('./assets/images/menu/quit.png')) }));
 
     this.menuInput = new electron.remote.Menu();
     this.menuInput.append(new electron.remote.MenuItem({ label:'剪切', role: 'cut' }));
@@ -670,6 +698,7 @@ export default class App extends Vue {
         this.autoPlayService.stop();
         this.serviceTables.destroy();
         window.destroyLogs();
+        this.userLogger.destroy();
         destroyDataStorageServices();
         resolve();
       }).catch((e) => reject(e))

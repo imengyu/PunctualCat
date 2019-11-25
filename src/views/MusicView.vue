@@ -77,6 +77,7 @@ import { Component, Prop, Vue } from "vue-property-decorator";
 import { MusicItem, MusicAction } from '../model/MusicItem'
 import { ContainerMixin, ElementMixin } from 'vue-slicksort';
 import { getMusicHistoryService, MusicHistoryService } from '../services/MusicHistoryService'
+import { loadMenuIcon } from "../utils/MenuUtils";
 
 const electron = require('electron');
 const { shell } = require('electron');
@@ -146,29 +147,32 @@ export default class MusicView extends Vue {
 
   musicMenu : Electron.Menu;
   currentRightClickItem : MusicItem;
+  playIcon = null;
+  pauseIcon = null;
 
   createMenu() {
     this.musicMenu = new Menu();
-    this.musicMenu.append(new MenuItem({ label: '播放' }));
-    this.musicMenu.append(new MenuItem({ label: '停止播放', click: () => this.itemClick(this.currentRightClickItem, 'stop') }));
-    this.musicMenu.append(new MenuItem({ label: '循环播放', click: () => this.itemClick(this.currentRightClickItem, 'looplay') }));
-    this.musicMenu.append(new MenuItem({ label: '删除音乐', click: () => this.itemClick(this.currentRightClickItem, 'delete') }));
+    this.musicMenu.append(new MenuItem({ label: '播放', icon: loadMenuIcon(require('../assets/images/menu/play.png')), click : () => this.itemClick(this.currentRightClickItem, 'play') }));
+    this.musicMenu.append(new MenuItem({ label: '暂停', icon: loadMenuIcon(require('../assets/images/menu/pause.png')), click : () => this.itemClick(this.currentRightClickItem, 'pause'), visible: false }));
+    this.musicMenu.append(new MenuItem({ label: '停止播放', click: () => this.itemClick(this.currentRightClickItem, 'stop'), icon: loadMenuIcon(require('../assets/images/menu/close.png')) }));
+    this.musicMenu.append(new MenuItem({ label: '循环播放', click: () => this.itemClick(this.currentRightClickItem, 'looplay'), icon: loadMenuIcon(require('../assets/images/menu/loop.png')) }));
+    this.musicMenu.append(new MenuItem({ label: '删除音乐', click: () => this.itemClick(this.currentRightClickItem, 'delete'), icon: loadMenuIcon(require('../assets/images/menu/delete.png')) }));
     this.musicMenu.append(new MenuItem({ type: 'separator' }));
-    this.musicMenu.append(new MenuItem({ label: '打开所在文件夹', click: () => this.showMusicFolder(this.currentRightClickItem) }));
+    this.musicMenu.append(new MenuItem({ label: '打开所在文件夹', click: () => this.showMusicFolder(this.currentRightClickItem), icon: loadMenuIcon(require('../assets/images/menu/folder.png')) }));
     this.musicMenu.append(new MenuItem({ label: '复制完整路径', click: () => this.copyMusicPath(this.currentRightClickItem) }));
   }
   showMenu(item : MusicItem) {
     this.currentRightClickItem = item;
     if(item.status == 'playing'){
-      this.musicMenu.items[0].label = '暂停';
-      this.musicMenu.items[0].click = () => this.itemClick(this.currentRightClickItem, 'pause');
+      this.musicMenu.items[0].visible = false;
       this.musicMenu.items[1].visible = true;
-      this.musicMenu.items[2].visible = false;
-    } else {
-      this.musicMenu.items[0].label = '播放';
-      this.musicMenu.items[0].click = () => this.itemClick(this.currentRightClickItem, 'play');
-      this.musicMenu.items[1].visible = false;
       this.musicMenu.items[2].visible = true;
+      this.musicMenu.items[3].visible = false;
+    } else {
+      this.musicMenu.items[1].visible = false;
+      this.musicMenu.items[0].visible = true;
+      this.musicMenu.items[2].visible = false;
+      this.musicMenu.items[3].visible = true;
     }
     this.musicMenu.popup();
   }
