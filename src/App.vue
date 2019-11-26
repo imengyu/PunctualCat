@@ -358,7 +358,6 @@ export default class App extends Vue {
 
   //初始化和卸载
   init() {
-    window.app = this;
     //初始化所有服务
     this.userLogger = new UserLogService()
     this.nativeModuleEnabled = Win32Utils.init();
@@ -386,8 +385,10 @@ export default class App extends Vue {
           //music history
           this.serviceMusicHistory = createMusicHistoryService(this.musicHistoryList);
           //Devtools
-          if(process.env.NODE_ENV == 'developnment' || SettingsServices.getSettingBoolean('system.developerMode'))
+          if(process.env.NODE_ENV == 'developnment' || SettingsServices.getSettingBoolean('system.developerMode')) {
+            window.app = this;
             this.currentWindow.webContents.openDevTools();
+          }
 
           this.loadAllDatas(() => {
 

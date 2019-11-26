@@ -131,7 +131,7 @@ export default class AutoPlayService extends EventEmitter {
     for(;i<arguments.length;i++)
       buf+= arguments[i];
     this.logger.info(buf);
-    console.log(buf);
+    console.log('[AutoPlayService] ' + buf);
   }
   private runStatusCallback(status : 'hour'|'minute'|'second'|'disabled', precent: number, correcting: boolean = false, checked: boolean = false, checkCount = 0) {
     if(typeof this.statusChangedCallback == 'function') 

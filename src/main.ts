@@ -199,7 +199,6 @@ function showHelpWindow(anchorPos) {
     })
     helpWindow.setMenu(null)
     helpWindow.loadURL(targetUrl);
-    helpWindow.webContents.openDevTools();
     helpWindow.on('closed', () => helpWindow = null)
     helpWindow.once('ready-to-show', () => helpWindow.show())
   }else{

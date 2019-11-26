@@ -29,7 +29,6 @@ Vue.use(ElementUI);
 Vue.prototype.$ = $;
 
 function initVue() {
-  initBasePath();
   new Vue({
     el: '#app',
     render: h => h(App)
@@ -55,15 +54,19 @@ function initBasePath() {
   else if(fs.existsSync(window.appDir + '/dist/development/index.html')) window.appDir = path.posix.join(window.appDir, '/dist/development');
   else if(fs.existsSync(window.appDir + '/resources/app/index.html')) window.appDir = path.posix.join(window.appDir, '/resources/app');
   else if(fs.existsSync(window.appDir + '/resources/app.asar')) window.appDir = path.posix.join(window.appDir, '/resources/app.asar');
+
+  console.log(`[Loader] App version is ${appVesrsion} (${appBuildDate})`);
+  console.log(`[Loader] App base path is ${window.appDir}`);
+  console.log(`[Loader] App db path is ${appDb}`);
 }
 
 //Global error
+
+
 window.onerror = (event, source, lineno, colno, error) => {
   if(window.appInited) window.app.showRunTimeError(source, lineno, colno, error);
   else showErr(source, lineno, colno, error);
 };
-
-//Loader start
 
 var appPath = process.cwd();
 var dbPath = appPath + "/data/data.db";
@@ -75,18 +78,7 @@ var appLogger = null;
 var appAutoLogger = null;
 var appWin32 = null;
 
-window.addEventListener('load', () => {
-  initLogs().then(() => {
-    loadGlobal();
-    loadNativeModule();
-    initVue()
-  }).catch((err) => {
-    console.error(err);
-    dialog.showErrorBox('初始化日志失败', err);
-  });
-});
-
-function initLogs() {
+function initLogs() : Promise<void> {
   return new Promise((resolve, reject) => {
     let logDir = process.cwd() + '/logs';
     let configueLogs = () => {
@@ -138,23 +130,37 @@ function loadGlobal() {
 }
 function loadNativeModule() {
   try{
-    if(process.arch == 'ia32' || process.arch == 'x32'){
-      appWin32 = require("./native/app-ia32.node");
-      appLogger.info('Load native module for arch x32');
-    }
-    else if(process.arch == 'x64'){
-      appWin32 = require("./native/app-x64.node");
-      appLogger.info('Load native module for arch x64');
-    }
+    let nativeModulePath = '';
+
+    if(process.arch == 'ia32' || process.arch == 'x32') nativeModulePath = require("./native/app-ia32.node");
+    else if(process.arch == 'x64') nativeModulePath = require("./native/app-x64.node");
     else {
       appLogger.error('Native module is not support whith arch ' + process.arch);
       dialog.showErrorBox('加载本地模块时发生错误', '本地模块不适用于您的系统。当前系统：' + process.arch);
+      return;
     }
+
+    console.log(`[Loader] Load native module for arch ${process.arch} : ${nativeModulePath}`);
+    appLogger.info(`Load native module for arch ${process.arch} : ${nativeModulePath}`);
+    appWin32 = (<any>global).nodeRequire(nativeModulePath);
+
   }catch(e) {
     appLogger.error('Error while loading Native module : ' + e);
     dialog.showErrorBox('加载本地模块时发生错误', '这可能导致程序出现不可预料的行为。建议您参照 帮助文档 将错误日志发送给我们，以便更好的解决此问题。错误消息：' + e);
   }
 }
+
+//Loader start
+
+initBasePath();
+initLogs().then(() => {
+  loadNativeModule();
+  loadGlobal();
+  initVue()
+}).catch((err) => {
+  console.error(err);
+  dialog.showErrorBox('初始化日志失败', err);
+});
 
 //Base type extends
 
