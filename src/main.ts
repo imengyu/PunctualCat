@@ -109,7 +109,6 @@ function createMainWindow () {
     } 
   });
   mainWindow.once('ready-to-show', () => {
-    appCanQuit = true;
     mainWindow.show();
   })
 
@@ -130,8 +129,10 @@ function createMainWindow () {
             noLink: true,
             buttons: [ '取消', '退出' ]
           }).then((value) => {
-            if(value.response == 1)
+            if(value.response == 1) {
+              appQuit = true;
               app.quit();
+            }
           }).catch(() => {})
         }
       }
@@ -210,7 +211,9 @@ function showHelpWindow(anchorPos) {
 
 
 function initBasePath(callback : () => void) {
+  appDir = appDir.replace(/\\/g, '/');
   if(fs.existsSync(appDir + '/dist/index.html')) appDir = appDir + '/dist';
+  else if(fs.existsSync(appDir + '/dist/development/index.html')) appDir = appDir + '/dist/development';
   else if(fs.existsSync(appDir + '/resources/app/index.html')) appDir = appDir + '/resources/app';
   else if(fs.existsSync(appDir + '/resources/app.asar')) appDir = appDir + '/resources/app.asar';
   callback();
@@ -336,15 +339,10 @@ function initIpcs() {
       if (value) event.sender.send('selected-json', arg, value.filePath)
     }).catch((e) => console.log(e));
   })
-  ipc.on('main-act-quit', (event, arg) => {
-    appQuit = true; app.quit();
-  });
-  ipc.on('main-act-show-help-window', (event, arg) => {
-    showHelpWindow(arg);
-  });
-  ipc.on('main-act-recreate', (event) => {
-    if(mainWindow == null) createMainWindow();
-  });
+  ipc.on('main-act-main-standby', (event, arg) => appCanQuit = arg);
+  ipc.on('main-act-quit', (event, arg) => { appQuit = true; app.quit(); });
+  ipc.on('main-act-show-help-window', (event, arg) => showHelpWindow(arg));
+  ipc.on('main-act-recreate', (event) => { if(mainWindow == null) createMainWindow(); });
   ipc.on('main-act-reload', (event) => {
     if(mainWindow && event.sender == mainWindow.webContents) 
       mainWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'index.html'), protocol: 'file:', slashes: true }))

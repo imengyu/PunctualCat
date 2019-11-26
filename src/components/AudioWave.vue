@@ -77,7 +77,7 @@ export default class AudioWave extends Vue {
   }
 
   private clear() {
-    this.ctx.clearRect(0, 0, this.oW, this.oH);
+    if(this.ctx) this.ctx.clearRect(0, 0, this.oW, this.oH);
   }
   private draw() {
     if(this.running) {

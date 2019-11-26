@@ -29,6 +29,8 @@ rm(path.join(config.build.assetsRoot, config.build.assetsSubDirectory), err => {
 
     if (stats.hasErrors()) {
       console.log(chalk.red('  编译发生错误\n'))
+      console.log(chalk.red('\n'))
+      console.log(stats.toString())
       process.exit(1)
     }
 
@@ -42,7 +44,7 @@ rm(path.join(config.build.assetsRoot, config.build.assetsSubDirectory), err => {
         console.log('  Output : ', output);
       }else {
         console.log(chalk.cyan('  构建成功\n'))
-        console.log('  目标程序放在  build 文件夹中\n')
+        console.log('  目标程序放在  dist-build 文件夹中\n')
       }
     });
   })

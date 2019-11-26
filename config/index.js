@@ -8,6 +8,7 @@ module.exports = {
   dev: {
 
     // Paths
+    assetsRoot: path.resolve(__dirname, '../dist/development'),
     assetsSubDirectory: 'static',
     assetsPublicPath: './',
     proxyTable: { // 代理配置信息
@@ -39,10 +40,10 @@ module.exports = {
 
   build: {
     // Template for index.html
-    index: path.resolve(__dirname, '../dist/index.html'),
+    index: path.resolve(__dirname, '../dist/production/index.html'),
 
     // Paths
-    assetsRoot: path.resolve(__dirname, '../dist'),
+    assetsRoot: path.resolve(__dirname, '../dist/production'),
     assetsRootServer: path.resolve(__dirname, '../dist/server'),
     assetsSubDirectory: 'static',
     assetsPublicPath: './',

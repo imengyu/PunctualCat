@@ -37,6 +37,7 @@ const devWebpackConfig = [
   }), baseWebpackConfig[1]
 ]
 
+baseWebpackConfig[1].devtool = config.dev.devtool,
 baseWebpackConfig[1].mode = 'development'
 
 let electronStarted = false
@@ -52,7 +53,7 @@ module.exports = new Promise((resolve, reject) => {
           console.log(chalk.green('Staring electron'));
           setTimeout(() => {
            
-            exec(`cross-env NODE_ENV=developnment electron ./dist`, (error, stdout, stderr) => {
+            exec(`cross-env NODE_ENV=developnment electron ./dist/development`, (error, stdout, stderr) => {
               if(error) {
                 console.log(chalk.yellow('Can not start electron'));
                 console.log(chalk.red(error));

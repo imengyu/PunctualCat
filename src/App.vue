@@ -435,6 +435,7 @@ export default class App extends Vue {
     }).catch((e) =>  this.showStartUpError('在加载静态配置文件时发生错误，请尝试移除静态配置文件 ', e))
   }
   initIpcs() {
+    ipc.send('main-act-main-standby', true);
     ipc.on("main-window-act", (event, arg) => {
       if (arg == "show-exit-dialog") {
         this.exitAppWithAsk();
@@ -707,6 +708,7 @@ export default class App extends Vue {
     this.currentWindow.removeAllListeners('show');
   }
   uninit() : Promise<any> {
+    ipc.send('main-act-main-standby', false);
     clearInterval(this.lockAutoTimer);
     if(this.nativeModuleEnabled) Win32Utils.uninit();
     return new Promise((resolve, reject) => {

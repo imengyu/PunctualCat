@@ -5,8 +5,9 @@ const config = require('../config')
 const merge = require('webpack-merge')
 const baseWebpackConfig = require('./webpack.base.conf')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin')
+const TerserPlugin = require('terser-webpack-plugin')
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
+const JavaScriptObfuscator = require('webpack-obfuscator');
 
 const env = process.env.NODE_ENV === 'testing'
   ? require('../config/test.env')
@@ -19,10 +20,6 @@ const webpackConfig = [
     plugins: [
       new webpack.DefinePlugin({
         'process.env': env
-      }),
-      new UglifyJsPlugin({
-        sourceMap: config.build.productionSourceMap,
-        parallel: true
       }),
       new HtmlWebpackPlugin({
         filename: process.env.NODE_ENV === 'testing'
@@ -39,32 +36,20 @@ const webpackConfig = [
         },
         chunksSortMode: 'dependency'
       }),
-      new webpack.HashedModuleIdsPlugin(),
-      new webpack.optimize.ModuleConcatenationPlugin(),
       new VueLoaderPlugin(),
+      new JavaScriptObfuscator({
+      }, [])
     ],
     optimization: {
-      splitChunks: {
-        cacheGroups: {
-          commons: {
-            chunks: 'initial',
-            minChunks: 2, maxInitialRequests: 5,
-            minSize: 0
-          },
-          vendor: {
-            test: path.resolve(__dirname, '../node_modules/'),
-            chunks: 'initial',
-            name: 'vendor',
-            priority: 10,
-            enforce: true
-          }
-        }
-      },
-      runtimeChunk: true
-    }, 
+      minimizer: [ new TerserPlugin({
+        sourceMap: config.build.productionSourceMap,
+        parallel: true
+      }) ]
+    }
   }) , baseWebpackConfig[1]
 ]
 
+baseWebpackConfig[1].devtool = config.build.productionSourceMap ? config.build.devtool : false,
 baseWebpackConfig[1].mode = 'production'
 
 if (config.build.productionGzip) {
