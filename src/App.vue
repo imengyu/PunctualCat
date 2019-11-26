@@ -79,6 +79,14 @@
         @add-music="onAddMusicToList"
         :app="app" />
     </el-drawer>
+    <!--日志列表-->
+    <el-drawer
+      title="查看日志"
+      :visible.sync="isShowLogList"
+      size="38%"
+      direction="rtl">
+      <log-list ref="logView" :app="app" />
+    </el-drawer>
     <!--退出对话框-->
     <el-dialog
       :visible.sync="quitDialog"
@@ -88,7 +96,7 @@
       <div class="text-center">是否真的要退出应用？退出以后将不能自动播放铃声！</div>
       <span slot="footer" class="dialog-footer">
         <el-button type="primary" @click="quitDialog=false" round>不退出</el-button>
-        <el-button @click="exitApp" round>退出应用</el-button>
+        <el-button type="info" @click="exitApp" round>退出应用</el-button>
       </span>
     </el-dialog>
     <!--关机对话框-->
@@ -100,7 +108,7 @@
       <div class="text-center">关机已启动，系统将在 <span class="text-important">{{ shutdownTick }}</span> 秒后关机</div>
       <span slot="footer" class="dialog-footer">
         <el-button type="primary" @click="shutdownCancel" round>取消关机</el-button>
-        <el-button @click="executeShutdownNow" round>立即关机</el-button>
+        <el-button type="danger" @click="executeShutdownNow" round>立即关机</el-button>
       </span>
     </el-dialog>
     <el-dialog
@@ -111,7 +119,7 @@
       <div class="text-center">重启已启动，系统将在 <span class="text-important">{{ shutdownTick }}</span> 秒后重新启动</div>
       <span slot="footer" class="dialog-footer">
         <el-button type="primary" @click="rebootCancel" round>取消关机</el-button>
-        <el-button @click="executeShutdownNow" round>立即重启机</el-button>
+        <el-button type="danger" @click="executeShutdownNow" round>立即重启机</el-button>
       </span>
     </el-dialog>
   </div>
@@ -138,6 +146,7 @@ import VoiceView from "./views/VoiceView.vue"
 import SettingsView from "./views/SettingsView.vue"
 import TableView from "./views/TableView.vue"
 import RadioView from "./views/RadioView.vue"
+import LogView from "./views/LogView.vue"
 
 import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback, setMusicWaveStartCallback, setMusicWaveStopCallback } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
@@ -152,7 +161,7 @@ import electron, { BrowserWindow, Rectangle, shell } from "electron";
 import { Menu, MenuItem } from "electron";
 import Win32Utils from "./utils/Win32Utils";
 import { Logger } from "log4js";
-import { UserLogService } from "./services/UserLogService";
+import { UserLogService, UserLog } from "./services/UserLogService";
 import { loadMenuIcon } from "./utils/MenuUtils";
 
 const ipc = electron.ipcRenderer;
@@ -167,6 +176,7 @@ const screen = remote.screen;
     'audio-wave': AudioWave,
     'auto-status': AutoTimerStatus,
     'music-list': MusicView,
+    'log-list': LogView,
     'voice-view': VoiceView,
     'settings-view': SettingsView,
     'table-view': TableView,
@@ -184,6 +194,7 @@ export default class App extends Vue {
   //Dialog and menu visible control
   calendarViaible = false;
   isShowMusicList : boolean = false;
+  isShowLogList : boolean = false;
   menuVisible : boolean = false;
   voiceProverVisible : boolean = false;
   quitDialog : boolean = false;
@@ -202,6 +213,7 @@ export default class App extends Vue {
   autoHideMinute = 0;
   autoLockMinute = 0;
   developerMode = false;
+  nodataMode = false;
 
   logger : Logger = null;
   userLogger : UserLogService = null;
@@ -380,6 +392,9 @@ export default class App extends Vue {
           this.loadAllDatas(() => {
 
             try {
+
+              if(!this.nodataMode) this.userLogger.writeLog('数据加载成功');
+
               //Core services
               this.initCoreServices();
 
@@ -400,6 +415,8 @@ export default class App extends Vue {
               this.initMenus();
               //IPCS
               this.initIpcs();
+
+              this.userLogger.writeLog('系统初始化完成');
 
               //hide intro
               setTimeout(() => {
@@ -483,10 +500,10 @@ export default class App extends Vue {
           this.logger.error('保存数据失败', e);
         })
     }}));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', click: () => {  }, icon: loadMenuIcon(require('./assets/images/menu/log.png')) }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', accelerator: 'CmdOrCtrl+O', click: () => this.showLogView(), icon: loadMenuIcon(require('./assets/images/menu/log.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => {  }, icon: loadMenuIcon(require('./assets/images/menu/tip.png')) }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '帮助', click: () => {  }, icon: loadMenuIcon(require('./assets/images/menu/help.png')) }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '帮助', click: () => this.showHelpWindow(null), icon: loadMenuIcon(require('./assets/images/menu/help.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global'), icon: loadMenuIcon(require('./assets/images/menu/settings.png')) }));
 
@@ -712,6 +729,10 @@ export default class App extends Vue {
     let noDataMode = localStorage.getItem('noDataMode');
     if(noDataMode == 'yes') {
       const h = this.$createElement;
+
+      this.nodataMode = true;
+      this.userLogger.writeLog('当前运行在无数据模式', 
+        '当前运行在无数据模式，系统目前没有加载数据，要恢复您的数据，您需要在 设置>数据管理 中导出您的数据');
       this.$msgbox({ 
         title: '提示', 
         message: h('div', null, [
@@ -736,6 +757,7 @@ export default class App extends Vue {
           } else done();
         }
       }).then(() => {}).catch(() => {});
+
       callback();
       return;
     }
@@ -1150,6 +1172,11 @@ export default class App extends Vue {
     this.shutdownTimer = null;
     this.logger.info('Reboot is canceled by user');
     UserLogService.writeLog('重启命令被用户取消');
+  }
+  showHelpWindow(arg) { ipc.send('main-act-show-help-window', arg); }
+  showLogView(findItem : UserLog = null) { 
+    this.isShowLogList = true;
+    if(findItem) setTimeout(() => (<LogView>this.$refs['logView']).locateItem(findItem), 600);
   }
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }

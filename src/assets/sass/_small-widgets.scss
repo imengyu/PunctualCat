@@ -145,6 +145,15 @@
       background-color: rgba(0, 0, 0, 0.1);
     }
   }
+  &.no-background {
+    background-image: none;
+    text-align: center;
+  }
+
+  i {
+    font-size: 20px;
+    line-height: 30px;
+  }
 }
 .btn-round {
   display: inline-block;

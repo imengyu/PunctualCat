@@ -768,7 +768,7 @@ export default class TableView extends Vue {
     }
   }
   showTaskLatestErrLog(task : PlayTask) {
-
+    this.app.showLogView(task.currentPlayLogItem)
   }
   editCommandOrMusicTask(task : PlayTask) { 
     task.typeBackup = task.type;

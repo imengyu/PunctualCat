@@ -561,8 +561,7 @@ export default class SettingsView extends Vue {
   //数据
 
   exportData() { 
-    let noDataMode = localStorage.getItem('noDataMode');
-    if(noDataMode == 'yes') {
+    if(this.app.nodataMode) {
       
     }
     else this.currentIsImportData = false; this.showImportOrExportDialog = true; 
