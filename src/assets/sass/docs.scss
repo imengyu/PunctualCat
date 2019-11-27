@@ -1,0 +1,30 @@
+@import "utilities";
+@import "small-widgets";
+@import "el-fix";
+@import "fonts";
+@import "scroll";
+@import "badge";
+
+body, html{
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, Microsoft YaHei UI;
+  font-weight: normal;
+  font-size: 14px;
+}
+body{
+  overflow: hidden;
+  background-color: #f1f1f1;
+}
+
+/*App*/
+#app {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+

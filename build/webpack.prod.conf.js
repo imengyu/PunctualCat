@@ -36,6 +36,21 @@ const webpackConfig = [
         },
         chunksSortMode: 'dependency'
       }),
+      new HtmlWebpackPlugin({
+        template: 'html-withimg-loader!./src/pages/crashed.html',
+        filename: config.build.assetsRoot + '/crashed.html', inject: false,
+        minify: { minifyCSS: true, minifyJS: true, collapseWhitespace: true, removeComments: true }
+      }),
+      new HtmlWebpackPlugin({
+        template: 'html-withimg-loader!./src/pages/docs.html',
+        filename: config.build.assetsRoot + '/docs.html', inject: false,
+        minify: { minifyCSS: true, minifyJS: true, collapseWhitespace: true, removeComments: true }
+      }),
+      new HtmlWebpackPlugin({
+        template: 'html-withimg-loader!./src/pages/neterr.html',
+        filename: config.build.assetsRoot + '/neterr.html', inject: false,
+        minify: { minifyCSS: true, minifyJS: true, collapseWhitespace: true, removeComments: true }
+      }),
       new VueLoaderPlugin(),
       new JavaScriptObfuscator({
       }, [])

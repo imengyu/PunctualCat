@@ -23,14 +23,23 @@ const devWebpackConfig = [
       }),  
       new HtmlWebpackPlugin({
         template: 'html-withimg-loader!./src/renderer.html',
-        filename: 'index.html',
-        inject: false,
-        minify: {
-          minifyCSS: true,
-          minifyJS: true,
-          collapseWhitespace: true,
-          removeComments: true
-        }
+        filename: 'index.html', inject: false,
+        minify: { minifyCSS: true, minifyJS: true, collapseWhitespace: true, removeComments: true }
+      }),
+      new HtmlWebpackPlugin({
+        template: 'html-withimg-loader!./src/pages/crashed.html',
+        filename: 'crashed.html', inject: false,
+        minify: { minifyCSS: true, minifyJS: true, collapseWhitespace: true, removeComments: true }
+      }),
+      new HtmlWebpackPlugin({
+        template: 'html-withimg-loader!./src/pages/docs.html',
+        filename: 'docs.html', inject: false,
+        minify: { minifyCSS: true, minifyJS: true, collapseWhitespace: true, removeComments: true }
+      }),
+      new HtmlWebpackPlugin({
+        template: 'html-withimg-loader!./src/pages/neterr.html',
+        filename: 'neterr.html', inject: false,
+        minify: { minifyCSS: true, minifyJS: true, collapseWhitespace: true, removeComments: true }
       }),
       new VueLoaderPlugin(),
     ]

@@ -1,3 +1,18 @@
+/*Link style*/
+
+a {
+
+  color: #4698f7;
+  text-decoration: none;
+  transition: all ease-in-out .3s;
+
+  &:hover, &:active {
+    color: #2b67e7;
+    text-decoration: none;
+  }
+
+}
+
 .about-head {
   display: flex;
   justify-content: center;

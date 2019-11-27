@@ -53,7 +53,7 @@ function createMainWindow () {
     else {
       /*
       mainWindow.webContents.loadURL(url.format({
-        pathname: path.join(appDir, 'pages/index.html'),
+        pathname: path.join(appDir, 'neterr.html'),
         protocol: 'file:',
         slashes: true
       }))
@@ -108,9 +108,7 @@ function createMainWindow () {
       mainWindow.hide();
     } 
   });
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  })
+  mainWindow.once('ready-to-show', () => mainWindow.show())
 
   var trayMenuTemplate = [
     {
@@ -171,7 +169,7 @@ function showCrashedWindow() {
   })
   crashedWindow.setMenu(null)
   crashedWindow.loadURL(url.format({
-    pathname: path.join(appDir, 'pages/crashed.html'),
+    pathname: path.join(appDir, 'neterr.html'),
     protocol: 'file:',
     slashes: true
   }));
@@ -181,7 +179,7 @@ function showCrashedWindow() {
 }
 function showHelpWindow(anchorPos) {
   let targetUrl = url.format({
-    pathname: path.join(appDir, 'pages/docs.html'),
+    pathname: path.join(appDir, 'docs.html'),
     protocol: 'file:',
     slashes: true,
     hash: anchorPos ? anchorPos : '',
@@ -243,7 +241,7 @@ function initApp() {
         appCanQuit = false;
       
       let failedPageUrl = url.format({
-        pathname: path.join(appDir, 'pages/failed.html'),
+        pathname: path.join(appDir, 'neterr.html'),
         protocol: 'file:',
         slashes: true
       });
@@ -346,7 +344,7 @@ function initIpcs() {
     if(mainWindow && event.sender == mainWindow.webContents) 
       mainWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'index.html'), protocol: 'file:', slashes: true }))
     else if(helpWindow && event.sender == helpWindow.webContents) {
-      helpWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'pages/docs.html'), protocol: 'file:', slashes: true }))
+      helpWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'docs.html'), protocol: 'file:', slashes: true }))
     }
   });
 

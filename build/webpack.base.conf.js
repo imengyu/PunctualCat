@@ -9,10 +9,14 @@ function resolve (dir) {
 }
 
 const rendererConfig = {
-  entry: resolve('src/renderer.ts'),
+  entry: { 
+    renderer: resolve('src/renderer.ts'),
+    docs: resolve('src/pages/docs.ts'),
+    crashed: resolve('src/pages/crashed.ts'),
+  },
   output: {
     path: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot,
-    filename: 'renderer.js',
+    filename: '[name].js',
     publicPath: process.env.NODE_ENV === 'production' ? config.build.assetsPublicPath : config.dev.assetsPublicPath
   },
   target: 'electron-renderer',
@@ -151,10 +155,6 @@ const mainConfig = {
       {
         from: path.resolve(__dirname, '../src/main-process'),
         to: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot
-      },
-      {
-        from: path.resolve(__dirname, '../src/pages'),
-        to: (process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot) + '/pages'
       },
     ])
   ]

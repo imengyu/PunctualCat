@@ -33,21 +33,6 @@ body{
   height: 100%;
 }
 
-/*Link style*/
-
-a {
-
-  color: #4698f7;
-  text-decoration: none;
-  transition: all ease-in-out .3s;
-
-  &:hover, &:active {
-    color: #2b67e7;
-    text-decoration: none;
-  }
-
-}
-
 $top-bar-height: 90px;
 $bottom-bar-height: 70px;
 
