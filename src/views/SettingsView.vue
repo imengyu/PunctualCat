@@ -153,6 +153,28 @@
 
           </el-form>
         </el-tab-pane>
+        <el-tab-pane name="feedback">
+          <span slot="label" class="tab-icon-item"><i class="iconfont icon-xiaolian"></i>建议意见</span>
+          <div v-loading="feedBackDataSubmiting">
+            <div class="like-choose">
+              <h5>您喜欢 PunctualCat 吗？欢迎给我们提出意见或建议，我们会认真的听取您的宝贵建议，让软件越来越好</h5>
+              <div :class="feedBackData.like=='yes'?'checked':''" @click="feedBackData.like='yes'"><i class="iconfont icon-smile mr-2"></i>我很喜欢，我想提点建议</div>
+              <div :class="feedBackData.like=='no'?'checked':''" @click="feedBackData.like='no'"><i class="iconfont icon-sad mr-2"></i>我不喜欢，我要吐槽</div>
+            </div>
+            <div class="mt-3">
+              <el-input
+                type="textarea" placeholder="说说你的意见吧" v-model="feedBackData.content"
+                maxlength="300" :rows="5" show-word-limit
+              ></el-input>
+              <el-input
+                class="mt-3"
+                type="email" v-model="feedBackData.email"
+                placeholder="您可以留下您的联系邮箱，当解决时，我们将第一时间通知您" 
+              ></el-input>
+            </div>
+            <div class="mt-3 text-right"><el-button size="mini" type="success" @click="submitFeedBack" round>提交反馈</el-button></div>
+          </div>
+        </el-tab-pane>
         <el-tab-pane name="about">
           <span slot="label" class="tab-icon-item"><i class="iconfont icon-bangzhu"></i>关于软件</span>
 
@@ -160,7 +182,7 @@
             <img class="animated rubberBand" src="../assets/images/logo128.png" />
             <div class="mt-3" style="max-width: 550px; margin: 0 auto;">
               <h5 class="mb-2">关于 PunctualCat </h5>
-              This is a kind of software that can automatically play ringtones and music for the broadcasting studio of primary and secondary schools.
+              校园铃声自动播放系统是一款为中小学校播音工作室打造的一款可自动播放铃声、音乐的一款软件
               <div class="mt-3 mb-3">
                 <a href="javascript:;" @click="showHelpWindow('')">打开帮助文档</a>
               </div>
@@ -175,8 +197,8 @@
               编译日期 <br />
             </div>
             <div style="display: inline-block; width: 200px; text-align: left; padding-left: 5px">
-              <span class="text-important" @click="toggleDeveloperMode()">{{ appVesrsion }}</span><br />
-              <span class="text-important" >{{ appBuildDate }}</span><br />
+              <span class="text-important no-select cursor-pointer" @click="toggleDeveloperMode()">{{ appVesrsion }}</span><br />
+              <span class="text-important no-select" >{{ appBuildDate }}</span><br />
             </div>
           </div>
           <el-divider content-position="left">框架信息</el-divider>
@@ -281,6 +303,7 @@ import fs from 'fs';
 import { PlayCondition } from "../model/PlayCondition";
 import { Logger } from "log4js";
 import { UserLogService } from "../services/UserLogService";
+import { submitFeedBack } from "../api";
 
 const ipc = electron.ipcRenderer;
 const process = require('process');
@@ -311,6 +334,8 @@ export default class SettingsView extends Vue {
   currentIsImportData = false;
   currentIsAddManagerPassword = false;
 
+  //data
+
   dataExporting = false;
   dataExportConfig = {
     includeSettings: true,
@@ -323,6 +348,15 @@ export default class SettingsView extends Vue {
     includeMusicHistory: true,
   };
   dataImport = null;
+
+  //feed back
+
+  feedBackDataSubmiting = false;
+  feedBackData = {
+    like: '',
+    content: '',
+    email: '',
+  }
 
   /* 修改密码 */
   validatePass2 = (rule, value, callback) => {
@@ -668,6 +702,21 @@ export default class SettingsView extends Vue {
     }).then(() => ipc.send('main-open-file-dialog-json', { type:'chooseData' })).catch(() => {});
   }
 
+  //反馈
+
+  submitFeedBack() {
+    if(CommonUtils.isNullOrEmpty(this.feedBackData.content)) this.$alert('写一些您的宝贵意见吧', '提示');
+    else {    
+      submitFeedBack(this.feedBackData).then((value) => {
+        this.feedBackData.like = '';
+        this.feedBackData.content = '';
+        this.$alert('您的反馈已经提交成功，感谢您的支持，我们会认真的听取您的宝贵建议，让软件越来越好', '提交成功', 
+          { type: 'success' });
+      }).catch((e) => this.$alert('错误信息：' + e, '哎呀，抱歉！发送反馈失败了', { type: 'error' }))
+      this.feedBackDataSubmiting = true;
+    }
+  }
+
   //关于
 
   showHelpWindow(arg) { ipc.send('main-act-show-help-window', arg); }
@@ -708,6 +757,7 @@ export default class SettingsView extends Vue {
           if(this.countDeveloperModeClick < 8)
             this.showDeveloperModeTip('再点击 ' + (8 - this.countDeveloperModeClick) + ' 次即可进入开发者模式');
           else {
+            this.appSettingsBackup.system.developerMode = true;
             SettingsServices.setSettingBoolean('system.developerMode', true);
             SettingsServices.sendUpdated();
             this.showDeveloperModeTip('您已处于开发者模式');

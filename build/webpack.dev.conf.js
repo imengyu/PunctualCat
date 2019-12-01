@@ -53,15 +53,15 @@ let electronStarted = false
 
 module.exports = new Promise((resolve, reject) => {
 
-  devWebpackConfig[1].plugins.push({
+  devWebpackConfig[0].plugins.push({
     apply: (compiler) => {
       compiler.hooks.done.tap('StartElectron', compilation => {
         if(!electronStarted) {
           electronStarted = true;
 
-          console.log(chalk.green('Staring electron'));
           setTimeout(() => {
-           
+            
+            console.log(chalk.green('Staring electron'));
             exec(`cross-env NODE_ENV=developnment electron ./dist/development`, (error, stdout, stderr) => {
               if(error) {
                 console.log(chalk.yellow('Can not start electron'));
@@ -72,7 +72,7 @@ module.exports = new Promise((resolve, reject) => {
               console.log(chalk.yellow('Electron quited'));
               electronStarted = false;
             });
-          }, 2000)
+          }, 1000)
         }
       });
     }

@@ -66,6 +66,50 @@
         @volume-soft-changed="onVolumeSoftChanged" @volume-system-changed="onVolumeSystemChanged"
         style="top:120px;right:20px" />
     </transition>
+    <!--引导页-->
+    <transition enter-active-class="animated fadeIn anim-fast delay-300ms" leave-active-class="animated fadeOut anim-fast">
+      <div v-show="introductionVisible" class="introduction-host">
+        <div class="introduction-inner">
+          <div class="page">
+            <swiper :options="introductionSwiperOption">
+              <swiper-slide>
+                <div class="introduction-page">
+                  <img src="./assets/images/intro/auto.svg" />
+                  <h5>完全自动的执行</h5>
+                  <p>任务完全由软件自动播放系统自动执行，无需您进行人工干预</p>
+                  <div class="footer-button"></div>
+                </div>
+              </swiper-slide>
+              <swiper-slide>
+                <div class="introduction-page">
+                  <img src="./assets/images/intro/security.svg" />
+                  <h5>安全的数据存放</h5>
+                  <p>您的数据被安全保护在系统内部，您还可以设置保护密码来保护系统</p>
+                  <div class="footer-button"></div>
+                </div>
+              </swiper-slide>
+              <swiper-slide>
+                <div class="introduction-page">
+                  <img src="./assets/images/intro/tasks.svg" />
+                  <h5>精细的任务设置</h5>
+                  <p>任务可自定义多种条件，满足您的多种播放需求</p>
+                  <div class="footer-button">
+                    <el-button type="primary" size="small" @click="endFirstIntroductionPage" round>立即开始使用</el-button>
+                  </div>
+                </div>
+                
+              </swiper-slide>
+              <div class="swiper-pagination" slot="pagination"></div>
+              <div class="swiper-button-prev" slot="button-prev"></div>
+              <div class="swiper-button-next" slot="button-next"></div>
+            </swiper>
+          </div>
+        </div>
+      </div>
+    </transition>
+    <!--入门页-->
+    
+
     <!--音乐列表-->
     <el-drawer
       title="音乐列表"
@@ -96,7 +140,7 @@
       <div class="text-center">是否真的要退出应用？退出以后将不能自动播放铃声！</div>
       <span slot="footer" class="dialog-footer">
         <el-button type="primary" @click="quitDialog=false" round>不退出</el-button>
-        <el-button type="info" @click="exitApp" round>退出应用</el-button>
+        <el-button type="info" @click="exitApp(false)" round>退出应用</el-button>
       </span>
     </el-dialog>
     <!--关机对话框-->
@@ -163,6 +207,8 @@ import Win32Utils from "./utils/Win32Utils";
 import { Logger } from "log4js";
 import { UserLogService, UserLog } from "./services/UserLogService";
 import { loadMenuIcon } from "./utils/MenuUtils";
+import 'swiper/dist/css/swiper.css'
+import { swiper, swiperSlide } from 'vue-awesome-swiper'
 
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
@@ -180,7 +226,9 @@ const screen = remote.screen;
     'voice-view': VoiceView,
     'settings-view': SettingsView,
     'table-view': TableView,
-    'radio-view': RadioView
+    'radio-view': RadioView,
+    'swiper': swiper,
+    'swiper-slide': swiperSlide
   }
 })
 export default class App extends Vue {
@@ -197,6 +245,7 @@ export default class App extends Vue {
   isShowLogList : boolean = false;
   menuVisible : boolean = false;
   voiceProverVisible : boolean = false;
+  introductionVisible : boolean = false;
   quitDialog : boolean = false;
   shutdownNowDialog : boolean = false;
   rebootNowDialog : boolean = false;
@@ -214,6 +263,15 @@ export default class App extends Vue {
   autoLockMinute = 0;
   developerMode = false;
   nodataMode = false;
+  introductionSwiperOption = {
+    pagination: {
+      el: '.swiper-pagination'
+    },
+    navigation: {
+      nextEl: '.swiper-button-next',
+      prevEl: '.swiper-button-prev'
+    }
+  };
 
   logger : Logger = null;
   userLogger : UserLogService = null;
@@ -425,6 +483,13 @@ export default class App extends Vue {
                 this.topTabSelectItem = this.topToolbar[0];
                 this.autoPlayService.start();
                 this.inited = true;
+
+                //run first tip
+                if(SettingsServices.getSettingBoolean('app.firstRun')) {
+                  SettingsServices.setSettingBoolean('app.firstRun', false);
+                  this.showFirstIntroductionPage();
+                }
+
                 window.appInited = true;
               }, 1000);   
             }catch(e){
@@ -504,7 +569,7 @@ export default class App extends Vue {
     }}));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', accelerator: 'CmdOrCtrl+O', click: () => this.showLogView(), icon: loadMenuIcon(require('./assets/images/menu/log.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => {  }, icon: loadMenuIcon(require('./assets/images/menu/tip.png')) }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => this.showFirstGuidePage(), icon: loadMenuIcon(require('./assets/images/menu/tip.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '帮助', click: () => this.showHelpWindow(null), icon: loadMenuIcon(require('./assets/images/menu/help.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global'), icon: loadMenuIcon(require('./assets/images/menu/settings.png')) }));
@@ -528,6 +593,8 @@ export default class App extends Vue {
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '查看程序运行日志', click: () => shell.openExternal(process.cwd() + '/logs'), icon: loadMenuIcon(require('./assets/images/menu/log2.png')) }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
+
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '测试引导页', click: () => this.showFirstIntroductionPage() }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制清除数据', click: () => { 
       this.$confirm('警告！这是调试功能，数据清除后不可恢复，是否继续？', {
         title: '调试功能',
@@ -711,10 +778,10 @@ export default class App extends Vue {
   uninit() : Promise<any> {
     ipc.send('main-act-main-standby', false);
     clearInterval(this.lockAutoTimer);
-    if(this.nativeModuleEnabled) Win32Utils.uninit();
     return new Promise((resolve, reject) => {
       this.saveWindowSettings();
       this.saveDatas().then(() => {
+        if(this.nativeModuleEnabled) Win32Utils.uninit();
         this.autoPlayService.stop();
         this.serviceTables.destroy();
         window.destroyLogs();
@@ -1180,6 +1247,14 @@ export default class App extends Vue {
   showLogView(findItem : UserLog = null) { 
     this.isShowLogList = true;
     if(findItem) setTimeout(() => (<LogView>this.$refs['logView']).locateItem(findItem), 600);
+  }
+  showFirstIntroductionPage() { this.introductionVisible = true; }
+  endFirstIntroductionPage() {
+    this.introductionVisible = false;
+    this.showFirstGuidePage();
+  }
+  showFirstGuidePage() {
+
   }
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }

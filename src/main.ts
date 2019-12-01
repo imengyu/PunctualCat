@@ -47,33 +47,20 @@ function createMainWindow () {
   }))
   mainWindow.webContents.on('crashed', (event, killed) => {
     if(killed) {
+      genErrorReport();
       showCrashedWindow();
       destroyMainWindow();
     }
     else {
-      /*
-      mainWindow.webContents.loadURL(url.format({
-        pathname: path.join(appDir, 'neterr.html'),
-        protocol: 'file:',
-        slashes: true
-      }))
-
-      //Collect error info
-
-      //Reload
-      setTimeout(() => {
-        mainWindow.loadURL(url.format({
-          pathname: path.join(appDir, 'index.html'),
-          protocol: 'file:',
-          slashes: true
-        }))
-      }, 10000);*/
+      genErrorReport();
+      mainWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'crashed.html'), protocol: 'file:', slashes: true }))
     }
   });
   mainWindow.webContents.on('devtools-reload-page', () => {
     if(!mainWindow.isMinimized()) mainWindow.restore();
     if(!mainWindow.isFocused()) mainWindow.focus();
   });
+  //mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () =>  {
     if(helpWindow != null) {      
       helpWindow.close();
@@ -83,9 +70,6 @@ function createMainWindow () {
       appTray.destroy();
       appTray = null;
     }
-    // Dereference the window object, usually you would store windows
-    // in an array if your app supports multi windows, this is the time
-    // when you should delete the corresponding element.
     mainWindow = null
   })
   mainWindow.on('unresponsive', () => {
@@ -110,6 +94,9 @@ function createMainWindow () {
   });
   mainWindow.once('ready-to-show', () => mainWindow.show())
 
+  createMainMenu();
+}
+function createMainMenu() {
   var trayMenuTemplate = [
     {
       label: '显示主界面',
@@ -142,13 +129,13 @@ function createMainWindow () {
   appTray.setToolTip('PunctualCat');
   appTray.setContextMenu(contextMenu);
   appTray.on('click', () => mainWindow.show())
-  
 }
 function destroyMainWindow() {
   appQuit = true;
   appCanQuit = false;
   mainWindow.removeAllListeners();
   mainWindow.close();
+  mainWindow = null;
 }
 
 function showCrashedWindow() {
@@ -168,14 +155,8 @@ function showCrashedWindow() {
     },
   })
   crashedWindow.setMenu(null)
-  crashedWindow.loadURL(url.format({
-    pathname: path.join(appDir, 'neterr.html'),
-    protocol: 'file:',
-    slashes: true
-  }));
-  crashedWindow.on('close', () => {
-    crashedWindow = null;
-  });
+  crashedWindow.loadURL(url.format({ pathname: path.join(appDir, 'crashed.html'), protocol: 'file:', slashes: true }));
+  crashedWindow.on('close', () => crashedWindow = null);
 }
 function showHelpWindow(anchorPos) {
   let targetUrl = url.format({
@@ -205,7 +186,31 @@ function showHelpWindow(anchorPos) {
     helpWindow.focus();
   }
 }
+function recreateWindow(event, submitErrReport : boolean) {
+  if(mainWindow == null) createMainWindow(); 
+  if(submitErrReport) submitErrorReport();
+  if(crashedWindow != null) crashedWindow.close();
+}
 
+function genErrorReport() {
+
+}
+function submitErrorReport() {
+
+}
+
+
+function execShut(type : 'shutdown'|'reboot') {
+  if(process.platform == 'win32'){
+    if(type == 'shutdown') exec("shutdown -s -t 0")
+    else if(type == 'reboot') exec("shutdown -r -t 0")
+  }
+  else {
+    if(type == 'shutdown') exec("shutdown -t 0")
+    else if(type == 'reboot') exec("reboot -t 0")
+  }
+  appQuit = true; app.quit();
+}
 
 function initBasePath(callback : () => void) {
   appDir = appDir.replace(/\\/g, '/');
@@ -336,10 +341,11 @@ function initIpcs() {
       if (value) event.sender.send('selected-json', arg, value.filePath)
     }).catch((e) => console.log(e));
   })
+
   ipc.on('main-act-main-standby', (event, arg) => appCanQuit = arg);
   ipc.on('main-act-quit', (event, arg) => { appQuit = true; app.quit(); });
   ipc.on('main-act-show-help-window', (event, arg) => showHelpWindow(arg));
-  ipc.on('main-act-recreate', (event) => { if(mainWindow == null) createMainWindow(); });
+  ipc.on('main-act-recreate', recreateWindow);
   ipc.on('main-act-reload', (event) => {
     if(mainWindow && event.sender == mainWindow.webContents) 
       mainWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'index.html'), protocol: 'file:', slashes: true }))
@@ -356,20 +362,8 @@ function initIpcs() {
       event.sender.send('shell-data', arg, data)
     });
   });
-  ipc.on('main-act-shutdown', (event) => {
-    if(process.platform == 'win32')
-      exec("shutdown -s -t 0")
-    else 
-      exec("shutdown -t 0")
-    appQuit = true; app.quit();
-  });
-  ipc.on('main-act-reboot', (event) => {
-    if(process.platform == 'win32')
-      exec("shutdown -r -t 0")
-    else 
-      exec("reboot")
-    appQuit = true; app.quit();
-  });
+  ipc.on('main-act-shutdown', () => execShut('shutdown'));
+  ipc.on('main-act-reboot', () => execShut('reboot'));
 }
 
 initBasePath(() => {

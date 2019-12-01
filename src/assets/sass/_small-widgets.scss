@@ -559,3 +559,106 @@ a {
     margin-left: 2px;
   }
 }
+
+.like-choose {
+
+  position: relative;
+
+  > div {
+    display: inline-flex;
+    justify-content: center;
+    align-content: center;
+    align-items: center;
+    padding: 3px 10px;
+    cursor: pointer;
+    border-radius: 5px;
+
+    i {
+      font-size: 36px;
+    }
+
+    &:not(:first-child) {
+      margin-left: 8px;
+    }
+    &:hover {
+      background-color: #5489c5;
+      color: #fff;
+    }
+    &.checked {
+      background-color: #0080ff;
+      color: #fff;
+    }
+  }
+
+}
+
+.introduction-host {
+
+  position: absolute;
+  background-color: rgba(0, 0, 0, 0.25);
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  z-index: 3000;
+
+  .swiper-button-next,
+  .swiper-button-prev {
+    width: 20px;
+    height: 26px;
+    background-size: 20px 26px;
+  }
+
+  .introduction-inner {
+    position: absolute;
+    width: 50%;
+    left: 25%;
+    top: 0;
+    bottom: 0;
+    background-color: #fff;
+
+    .page {
+      position: absolute;
+      top: 40px;
+      left: 15px;
+      bottom: 40px;
+      right: 15px;
+    }
+
+    .introduction-page {
+
+      position: relative;
+      text-align: center;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+
+      img {
+        max-width: 70%;
+      }
+
+      h5 {
+        font-size: 14px;
+        font-weight: bold;
+        color: #000;
+        margin-bottom: 0;
+        margin-top: 60px;
+      }
+      p {
+        margin: 0;
+        margin-top: 6px;
+        font-size: 13px;
+        color: #8b8b8b;
+      }
+
+      .footer-button {
+        margin-top: 50px;
+        height: 32px;
+      }
+
+    }
+  }
+
+}

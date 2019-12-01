@@ -8,6 +8,9 @@ class SettingsServices extends EventEmitter {
   private staticDataStorageServices : DataStorageServices = null;
   private staticSettings = null;
   private staticSettingsTemplate = {
+    app: {
+      firstRun: true,
+    },
     window: {
       oldSize: {
         x: 900,
