@@ -1,4 +1,3 @@
-import { isNumber } from "util";
 import CommonUtils from "./CommonUtils";
 
 //Date format
@@ -29,32 +28,8 @@ String.prototype.contains = function (str) {
 //数组
 
 Array.prototype.remove = function(item) {
-  
-  var dx = isNumber(item) ? item : this.indexOf(item);
-  var rs = false
-  if(dx >= 0){
-    for(var i = 0,n = 0;i < this.length; i++) {
-      if(this[i] != this[dx]) {
-        this[n++] = this[i];
-        rs = true;
-      }
-    }
-    this.length -= 1;
-  }
-  return rs;
+  return this.splice(this.indexOf(item), 1);
 }
 Array.prototype.contains = function(item) {
   return this.indexOf(item)
-}
-if(!Array.prototype.findIndex){
-	Array.prototype.findIndex = function(predicateFn,thisArg){
-		var len = this.length
-		for (var i = 0; i < len; i++) {
-			var item = this[i];
-			if(predicateFn.call(thisArg,item,i,this)){
-				return i
-			}
-		}
-		return -1
-	}
 }

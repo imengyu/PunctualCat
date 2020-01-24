@@ -12,8 +12,6 @@ export default {
 export function submitFeedBack(feedBackData) { return commonPostRequest('/feedback', feedBackData) }
 export function getUpdate(version) { return commonGetRequest('/update?version=' + version) }
 
-
-
 function commonGetRequest(url) : Promise<AxiosResponse<any>> {
   return new Promise<AxiosResponse<any>>((resolve, reject) => {
     axios.get(API_URL + url).then((value) => {

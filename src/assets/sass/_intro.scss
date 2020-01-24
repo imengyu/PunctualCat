@@ -1,13 +1,12 @@
 @import "scroll";
 
 /*Intro*/
-#intro {
+.intro {
   display: flex;
-  z-index: 3000;
+  z-index: 2000;
   justify-content: center;
   align-items: center;
   flex-direction: column;
-  background-color: #fff;
   opacity: 1;
 
   img {
@@ -18,14 +17,6 @@
     margin-top: 25px;
     font-size: 26px;
     font-weight: 300;
-  }
-
-  &.hidding {
-    transition: opacity linear .6s;
-    opacity: 0;
-  }
-  &.hidden {
-    display: none;
   }
 
   .ver-text{

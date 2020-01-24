@@ -91,7 +91,7 @@
 </template>
 
 <script>
-import calendar from "./Calendar.js";
+import calendar from "./Calendar.ts";
 export default {
   props: {
     // 多选模式

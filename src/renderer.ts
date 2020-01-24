@@ -36,11 +36,13 @@ function initVue() {
   showIntro();
 };
 function showIntro() {
-  $('.window-loading').fadeOut();
-  $('#intro img').show().addClass(['animated','bounceInDown']);
-  $('#intro h3').show().addClass(['animated','bounceInUp']);
-  $('#intro .ver-text').show().addClass(['animated','bounceInUp']);
-  $('#intro-ver').text(window.appVesrsion + ' ' + window.appBuildDate);
+  $('#window-loading-text').fadeOut(800, function(){
+    $('#intro-ver').text(window.appVesrsion + ' ' + window.appBuildDate);
+    $('.intro img').show().addClass(['animated','bounceInDown']);
+    $('.intro h3').show().addClass(['animated','bounceInUp']);
+    $('.intro .ver-text').show().addClass(['animated','bounceInUp']);
+    setTimeout(() => $('#window-loading .progress').fadeOut(800), 1000)
+  });
 }
 function showErr(source, lineno, colno, error) {
   $('#global-error-info-content').html('<div class="text-blod">' + error + '</div>' + 
@@ -48,39 +50,30 @@ function showErr(source, lineno, colno, error) {
   $('#global-error-info').show();
   $('#intro').hide();
 }
-function initBasePath() {
-  window.appDir = process.cwd().replace(/\\/g, '/');
-  if(fs.existsSync(window.appDir + '/dist/index.html')) window.appDir = path.posix.join(window.appDir, '/dist');
-  else if(fs.existsSync(window.appDir + '/dist/development/index.html')) window.appDir = path.posix.join(window.appDir, '/dist/development');
-  else if(fs.existsSync(window.appDir + '/resources/app/index.html')) window.appDir = path.posix.join(window.appDir, '/resources/app');
-  else if(fs.existsSync(window.appDir + '/resources/app.asar')) window.appDir = path.posix.join(window.appDir, '/resources/app.asar');
 
-  console.log(`[Loader] App version is ${appVesrsion} (${appBuildDate})`);
-  console.log(`[Loader] App base path is ${window.appDir}`);
-  console.log(`[Loader] App db path is ${appDb}`);
-}
 
 //Global error
 
-
 window.onerror = (event, source, lineno, colno, error) => {
-  if(window.appInited) window.app.showRunTimeError(source, lineno, colno, error);
+  if(window.appInited) window.showRunTimeError(source, lineno, colno, error);
   else showErr(source, lineno, colno, error);
 };
 
-var appPath = process.cwd();
-var dbPath = appPath + "/data/data.db";
-var appDb = new Datastore({ filename: dbPath });
+//Global path
+
+var appPath = process.cwd().replace(/\\/g, '/');
+var appDbPath = '';
+var appDb = null;
 var app = null;
 var appVesrsion = 'V 2.0.1';
-var appBuildDate = '2919/11/28';
+var appBuildDate = '2020/1/28';
 var appLogger = null;
 var appAutoLogger = null;
 var appWin32 = null;
 
 function initLogs() : Promise<void> {
   return new Promise((resolve, reject) => {
-    let logDir = process.cwd() + '/logs';
+    let logDir = appPath + '/logs';
     let configueLogs = () => {
       try {
         //log4js 配置
@@ -91,13 +84,13 @@ function initLogs() : Promise<void> {
         appLogger.info('Logger started');
         resolve();
       }catch(e) {
-        reject('初始化日志失败：' + e)
+        reject(e)
       }
     }
     let testExists = () => {
       fs.exists(logDir, (exists) => {
         if(!exists) fs.mkdir(logDir, (err) => {
-          if(err) reject('创建日志目录失败')
+          if(err) reject('创建日志目录失败 (' + logDir + ')')
           else configueLogs();
         }); else configueLogs();
       })
@@ -109,8 +102,45 @@ function destroyLogs() {
   appLogger.info('Logger shutdown');
   log4js.shutdown();
 }
+function initDb() : Promise<void> {
+  return new Promise((resolve, reject) => {
+    let dbDir = appPath + '/data';
+    let configueLogs = () => {
+      try {
+        appDb = new Datastore({ filename: appDbPath });
+        resolve();
+      }catch(e) {
+        reject(e)
+      }
+    }
+    let testExists = () => {
+      fs.exists(dbDir, (exists) => {
+        if(!exists) fs.mkdir(dbDir, (err) => {
+          if(err) reject('创建数据目录失败 (' + dbDir + ')')
+          else configueLogs();
+        }); else configueLogs();
+      })
+    }
+    testExists();
+  });
+}
+function initBasePath() {
 
-function loadGlobal() {
+  window.appDir = appPath;
+
+  if(fs.existsSync(appPath + '/dist/index.html')) window.appDir = path.posix.join(appPath, '/dist');
+  else if(fs.existsSync(appPath + '/dist/development/index.html')) window.appDir = path.posix.join(appPath, '/dist/development');
+  else if(fs.existsSync(appPath + '/resources/app/index.html')) window.appDir = path.posix.join(appPath, '/resources/app');
+  else if(fs.existsSync(appPath + '/resources/app.asar')) window.appDir = path.posix.join(appPath, '/resources/app.asar');
+
+  appDbPath = appPath + "/data/data.db";
+
+  console.log(`[Loader] App version is ${appVesrsion} (${appBuildDate})`);
+  console.log(`[Loader] App base path is ${appPath}`);
+  console.log(`[Loader] App doc path is ${window.appDir}`);
+  console.log(`[Loader] App db path is ${appDbPath}`);
+}
+function initGlobal() {
   //Global defs
   window.appLogger = appLogger;
   window.appAutoLogger = appAutoLogger;
@@ -125,15 +155,17 @@ function loadGlobal() {
   window.destroyLogs = destroyLogs;
 
   appLogger.info('Current app cwd is ' + appPath);
-  appLogger.debug('Load database from ' + dbPath);
-  appLogger.debug('App version is ' + appVesrsion + ' ' + appBuildDate);
+  appLogger.info(`App version is ${appVesrsion} (${appBuildDate})`);
+  appLogger.info(`App base path is ${window.appDir}`);
+  appLogger.info(`App db path is ${appDbPath}`);
 }
-function loadNativeModule() {
+
+function initNativeModule() {
   try{
     let nativeModulePath = '';
 
-    if(process.arch == 'ia32' || process.arch == 'x32') nativeModulePath = require("./native/app-ia32.node");
-    else if(process.arch == 'x64') nativeModulePath = require("./native/app-x64.node");
+    if(process.arch == 'ia32' || process.arch == 'x32') nativeModulePath = window.appDir + '/' + require("./native/app-ia32.node");
+    else if(process.arch == 'x64') nativeModulePath = window.appDir + '/' + require("./native/app-x64.node");
     else {
       appLogger.error('Native module is not support whith arch ' + process.arch);
       dialog.showErrorBox('加载本地模块时发生错误', '本地模块不适用于您的系统。当前系统：' + process.arch);
@@ -154,9 +186,14 @@ function loadNativeModule() {
 
 initBasePath();
 initLogs().then(() => {
-  loadNativeModule();
-  loadGlobal();
-  initVue()
+  initDb().then(() => {
+    initNativeModule();
+    initGlobal();
+    initVue()
+  }).catch((err) => {
+    console.error(err);
+    dialog.showErrorBox('初始化数据失败', err);
+  });
 }).catch((err) => {
   console.error(err);
   dialog.showErrorBox('初始化日志失败', err);

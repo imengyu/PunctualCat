@@ -58,8 +58,8 @@ madd[11] = 334;
 function GetBit(m, n) {
   return (m >> n) & 1;
 }
-function e2c() {
-  TheDate = (arguments.length != 3) ? new Date() : new Date(arguments[0], arguments[1], arguments[2]);
+function e2c(y1 ?: number,m1?: number,d1?: number) {
+  TheDate = (arguments.length != 3) ? new Date() : new Date(y1, m1, d1);
   var total, m, n, k;
   var isEnd = false;
   var tmp = TheDate.getYear();

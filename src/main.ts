@@ -18,8 +18,9 @@ const exec = child_process.exec;
 var appTray : Electron.Tray = null;
 var appQuit = false
 var appIco : Electron.NativeImage = null;
-var appDir = process.cwd();
+var appDir = process.cwd().replace(/\\/g, '/');;
 var appCanQuit = false;
+
 
 function createMainWindow () {
 
@@ -40,11 +41,7 @@ function createMainWindow () {
     },
   })
   mainWindow.setMenu(null)
-  mainWindow.loadURL(url.format({
-    pathname: path.join(appDir, 'index.html'),
-    protocol: 'file:',
-    slashes: true
-  }))
+  mainWindow.loadURL(getPagePath('index.html'))
   mainWindow.webContents.on('crashed', (event, killed) => {
     if(killed) {
       genErrorReport();
@@ -53,14 +50,14 @@ function createMainWindow () {
     }
     else {
       genErrorReport();
-      mainWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'crashed.html'), protocol: 'file:', slashes: true }))
+      mainWindow.webContents.loadURL(getPagePath('crashed.html'))
     }
   });
   mainWindow.webContents.on('devtools-reload-page', () => {
     if(!mainWindow.isMinimized()) mainWindow.restore();
     if(!mainWindow.isFocused()) mainWindow.focus();
   });
-  //mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () =>  {
     if(helpWindow != null) {      
       helpWindow.close();
@@ -147,7 +144,7 @@ function showCrashedWindow() {
     fullscreen: false,
     resizable: false,
     minimizable: false,
-    icon: path.join(appDir, 'main.ico'),
+    icon: appIco,
     webPreferences: {
       webSecurity: false,
       nodeIntegration: true,
@@ -155,16 +152,11 @@ function showCrashedWindow() {
     },
   })
   crashedWindow.setMenu(null)
-  crashedWindow.loadURL(url.format({ pathname: path.join(appDir, 'crashed.html'), protocol: 'file:', slashes: true }));
+  crashedWindow.loadURL(getPagePath('crashed.html'));
   crashedWindow.on('close', () => crashedWindow = null);
 }
 function showHelpWindow(anchorPos) {
-  let targetUrl = url.format({
-    pathname: path.join(appDir, 'docs.html'),
-    protocol: 'file:',
-    slashes: true,
-    hash: anchorPos ? anchorPos : '',
-  })
+  let targetUrl = getPagePath('docs.html', anchorPos ? anchorPos : '');
   if(helpWindow == null){
     helpWindow = new BrowserWindow({
       minWidth: 510,
@@ -192,6 +184,8 @@ function recreateWindow(event, submitErrReport : boolean) {
   if(crashedWindow != null) crashedWindow.close();
 }
 
+//Error Report
+
 function genErrorReport() {
 
 }
@@ -200,6 +194,10 @@ function submitErrorReport() {
 }
 
 
+/**
+ * 执行关机或重启
+ * @param type 
+ */
 function execShut(type : 'shutdown'|'reboot') {
   if(process.platform == 'win32'){
     if(type == 'shutdown') exec("shutdown -s -t 0")
@@ -212,12 +210,30 @@ function execShut(type : 'shutdown'|'reboot') {
   appQuit = true; app.quit();
 }
 
+/**
+ * Get page path at dist
+ * @param basePath 
+ * @param hash 
+ */
+function getPagePath(basePath : string, hash? : string) {
+  return url.format({
+    pathname: path.join(appDir, basePath),
+    protocol: 'file:',
+    slashes: true,
+    hash: hash
+  })
+}
+
+//Inits
+
 function initBasePath(callback : () => void) {
+  
   appDir = appDir.replace(/\\/g, '/');
   if(fs.existsSync(appDir + '/dist/index.html')) appDir = appDir + '/dist';
   else if(fs.existsSync(appDir + '/dist/development/index.html')) appDir = appDir + '/dist/development';
   else if(fs.existsSync(appDir + '/resources/app/index.html')) appDir = appDir + '/resources/app';
   else if(fs.existsSync(appDir + '/resources/app.asar')) appDir = appDir + '/resources/app.asar';
+  
   callback();
 }
 function initApp() {
@@ -245,11 +261,7 @@ function initApp() {
       if(contents == mainWindow.webContents)
         appCanQuit = false;
       
-      let failedPageUrl = url.format({
-        pathname: path.join(appDir, 'neterr.html'),
-        protocol: 'file:',
-        slashes: true
-      });
+      let failedPageUrl = getPagePath('neterr.html');
       errCount ++;
       if(errCount < 10 && contents.getURL() != failedPageUrl) {
         contents.loadURL(failedPageUrl);
@@ -348,10 +360,9 @@ function initIpcs() {
   ipc.on('main-act-recreate', recreateWindow);
   ipc.on('main-act-reload', (event) => {
     if(mainWindow && event.sender == mainWindow.webContents) 
-      mainWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'index.html'), protocol: 'file:', slashes: true }))
-    else if(helpWindow && event.sender == helpWindow.webContents) {
-      helpWindow.webContents.loadURL(url.format({ pathname: path.join(appDir, 'docs.html'), protocol: 'file:', slashes: true }))
-    }
+      mainWindow.webContents.loadURL(getPagePath('index.html'))
+    else if(helpWindow && event.sender == helpWindow.webContents)
+      helpWindow.webContents.loadURL(getPagePath('docs.html'))
   });
 
   ipc.on('main-act-run-shell', (event, arg) => {
@@ -365,6 +376,8 @@ function initIpcs() {
   ipc.on('main-act-shutdown', () => execShut('shutdown'));
   ipc.on('main-act-reboot', () => execShut('reboot'));
 }
+
+//Init start
 
 initBasePath(() => {
   initApp();

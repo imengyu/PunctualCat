@@ -10,13 +10,13 @@ function resolve (dir) {
 
 const rendererConfig = {
   entry: { 
-    renderer: resolve('src/renderer.ts'),
-    docs: resolve('src/pages/docs.ts'),
-    crashed: resolve('src/pages/crashed.ts'),
+    'renderer': resolve('src/renderer.ts'),
+    'docs': resolve('src/pages/docs.ts'),
+    'crashed': resolve('src/pages/crashed.ts'),
   },
   output: {
-    path: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot,
     filename: '[name].js',
+    path: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot,
     publicPath: process.env.NODE_ENV === 'production' ? config.build.assetsPublicPath : config.dev.assetsPublicPath
   },
   target: 'electron-renderer',
@@ -100,8 +100,8 @@ const rendererConfig = {
 const mainConfig = {
   entry: resolve('src/main.ts'),
   output: {
-    path: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot,
     filename: 'main.js',
+    path: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot,
     publicPath: process.env.NODE_ENV === 'production' ? config.build.assetsPublicPath : config.dev.assetsPublicPath
   },
   target: 'electron-main',
@@ -154,7 +154,7 @@ const mainConfig = {
     new CopyWebpackPlugin([
       {
         from: path.resolve(__dirname, '../src/main-process'),
-        to: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsRoot
+        to: process.env.NODE_ENV === 'production' ? config.build.assetsRoot : config.dev.assetsPublicPath
       },
     ])
   ]

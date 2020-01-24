@@ -1,5 +1,4 @@
 'use strict'
-const path = require('path')
 const webpack = require('webpack')
 const config = require('../config')
 const merge = require('webpack-merge')
@@ -66,6 +65,11 @@ const webpackConfig = [
 
 baseWebpackConfig[1].devtool = config.build.productionSourceMap ? config.build.devtool : false,
 baseWebpackConfig[1].mode = 'production'
+baseWebpackConfig[1].plugins.push(
+  new webpack.DefinePlugin({
+    'process.env': env,
+  })
+);
 
 if (config.build.productionGzip) {
   const CompressionWebpackPlugin = require('compression-webpack-plugin')

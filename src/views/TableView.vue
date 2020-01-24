@@ -1,6 +1,7 @@
 <template>
   <div class="main-area table-area overflow-visible">
-    <div class="main-container" v-loading="currentDeleteingTask">
+    <page-hoster v-if="currentShowPage" :el="currentShowPage.el" />
+    <div v-else class="main-container" v-loading="currentDeleteingTask">
       <div v-if="currentShowTable && (!currentShowTable.tasks || currentShowTable.tasks.length == 0)" class="table-none">
         <img src="../assets/images/empty-s.svg" />
         <span>这个计划表还没有任务哦</span>
@@ -286,7 +287,7 @@
             :resizable="false"
             width="100">
             <template slot-scope="scope">
-              <div class="controls text-center no-select" v-show="!scope.row.editing && !currentIsEditTask">
+              <div class="controls text-center no-select" :id="'edit-task-area-' + scope.$index" v-show="!scope.row.editing && !currentIsEditTask">
                 <el-button type="text" class="text-primary" title="编辑任务" @click="editTask(scope.row)">
                   <i class="iconfont icon-chuangzuo"></i>
                 </el-button>
@@ -303,8 +304,8 @@
                   <i class="iconfont icon-shanchu2"></i>
                 </el-button>
               </div>
-              <div class="controls text-center no-select" v-show="scope.row.editing">
-                <el-button type="text" class="text-success" title="保存任务修改" @click="editTaskFinish(scope.row, true)">
+              <div class="controls text-center no-select" :id="'editing-task-area-' + scope.$index" v-show="scope.row.editing">
+                <el-button type="text" class="text-success save" title="保存任务修改" @click="editTaskFinish(scope.row, true)">
                   <i class="iconfont icon-duigou"></i>
                 </el-button>
                 <el-button type="text" class="text-danger" title="取消任务修改" @click="editTaskFinish(scope.row, false)">
@@ -317,7 +318,6 @@
                   <i class="iconfont icon-weixuanzhong"></i>
                 </el-button>
               </div>
-              
             </template>
           </el-table-column>
         </el-table>
@@ -329,34 +329,46 @@
       </div>
     </div>
     <div class="bottom-area">
-      <div v-if="currentShowTable" class="table-cursor" :style="'left:'+getCurrentTableCurLeft()+'px'"></div>
-      <table-list v-if="tables" lockAxis="x" axis="x" v-model="tables" :distance="20" @add="addTable" @input="resortTableEnd">
-        <table-item v-for="(table, index) in tables" :index="index" :key="index" :table="table"
-          :class="(table==currentShowTable?'active':'')"
-          @click="showTable(table)"
-          @contextmenu="showTableRightMenu(table)"
-          @dblclick="editTable(table)"
-          :id="'table_item_'+index" >
-          <el-tooltip placement="top" :content="getTableStatusString(table.status)">
-            <span class="status" :data-status="table.status" @click="showTableRightMenu(table)"></span>
-          </el-tooltip>
-          {{ table.name }}
-        </table-item>
-      </table-list>
+      <div v-if="currentShowTable || currentShowPage" class="table-cursor" :style="'left:'+getCurrentItemCurLeft()+'px'"></div>
+      <div class="table-tables">
+        <table-list v-if="pages" lockAxis="x" axis="x" v-model="pages" :distance="20" @add="addTable" @input="resortPageEnd" class="pages">
+          <table-item v-for="(page, index) in pages" :index="index" :key="index"
+            :class="(page==currentShowPage?'active':'')+' page'"
+            @click="showPage(page)"
+            :id="'page_item_'+index">
+            <span>{{ page.title }}</span>
+            <a href="javascript:;" @click="closePage(page)" title="关闭">
+              <i class="iconfont icon-tiaojian-copy"></i>
+            </a>
+          </table-item>
+        </table-list>
+        <table-list id="table-list" v-if="tables" lockAxis="x" axis="x" v-model="tables" :distance="20" @add="addTable" @input="resortTableEnd">
+          <table-item v-for="(table, index) in tables" :index="index" :key="index" :table="table"
+            :class="(table==currentShowTable?'active':'')"
+            @click="showTable(table)"
+            @contextmenu="showTableRightMenu(table)"
+            @dblclick="editTable(table)"
+            :id="'table_item_'+index" >
+            <el-tooltip placement="top" :content="getTableStatusString(table.status)">
+              <span class="status" :data-status="table.status" @click="showTableRightMenu(table)"></span>
+            </el-tooltip>
+            {{ table.name }}
+          </table-item>
+        </table-list>
+      </div>
       <div class="bottom-right-area">
-        <el-tooltip v-if="currentShowTable"  placement="top" content="设置计划表属性">
-          <a type="text" class="icon" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
-        </el-tooltip>
-        <el-tooltip v-if="currentShowTable" placement="top" content="向计划表添加一个任务">
-          <a type="text" class="icon" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
-        </el-tooltip>
-        <auto-status ref="autoStatus" class="auto-status ml-2"></auto-status>
+        <div id="bottom-right-table-action-area" style="display:inline-block">
+          <el-tooltip v-if="currentShowTable"  placement="top" content="设置计划表属性">
+            <a type="text" class="icon" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
+          </el-tooltip>
+          <el-tooltip v-if="currentShowTable" placement="top" content="向计划表添加一个任务">
+            <a type="text" class="icon" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
+          </el-tooltip>
+        </div>
+        <auto-status ref="autoStatus" id="auto-status" class="auto-status ml-2"></auto-status>
       </div>
-      <div class="bottom-right-footer">
-        
-      </div>
+      <div class="bottom-right-footer"></div>
     </div>
-
     <!--编辑计划表对话框-->
     <el-dialog
       :title="(currentIsNewTable?'添加':'编辑')+'计划表'"
@@ -387,16 +399,17 @@
         <el-button type="primary" @click="editTableFinish(true)" round>保存</el-button>
       </span>
     </el-dialog>
-
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Emit, Inject, Model, Prop, Provide, Vue, Watch } from "vue-property-decorator";
 import { PlayTable } from '../model/PlayTable'
+import { MainPage } from '../model/MainPage'
 import ConditionInput from '../components/ConditionInput.vue'
 import AudioWave from '../components/AudioWave.vue'
 import AutoTimerStatus from '../components/AutoTimerStatus.vue'
+import PageHoster from '../components/PageHoster.vue'
 import TableServices from '../services/TableServices'
 import App from '../App.vue'
 import { Form } from 'element-ui'
@@ -417,7 +430,7 @@ const MenuItem = electron.remote.MenuItem;
 const SortableListTable = {
   mixins: [ContainerMixin],
   template: `
-    <ul class="table-tables">
+    <ul class="list">
       <slot />
       <el-tooltip placement="top" content="添加播放计划表">
         <li class="add" @click="onAddClick"><i class="iconfont icon-xinjiantuopu"></i></li>
@@ -472,6 +485,7 @@ const SortableItemCommand = {
     'command-item': <any>SortableItemCommand,
     'command-list': <any>SortableListCommand,
     'auto-status': AutoTimerStatus,
+    'page-hoster': PageHoster
   }
 })
 export default class TableView extends Vue {
@@ -481,6 +495,9 @@ export default class TableView extends Vue {
   @Prop({default:null}) app : App;
   
   tables : Array<PlayTable> = null;
+  pages : Array<MainPage> = [];
+  
+  currentShowPage : MainPage = null;
   currentShowTable : PlayTable = null;
   currentEditTable : PlayTable = null;
   currentDragTable : PlayTable = null;
@@ -524,7 +541,7 @@ export default class TableView extends Vue {
   }
 
   tableSortChange(obj : { column : Number, prop : string, order }) {
-    if(this.currentShowTable) {
+    if(this.currentShowTable && this.currentShowTable instanceof PlayTable) {
       this.currentShowTable.sort.order = obj.order;
       this.currentShowTable.sort.prop = obj.prop;
       this.currentShowTable.doSort();
@@ -543,15 +560,21 @@ export default class TableView extends Vue {
     return row.getPlayTaskString();
   }
 
-  getCurrentTableCurLeft() {
-    if(this.currentShowTable){
+  getCurrentItemCurLeft() {
+    if(this.currentShowTable) {
       let id = '#table_item_' + this.tables.indexOf(this.currentShowTable);
+      let $obj = $(id);
+      if($obj.length > 0)
+        return $obj.offset().left + $obj.width() / 2 - 5;
+    } else if(this.currentShowPage) {
+      let id = '#page_item_' + this.pages.indexOf(this.currentShowPage);
       let $obj = $(id);
       if($obj.length > 0)
         return $obj.offset().left + $obj.width() / 2 - 5;
     }
     return 0;
   }
+
   addTable() {
     this.currentEditTable = new PlayTable();
     this.currentIsNewTable = true;
@@ -639,7 +662,21 @@ export default class TableView extends Vue {
       this.tableService.tables[i] = arr[i];
     }
   }
-  showTable(table : PlayTable) { this.currentEditTable = this.currentShowTable = table; }
+  resortPageEnd(arr : any[]) {
+    for(let i = 0; i < arr.length; i++){
+      this.pages[i] = arr[i];
+    }
+  }
+
+  showPage(table : MainPage) { 
+    this.currentShowPage = table;
+    this.currentShowTable = null;
+  }
+  showTable(table : PlayTable) { 
+    this.currentShowTable = table;
+    this.currentEditTable = table;
+    this.currentShowPage = null;
+  }
   showTableRightMenu(table : PlayTable) { 
     this.currentEditTable = table; 
     this.menuTable.items[1].visible = table.enabled;
@@ -814,6 +851,63 @@ export default class TableView extends Vue {
     }
 
   }
+
+
+  //Pages
+
+  findPage(name : string) {
+    for (let index = 0; index < this.pages.length; index++) {
+      if(this.pages[index].name == name)
+        return this.pages[index];
+    }
+    return null;
+  }
+  addPage(name : string, title : string, el : any) {
+    let page = this.findPage(name);
+    if(page == null) {
+      page = new MainPage(name, title, el);
+      this.pages.push(page);
+    }
+    else {
+      page.title = title;
+      page.el = el;
+    }
+    this.showPage(page);
+    return page;
+  }
+  closePage(page : MainPage) {
+    this.pages.remove(page);
+    if(this.currentShowPage == page)
+      this.currentShowPage = null;
+  }
+
+
+  editOneItemForGuide() {
+    this.editTask(this.currentShowTable.tasks[0]);
+  }
+  editOneItemFinishForGuide() {
+    this.currentShowTable.tasks[0].editing = false;
+    this.currentEditTask = null;
+    this.currentIsEditTask = false;
+  }
+  goToOneTableForGuide() {
+    let table : PlayTable = null;
+    let task : PlayTask = null;
+    if(this.tableService.tables.length == 0) {
+      table = new PlayTable();
+      table.name = '示例播放列表';
+      table.note = '这是一个示例播放列表，用于为您演示系统的操作方法';
+      this.tableService.addTable(table);
+    } else {
+      table = this.tableService.tables[0];
+    }
+    if(table.tasks.length == 0) {
+      task = new PlayTask();
+      task.name = '示例播放任务';
+      task.note = '这是一个示例播放任务，用于为您演示系统的操作方法';
+      table.addTask(task);
+    }
+  }
   
 }
 
@@ -840,13 +934,25 @@ export default class TableView extends Vue {
   top: 0;
 }
 .table-tables {
-  list-style: none;
-  margin: 0;
-  padding: 10px;
   position: absolute;
   left: 0;
   top: 0;
   right: 100px;
+
+  .list {
+    display: inline-block;
+    list-style: none;
+    margin: 0;
+    padding: 10px;
+
+    &.pages {
+      padding-right: 0;
+
+      .add {
+        display: none;
+      }
+    }
+  }
 }
 .bottom-right-area {
   position: absolute;
@@ -1090,6 +1196,27 @@ export default class TableView extends Vue {
   &.dragging {
     position: absolute;
   }
+  &.page {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+
+    span {
+      display: inline-block;
+    }
+    a {
+      display: inline-block;
+      color: #000;
+      font-size: 12px;
+      width: 12px;
+      height: 14px;
+      margin-left: 0.5rem;
+
+      &:hover {
+        color: #0078c9;
+      }
+    }
+  }
 
   .status {
 
@@ -1113,8 +1240,6 @@ export default class TableView extends Vue {
       background-color: rgba(202, 202, 202, 0.588);
     }
   }
-
-
 }
 .table-none {
   display: flex;

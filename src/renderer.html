@@ -1,78 +1,147 @@
 <html>
-  <head>
-    <meta charset="utf8">
-    <meta content="width=device-width,initial-scale=1,minimal-ui" name="viewport">
-    <title>PunctualCat</title>
-    <style>
-      .window-title-bar {
-        display: none;
-      }
-      .window-loading {
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        top: 0;
-        left: 0;
-        display: flex;
-        justify-content: center;
-        align-content: center;
-        align-items: center;
-        color: #555555;
-        font-size: 16px;
-        font-weight: 200;
-        z-index: 3001;
-      }
-    </style>
-    <script>window.addEventListener("load",function(){var a=document.createElement("script");a.setAttribute("type","text/javascript");a.src="renderer.js";document.getElementsByTagName("head")[0].appendChild(a)});if(typeof require=="undefined"){window.onload=function(){document.getElementById("window-loading").setAttribute("style","display:none");document.querySelectorAll(".window-title-bar")[0].setAttribute("style","display:none");document.getElementById("intro").setAttribute("style","display:none");document.getElementById("global-error-info").setAttribute("style","");document.getElementById("global-error-info-text").innerText="本应用不能在浏览器中运行!"};throw Error("本应用不能在浏览器中运行! App must run in Electron")}function ignoreGlobalErrAndHide(){if(confirm("忽略错误继续运行可能会导致意外的程序行为，是否继续？如果您不是开发者调试程序，不建议继续运行")){appLogger.info("Continue run after global error");document.getElementById("global-error-info").style.display="none"}}function reloadWithNoDataMode(){if(confirm("无数据模式将暂时不会加载您的数据，但您的数据并没有丢失，稍后重启以后您可以手动导出数据然后排查问题"+"（期间不要手动保存数据），更多说明，请参考帮助文档。是否继续无数据模式？")){appLogger.info("Set to no data mode ");localStorage.setItem("noDataMode","yes");location.reload(true)}};var nodeRequire=require;</script>
-  </head>
 
-  <body>
-    <div class="window">
-      <div id="window-loading" class="window-loading">正在初始化，请稍后</div>
-      <!--标题栏按钮-->
-      <div class="window-title-bar light">
-        <div class="window-tile-icon"><img src="assets/images/logo16.png" /></div>
-        <div class="window-dragger"></div>
-        <div class="window-title">PunctualCat</div>
-        <div class="window-controls-container">
-          <div class="window-icon-bg" onclick="minWindow()" title="最小化">
-            <div class="window-icon window-minimize"></div>
-          </div>
-          <div class="window-icon-bg window-icon-maximize" onclick="maxRestoreWindow()" title="最大化">
-            <div class="window-icon window-max-restore window-maximize"></div>
-          </div>
-          <div class="window-icon-bg window-icon-unmaximize" onclick="maxRestoreWindow()" title="还原" style="display:none">
-            <div class="window-icon window-max-restore window-unmaximize"></div>
-          </div>
-          <div class="window-icon-bg window-close-bg" onclick="closeWindow()" title="关闭">
-            <div class="window-icon window-close"></div>
-          </div>
-        </div>
+<head>
+  <meta charset="utf8">
+  <meta content="width=device-width,initial-scale=1,minimal-ui" name="viewport">
+  <title>PunctualCat</title>
+  <style>
+    .window-title-bar {
+      display: none;
+    }
+    .window-loading {
+      width: 100%;
+      height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-content: center;
+      align-items: center;
+      background-color: #f1f1f1;
+      color: #555555;
+      font-size: 16px;
+      font-weight: 200;
+      z-index: 3001;
+    }
+    .window-loading .progress {
+      height: 15px;
+      background: #ccc;
+      border-radius: 20px;
+      width: 50%;
+      margin-top: 50px;
+    }
+    .window-loading .progress .progress-value {
+      border-radius: 20px;
+      position: relative;
+      animation: reverse progress-bar-stripes 0.40s linear infinite, animate-positive 8s;
+      background-color: #5bc0de;
+      background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
+      background-size: 40px 40px;
+      float: left;
+      width: 0;
+      height: 100%;
+      font-size: 12px;
+      line-height: 20px;
+      color: #fff;
+      text-align: center;
+    }
+    @keyframes progress-bar-stripes {
+      0% {
+        background-position-x: 40px;
+      }
+    }
+    @keyframes animate-positive{
+      0% { width: 0; }
+    }
+  </style>
+  <script>
+    window.addEventListener("load", function () {
+      var a = document.createElement("script");
+      a.setAttribute("type", "text/javascript");
+      a.src = "renderer.js";
+      document.getElementsByTagName("head")[0].appendChild(a)
+    });
+    if (typeof require == "undefined") {
+      window.onload = function () {
+        document.getElementById("window-loading").setAttribute("style", "display:none");
+        document.querySelectorAll(".window-title-bar")[0].setAttribute("style", "display:none");
+        document.getElementById("intro").setAttribute("style", "display:none");
+        document.getElementById("global-error-info").setAttribute("style", "");
+        document.getElementById("global-error-info-text").innerText = "本应用不能在浏览器中运行!"
+      };
+      throw Error("本应用不能在浏览器中运行! App must run in Electron")
+    }
+    function ignoreGlobalErrAndHide() {
+      if (confirm("忽略错误继续运行可能会导致意外的程序行为，是否继续？如果您不是开发者调试程序，不建议继续运行")) {
+        appLogger.info("Continue run after global error");
+        document.getElementById("global-error-info").style.display = "none"
+      }
+    }
+    function reloadWithNoDataMode() {
+      if (confirm("无数据模式将暂时不会加载您的数据，但您的数据并没有丢失，稍后重启以后您可以手动导出数据然后排查问题" + "（期间不要手动保存数据），更多说明，请参考帮助文档。是否继续无数据模式？")) {
+        appLogger.info("Set to no data mode ");
+        localStorage.setItem("noDataMode", "yes");
+        location.reload(true)
+      }
+    };
+    var nodeRequire = require;
+  </script>
+</head>
+
+<body>
+  <div class="window">
+    <!--加载中遮罩-->
+    <div id="window-loading" class="window-loading intro">
+      <img src="assets/images/logo128.png" style="display: none" />
+      <h3 style="display: none">PunctualCat</h3>
+      <div style="display: none" class="ver-text">
+        Version <span id="intro-ver">Unknow</span> <br>
+        <i class="fa fa-copyright mr-2" aria-hidden="true"></i>2019 BY 梦欤
       </div>
-      <!--进入遮罩和错误信息遮罩-->
-      <div id="global-error-info" class="window-container full error-area" style="display: none">
-        <i class="erricon fa fa-exclamation-triangle" aria-hidden="true"></i>
-        <div id="global-error-info-text" class="text-secondary mb-3">程序发生了一个错误，错误信息 : 
-          <div id="global-error-info-content">未知错误</div><br/>
-          您可以：<br/>
-          <a href="#" onclick="alert('错误已提交！我们将尽快解决此问题。');location.reload(true)">向我们反馈错误报告，以便更快解决这个问题</a> 
-          <br/><a href="#" onclick="ignoreGlobalErrAndHide()">忽略错误继续运行</a> 
-          <div id="global-error-restart">
-            <a href="javascript:;" onclick="location.reload(true)">请尝试重载程序</a><br/>
-            如果错误任然出现，请尝试 <a href="#" onclick="reloadWithNoDataMode()">以无数据模式运行</a> 
-          </div>
-        </div>
+      <div id="window-loading-text">正在初始化，请稍后</div>
+      <div class="progress">
+        <div class="progress-value" style="width: 100%"></div>
       </div>
-      <div id="intro" class="window-container full">
-        <img src="assets/images/logo128.png" style="display: none" />
-        <h3 style="display: none">PunctualCat</h3>
-        <div style="display: none" class="ver-text">
-          Version <span id="intro-ver"></span> <br>
-          <i class="fa fa-copyright mr-2" aria-hidden="true"></i>2019 BY 梦欤
-        </div>
-      </div>
-      <!--App-->
-      <div id="app"></div>
     </div>
-  </body>
+    <!--标题栏按钮-->
+    <div class="window-title-bar light">
+      <div class="window-tile-icon"><img src="assets/images/logo16.png" /></div>
+      <div class="window-dragger"></div>
+      <div class="window-title">PunctualCat</div>
+      <div class="window-controls-container">
+        <div class="window-icon-bg" onclick="minWindow()" title="最小化">
+          <div class="window-icon window-minimize"></div>
+        </div>
+        <div class="window-icon-bg window-icon-maximize" onclick="maxRestoreWindow()" title="最大化">
+          <div class="window-icon window-max-restore window-maximize"></div>
+        </div>
+        <div class="window-icon-bg window-icon-unmaximize" onclick="maxRestoreWindow()" title="还原" style="display:none">
+          <div class="window-icon window-max-restore window-unmaximize"></div>
+        </div>
+        <div class="window-icon-bg window-close-bg" onclick="closeWindow()" title="关闭">
+          <div class="window-icon window-close"></div>
+        </div>
+      </div>
+    </div>
+    <!--错误信息遮罩-->
+    <div id="global-error-info" class="window-container full error-area" style="display: none">
+      <i class="erricon fa fa-exclamation-triangle" aria-hidden="true"></i>
+      <div id="global-error-info-text" class="text-secondary mb-3">程序发生了一个错误，错误信息 :
+        <div id="global-error-info-content">未知错误</div><br />
+        您可以：<br />
+        <a href="#" onclick="alert('错误已提交！我们将尽快解决此问题。');location.reload(true)">向我们反馈错误报告，以便更快解决这个问题</a>
+        <br /><a href="#" onclick="ignoreGlobalErrAndHide()">忽略错误继续运行</a>
+        <div id="global-error-restart">
+          <a href="javascript:;" onclick="location.reload(true)">请尝试重载程序</a><br />
+          如果错误任然出现，请尝试 <a href="#" onclick="reloadWithNoDataMode()">以无数据模式运行</a>
+        </div>
+      </div>
+    </div>
+    <!--App-->
+    <div id="app"></div>
+  </div>
+</body>
+
 </html>

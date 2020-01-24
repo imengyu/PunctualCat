@@ -15,6 +15,7 @@ declare global {
     appVesrsion : string;
     initLogs : Function;
     initVue : Function;
+    showRunTimeError : Function;
     destroyLogs : Function;
   }
 }

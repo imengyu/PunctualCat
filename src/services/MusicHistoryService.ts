@@ -25,9 +25,13 @@ export class MusicHistoryService extends EventEmitter {
     }
     return null;
   }
-  public addMusicToHistoryList(music : MusicItem) { 
-    if(!this.existsInHistoryList(music.fullPath)) 
-      this.musicHistoryList.push(music);  
+  public addMusicToHistoryList(music : MusicItem | string) { 
+    let item : MusicItem;
+    if(typeof music === 'string') item = new MusicItem(music);
+    else if(music instanceof MusicItem) item = music;
+     
+    if(!this.existsInHistoryList(item.fullPath)) 
+      this.musicHistoryList.push(item);  
   }
   public removeMusicFromHistoryList(music : MusicItem){ this.musicHistoryList.splice(this.musicHistoryList.indexOf(music), 1); }
 
@@ -40,7 +44,7 @@ export class MusicHistoryService extends EventEmitter {
   public loadFromPathArray(musics : string[]) {
     if(musics) musics.forEach((element : string) => {
       if(!this.existsInHistoryList(element))
-        this.addMusicToHistoryList(new MusicItem(element));
+        this.addMusicToHistoryList(element);
     });
   }
 }

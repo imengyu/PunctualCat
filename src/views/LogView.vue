@@ -1,5 +1,5 @@
 <template>
-  <div class="log-container scroll-fix" id="log-list">
+  <div class="log-container scroll-fix-white" id="log-list">
     <div class="log-title">
       <span class="text-secondary">此处显示的是自程序运行到现在的所有事件日志，您可以根据日志来排查错误</span>
       <el-tooltip v-if="logPools && logPools.length > 0" content="清空日志" placement="right">
@@ -127,7 +127,12 @@ export default class LogView extends Vue {
   }
 }
 .log-container {
-  position: relative;
+  position: absolute;
+  top: 60px;
+  right: 6px;
+  bottom: 10px;
+  left: 0;
+  overflow-y: scroll;
 
   .log-list {
 

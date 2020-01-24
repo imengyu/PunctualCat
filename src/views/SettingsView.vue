@@ -70,7 +70,7 @@
                 您可以开启此选项来开启静音时段，当处于您定义的静音时段时，不会自动播放任务和音乐。
               </span>
             </el-form-item>
-            <el-form-item label="静音时段">
+            <el-form-item label="静音时段" v-if="appSettingsBackup.auto.enableMuteTime">
               <span class="text-secondary el-form-span">您可以设置一些条件表示静音的时段，例如 “22:00 至 5:50”、“周六 至 周日”、“7/1 至 8/31” 等等。</span>
               <div class="mute-con-list" v-if="appSettingsBackup.auto.muteTimes && appSettingsBackup.auto.muteTimes.length > 0">
                 <div v-for="(item, index) in appSettingsBackup.auto.muteTimes" :index="index" :key="index">
@@ -112,18 +112,18 @@
               <el-switch v-model="appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
               <span class="text-secondary el-form-span">您可以开启此选项来使用密码保护系统，这样，只有输入正确的密码才能使用本软件。</span>
             </el-form-item>
-            <el-form-item label="长时间无操作时自动锁定软件">
+            <el-form-item label="长时间无操作时自动锁定软件" v-if="appSettingsBackup.security.preventAnymouseUse">
               <el-switch v-model="appSettingsBackup.security.autoLock" :disabled="!appSettingsBackup.security.preventAnymouseUse" style="margin: 10px 0;"></el-switch><br>
               <el-input-number v-model="appSettingsBackup.security.autoLockMaxMinute" 
                 :disabled="!appSettingsBackup.security.preventAnymouseUse || !appSettingsBackup.security.autoLock" 
                 size="mini" style="width:90px;margin-right:10px" controls-position="right" :min="1" :max="30"></el-input-number>
               分钟后无操作自动锁定软件
             </el-form-item>
-            <el-form-item label="管理员密码">
+            <el-form-item label="管理员密码" v-if="appSettingsBackup.security.preventAnymouseUse">
               <div v-if="appSettingsBackup.security.managerPassword==''">您未设置管理员密码，<a href="javascript:;" @click="editManagerPassword(true)">设置管理员密码</a></div>
               <div v-else><a href="javascript:;" @click="editManagerPassword(false)">修改管理员密码</a> | <a href="javascript:;" @click="clearManagerPassword">删除管理员密码</a></div>
             </el-form-item>
-            <el-form-item label="登录界面的说明文字">
+            <el-form-item label="登录界面的说明文字" v-if="appSettingsBackup.security.preventAnymouseUse">
               <span class="text-secondary">此说明文字将会被显示在登录界面上，您可以告知别人关于登录的信息。</span>
               <el-input
                 type="textarea"

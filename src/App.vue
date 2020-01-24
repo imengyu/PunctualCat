@@ -41,10 +41,10 @@
     <!--顶栏-->
     <div class="top-bar">
       <transition enter-active-class="animated bounceIn anim-fast delay-400ms" leave-active-class="animated fadeOut anim-fast">
-        <text-time ref="textTime2" v-show="!calendarViaible" @date-click="switchCalendar" />
+        <text-time ref="textTime2" id="top-time" v-show="!calendarViaible" @date-click="switchCalendar" />
       </transition>
       <div v-show="calendarViaible"></div>
-      <div class="top-menu">
+      <div class="top-menu" id="top-menu">
         <icon-toolbar :items="topToolbar" :active-item="topTabSelectItem" :arrow-offest="-15" @item-click="onMainTabClick" @select-item-changed="onMainTabChanged" />
       </div>
     </div>
@@ -108,6 +108,11 @@
       </div>
     </transition>
     <!--入门页-->
+    <transition enter-active-class="animated fadeIn anim-fast delay-300ms" leave-active-class="animated fadeOut anim-fast">
+      <guide-view ref="guideView" v-show="guideVisible" @close="guideVisible=false" @goToTableView="onGoToTableView" 
+        @editOneItemForGuide="onEditOneItemForGuide" @editOneItemFinishForGuide="onEditOneItemFinishForGuide"
+        @showVoiceSettingsForGuide="onShowVoiceSettingsForGuide" />
+    </transition>
     
 
     <!--音乐列表-->
@@ -177,7 +182,9 @@ import Win32Helper from "./utils/Win32Utils";
 import CommonUtils from "./utils/CommonUtils";
 import $ from "jquery";
 import fs from 'fs';
+import path from 'path';
 import child_process from 'child_process';
+
 
 import TextTime from "./components/TextTime.vue"
 import IconToolBar from "./components/IconToolBar.vue"
@@ -191,6 +198,10 @@ import SettingsView from "./views/SettingsView.vue"
 import TableView from "./views/TableView.vue"
 import RadioView from "./views/RadioView.vue"
 import LogView from "./views/LogView.vue"
+
+import WelecomeView from "./views/WelecomeView.vue"
+import GuideView from "./views/GuideView.vue"
+import HelpView from "./views/HelpView.vue";
 
 import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback, setMusicWaveStartCallback, setMusicWaveStopCallback } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
@@ -210,6 +221,7 @@ import { loadMenuIcon } from "./utils/MenuUtils";
 import 'swiper/dist/css/swiper.css'
 import { swiper, swiperSlide } from 'vue-awesome-swiper'
 
+
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
 const screen = remote.screen;
@@ -228,7 +240,8 @@ const screen = remote.screen;
     'table-view': TableView,
     'radio-view': RadioView,
     'swiper': swiper,
-    'swiper-slide': swiperSlide
+    'swiper-slide': swiperSlide,
+    'guide-view': GuideView,
   }
 })
 export default class App extends Vue {
@@ -246,6 +259,7 @@ export default class App extends Vue {
   menuVisible : boolean = false;
   voiceProverVisible : boolean = false;
   introductionVisible : boolean = false;
+  guideVisible : boolean = false;
   quitDialog : boolean = false;
   shutdownNowDialog : boolean = false;
   rebootNowDialog : boolean = false;
@@ -369,11 +383,7 @@ export default class App extends Vue {
 
   //** Show and hide
   hideIntro() {
-    $("#intro").addClass('hidding');
-    setTimeout(function() {
-      $("#intro").removeClass('hidding');
-      $("#intro").addClass('hidden');
-    }, 1000);
+    $('#window-loading').fadeOut(1000);
   }
   showRunTimeError(source : string, lineno : number, colno : number, error : Error) { 
     if(error) {
@@ -448,6 +458,9 @@ export default class App extends Vue {
             this.currentWindow.webContents.openDevTools();
           }
 
+          //Export show error function
+          window.showRunTimeError = this.showRunTimeError;
+
           this.loadAllDatas(() => {
 
             try {
@@ -479,7 +492,7 @@ export default class App extends Vue {
 
               //hide intro
               setTimeout(() => {
-                this.hideIntro();
+
                 this.topTabSelectItem = this.topToolbar[0];
                 this.autoPlayService.start();
                 this.inited = true;
@@ -491,6 +504,8 @@ export default class App extends Vue {
                 }
 
                 window.appInited = true;
+
+                setTimeout(() => this.hideIntro(), 1111); 
               }, 1000);   
             }catch(e){
               this.showStartUpError('初始化失败 ', e)
@@ -570,6 +585,7 @@ export default class App extends Vue {
     this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', accelerator: 'CmdOrCtrl+O', click: () => this.showLogView(), icon: loadMenuIcon(require('./assets/images/menu/log.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => this.showFirstGuidePage(), icon: loadMenuIcon(require('./assets/images/menu/tip.png')) }));
+    this.menuSettings.append(new electron.remote.MenuItem({ label: '欢迎', click: () => this.showWelecomePage() }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '帮助', click: () => this.showHelpWindow(null), icon: loadMenuIcon(require('./assets/images/menu/help.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global'), icon: loadMenuIcon(require('./assets/images/menu/settings.png')) }));
@@ -591,7 +607,7 @@ export default class App extends Vue {
     developerSubMenu.append(developerSubMenuAutoOpenDevTools);
     developerSubMenu.append(new electron.remote.MenuItem({ label: '打开进程管理器', click: () => {} }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
-    developerSubMenu.append(new electron.remote.MenuItem({ label: '查看程序运行日志', click: () => shell.openExternal(process.cwd() + '/logs'), icon: loadMenuIcon(require('./assets/images/menu/log2.png')) }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: '查看程序运行日志', click: () => shell.openExternal(window.appDir + '/logs'), icon: loadMenuIcon(require('./assets/images/menu/log2.png')) }));
     developerSubMenu.append(new electron.remote.MenuItem({ type: 'separator' }));
 
     developerSubMenu.append(new electron.remote.MenuItem({ label: '测试引导页', click: () => this.showFirstIntroductionPage() }));
@@ -726,7 +742,7 @@ export default class App extends Vue {
   }
   initAppConfigue() : Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      fs.readFile(process.cwd() + '/config/app.js', (err, data) => {
+      fs.readFile(window.appDir + '/config/app.js', (err, data) => {
         if(err) resolve();
         else {
           try {
@@ -833,11 +849,17 @@ export default class App extends Vue {
     }
     //base
     this.serviceDataStorage.loadData('basedata').then((data) => {
-      this.baseData = data;
+      this.baseData = data;    
       //musics
       this.serviceDataStorage.loadData('musics').then((musics) => {
         this.serviceMusicHistory.loadFromPathArray(musics);
-        callback();
+        //musics目录的文件
+        this.loadMusicDirMusics().then(() => {
+          callback();
+        }).catch((e) => {
+          this.logger.warn('Scan musics dir failed ! ', e);
+          callback();
+        })
       }).catch((e) => {
         this.logger.warn('Load musics data failed ! ', e);
         callback();
@@ -846,6 +868,26 @@ export default class App extends Vue {
       this.logger.warn('Load base data failed ! ', e);
       callback();
     })
+  }
+  loadMusicDirMusics() : Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let dir = window.appDir + '/musics';
+      fs.readdir(dir, (err, files) => {
+        if (err) { reject(err) }
+        else files.forEach((filename, index) => {
+          let pathname = path.join(dir, filename)
+          fs.stat(pathname, (err, stats) => { // 读取文件信息
+            if (!err) {
+              if (stats.isFile() && ['.json', '.less'].includes(path.extname(pathname))) {
+                 this.serviceMusicHistory.addMusicToHistoryList(pathname)
+              }
+            }
+          })
+          if (index === files.length - 1)
+            resolve();
+        })
+      })
+    });
   }
   saveDatas() : Promise<any> {
     return new Promise((resolve, reject) => {
@@ -1243,18 +1285,49 @@ export default class App extends Vue {
     this.logger.info('Reboot is canceled by user');
     UserLogService.writeLog('重启命令被用户取消');
   }
-  showHelpWindow(arg) { ipc.send('main-act-show-help-window', arg); }
+  showHelpWindow(arg) { 
+    //ipc.send('main-act-show-help-window', arg); 
+    if(this.topTabSelectItem != this.topToolbar[0])
+      this.topTabSelectItem = this.topToolbar[0];
+    setTimeout(() => {
+      (<TableView>this.$refs['tableView']).addPage('guide', '帮助文档', HelpView);
+    }, 200);  
+  }
   showLogView(findItem : UserLog = null) { 
     this.isShowLogList = true;
     if(findItem) setTimeout(() => (<LogView>this.$refs['logView']).locateItem(findItem), 600);
   }
-  showFirstIntroductionPage() { this.introductionVisible = true; }
+  showFirstIntroductionPage() { 
+    this.introductionVisible = true; 
+  }
   endFirstIntroductionPage() {
     this.introductionVisible = false;
     this.showFirstGuidePage();
   }
-  showFirstGuidePage() {
+  showFirstGuidePage() { 
+    this.guideVisible = true; 
+    (<GuideView>this.$refs['guideView']).reset(); 
+  }
+  onGoToTableView() {
+    if(this.topTabSelectItem != this.topToolbar[0]) this.topTabSelectItem = this.topToolbar[0];
+    setTimeout(() => (<TableView>this.$refs['tableView']).goToOneTableForGuide(), 100);  
+  }
+  onEditOneItemForGuide() {
+    (<TableView>this.$refs['tableView']).editOneItemForGuide();
+  }
+  onEditOneItemFinishForGuide(){
+    (<TableView>this.$refs['tableView']).editOneItemFinishForGuide();
+  }
+  onShowVoiceSettingsForGuide(){
+    this.voiceProverVisible = true;
+  }
 
+  showWelecomePage() {
+    if(this.topTabSelectItem != this.topToolbar[0])
+      this.topTabSelectItem = this.topToolbar[0];
+    setTimeout(() => {
+      (<TableView>this.$refs['tableView']).addPage('welecome', '欢迎使用', WelecomeView);
+    }, 200);  
   }
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }

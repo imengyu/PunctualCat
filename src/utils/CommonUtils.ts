@@ -27,7 +27,7 @@ export default {
  * @returns {boolean} 对象是否为空
  */
 function isNullObject(object) {
-  return !object || Object.keys(object) == 0
+  return !object || Object.keys(object).length == 0
 }
 /**
  * 转数字为指定位数字符串
@@ -217,21 +217,20 @@ function getPageArea() {
  * 将秒转换为 分:秒
  * s int 秒数
 */
-function getTimeStringSec(s){
+function getTimeStringSec(s : number){
   //计算分钟
   //算法：将秒数除以60，然后下舍入，既得到分钟数
-  var h;
-  h = parseInt(Math.floor(s/60));
+  var h = Math.floor(s / 60)
   //计算秒
   //算法：取得秒%60的余数，既得到秒数
-  s = parseInt(s % 60);
+  s = Math.floor(s % 60);
   //将变量转换为字符串
-  h += '';
-  s += '';
+  var hs = h.toString();
+  var ss = s.toString();
   //如果只有一位数，前面增加一个0
-  h = (h.length==1)?'0'+h:h;
-  s = (s.length==1)?'0'+s:s;
-  return h+':'+s;
+  hs = (hs.length==1) ? '0' + hs : hs;
+  ss = (ss.length==1) ? '0' + ss : ss;
+  return hs + ':' + ss;
 }
 
 
