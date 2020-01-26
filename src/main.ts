@@ -21,7 +21,10 @@ var appIco : Electron.NativeImage = null;
 var appDir = process.cwd().replace(/\\/g, '/');;
 var appCanQuit = false;
 
-
+function installVueDevTools() {
+  let devtoolsPath = appDir + '/extensions/vue-devtools/5.3.3_0';
+  if(fs.existsSync(devtoolsPath)) BrowserWindow.addDevToolsExtension(devtoolsPath);
+}
 function createMainWindow () {
 
   mainWindow = new BrowserWindow({
@@ -240,6 +243,7 @@ function initApp() {
 
   app.on('ready', () => {
     appIco = Electron.nativeImage.createFromPath(path.posix.join(appDir, require('./assets/images/logo.ico')));
+    installVueDevTools();
     createMainWindow();
   })
   app.on('window-all-closed', () =>  {

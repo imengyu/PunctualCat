@@ -1,8 +1,7 @@
 import { AutoPlayable, AutoSaveable, AutoPlayCheckType, AutoPlayStatus } from './PlayInterfaces'
 import { PlayTask } from './PlayTask'
 import { PlayCondition } from './PlayCondition'
-
-
+import CommonUtils from '../utils/CommonUtils';
 
 /**
  * 播放计划表
@@ -12,6 +11,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
 
   public saveToJSONObject(): object {
     let buf = {
+      uid: this.uid,
       name: this.name,
       note: this.note,
       color: this.color,
@@ -27,6 +27,7 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
   }
   public loadFromJsonObject(obj: any) {
     this.tasks = [];
+    this.uid = obj.uid;
     this.name = obj.name;
     this.note = obj.note;
     this.color = obj.color;
@@ -47,9 +48,12 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
     else {
       this.name = '';
       this.note = '';
+      this.uid = CommonUtils.genNonDuplicateID(4);
       this.condition = new PlayCondition('', null, { intervalType: 'day', timeType: 'any', forceDisallowTypes: [] });
     }
   }
+  
+  public uid : string;
 
   public name : string;
   public note : string;

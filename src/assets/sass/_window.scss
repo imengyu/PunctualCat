@@ -26,7 +26,7 @@ $window-padding: 0;
   bottom: $window-padding;
   left: $window-padding;
   right: $window-padding;
-  overflow: hidden;
+  overflow: visible;
 
   //border: 1px solid #ebebeb;
   //border-radius: 4px;
@@ -57,7 +57,7 @@ $window-padding: 0;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 2000;
+  z-index: 2001;
 
   span {
     color: black;
@@ -92,7 +92,7 @@ $window-padding: 0;
     top: 0;
     left: 28px;
     bottom: 0;
-    right: 150px;
+    right: 400px;
   }
 
   >.window-controls-container {

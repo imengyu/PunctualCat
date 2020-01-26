@@ -18,7 +18,8 @@ export default {
   getElementWindowTop,
   getTimeStringSec,
   deleteSpaceInStringArray,
-  pad
+  pad,
+  genNonDuplicateID,
 }
 
 /**
@@ -278,4 +279,12 @@ function isNumber(val) {
   } else {
     return false;
   }
+}
+
+/**
+ * 生成不重复 UID
+ * @param randomLen 随机数位数
+ */
+function genNonDuplicateID(randomLen) {
+  return Number(Math.random().toString().substr(3,randomLen) + Date.now()).toString(36)
 }

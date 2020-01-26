@@ -192,6 +192,9 @@ export default class GuideView extends Vue {
     }
   }
   reBoxPosition() {
+    let $ele = $('#help-box-relative');
+    if($ele.scrollTop() > 0)
+      $ele.scrollTop(0);
     if(this.pageCurrentEle) {
       let x2 = this.pageCurrentEle.x + this.pageCurrentEle.w / 2;
       let y2 = this.pageCurrentEle.y + this.pageCurrentEle.h / 2;
@@ -202,8 +205,6 @@ export default class GuideView extends Vue {
         p = y2 > window.innerHeight / 2 ? 'top' : 'bottom';
       else  //左右
         p = x2 > window.innerWidth / 2 ? 'left' : 'right';
-
-      let $ele = $('#help-box-relative');
 
       switch(p) {
         case 'left': {
@@ -249,7 +250,6 @@ export default class GuideView extends Vue {
       
      
     }else{
-      let $ele = $('#help-box-relative');
       $ele.css('right', 'unset');
       $ele.css('top', 'unset');
       $ele.css('min-width', 'unset');

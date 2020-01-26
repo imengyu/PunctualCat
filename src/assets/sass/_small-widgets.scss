@@ -420,7 +420,7 @@ a {
 .full-locker {
 
   position: absolute;
-  top: -100%;
+  top: -150%;
   height: 100%;
   width: 100%;
   transition: top ease-in-out .3s;
@@ -596,18 +596,11 @@ a {
 
   position: absolute;
   background-color: rgba(0, 0, 0, 0.25);
-  top: 0;
+  top: -30px;
   bottom: 0;
   right: 0;
   left: 0;
   z-index: 3000;
-
-  .swiper-button-next,
-  .swiper-button-prev {
-    width: 20px;
-    height: 26px;
-    background-size: 20px 26px;
-  }
 
   .introduction-inner {
     position: absolute;
@@ -640,7 +633,7 @@ a {
       }
 
       h5 {
-        font-size: 14px;
+        font-size: 24px;
         font-weight: bold;
         color: #000;
         margin-bottom: 0;
@@ -661,4 +654,81 @@ a {
     }
   }
 
+}
+
+.argeement-allow-view {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 3000;
+  background: #fff;
+  transition: all ease-in-out 0.3s;
+
+  .argeemen-area {
+    position: absolute;
+    top: 0;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    padding-bottom: 0;
+  }
+  .argeemen-bottom-area {
+    position: absolute;
+    height: 30px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: right;
+    padding: 30px;
+    padding-top: 0;
+  }
+
+  &.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+  &.hide {
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.1);
+  }
+}
+
+.card-tab-float {
+  position: relative;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 6px 5px 0 rgba(0, 0, 0, 0.08);
+
+  $item-round-width: 2px;
+
+  &::after {
+    display: inline-block;
+    content: '';
+    width: 0;
+    height: 0;
+    position: absolute;
+    border-style: solid;
+    border-width: $item-round-width;
+    border-color: transparent transparent white transparent;
+    left: -$item-round-width;
+    top: -$item-round-width;
+    transform: rotate(45deg);
+  }
+  &::before {
+    display: inline-block;
+    content: '';
+    width: 0;
+    height: 0;
+    position: absolute;
+    border-style: solid;
+    border-width: $item-round-width;
+    border-color: transparent transparent white transparent;
+    right: -$item-round-width;
+    top: -$item-round-width;
+    transform: rotate(-45deg);
+  }
 }

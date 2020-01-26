@@ -8,6 +8,8 @@ export type AutoPlayStatus = 'unknow'|'playing'|'disabled'|'normal'|'error'|'pla
  */
 export interface AutoPlayable {
 
+  uid : string;
+
   /**
    * 检测是否达到指定的播放时间
    * @param type 检测时间

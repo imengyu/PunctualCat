@@ -5,9 +5,6 @@
   <meta content="width=device-width,initial-scale=1,minimal-ui" name="viewport">
   <title>PunctualCat</title>
   <style>
-    .window-title-bar {
-      display: none;
-    }
     .window-loading {
       width: 100%;
       height: 100%;
@@ -26,19 +23,47 @@
       z-index: 3001;
     }
     .window-loading .progress {
+      position: relative;
       height: 15px;
-      background: #ccc;
+      background: #262626;
+      padding: 5px;
+      overflow: visible;
       border-radius: 20px;
-      width: 50%;
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #7992a8;
       margin-top: 50px;
+      bottom: 30px;
+      width: 250px;
+    }
+    .window-loading .progress .progress-text {
+      display: block;
+      padding: 3px 7px;
+      font-size: 13px;
+      color: #fff;
+      border-radius: 4px;
+      background: #191919;
+      border: 1px solid #000;
+      position: absolute;
+      top: -40px;
+      right: -10px;
+    }
+    .window-loading .progress .progress-text:after {
+      content: "";
+      border-top: 10px solid #191919;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      position: absolute;
+      bottom: -6px;
+      left: 26%;
     }
     .window-loading .progress .progress-value {
       border-radius: 20px;
       position: relative;
-      animation: reverse progress-bar-stripes 0.40s linear infinite, animate-positive 8s;
+      animation: reverse progress-bar-stripes 0.40s linear infinite;
       background-color: #5bc0de;
       background-image: linear-gradient(45deg,rgba(255,255,255,.15) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.15) 50%,rgba(255,255,255,.15) 75%,transparent 75%,transparent);
       background-size: 40px 40px;
+      transition: width ease-in-out 0.2s;
       float: left;
       width: 0;
       height: 100%;
@@ -52,42 +77,7 @@
         background-position-x: 40px;
       }
     }
-    @keyframes animate-positive{
-      0% { width: 0; }
-    }
   </style>
-  <script>
-    window.addEventListener("load", function () {
-      var a = document.createElement("script");
-      a.setAttribute("type", "text/javascript");
-      a.src = "renderer.js";
-      document.getElementsByTagName("head")[0].appendChild(a)
-    });
-    if (typeof require == "undefined") {
-      window.onload = function () {
-        document.getElementById("window-loading").setAttribute("style", "display:none");
-        document.querySelectorAll(".window-title-bar")[0].setAttribute("style", "display:none");
-        document.getElementById("intro").setAttribute("style", "display:none");
-        document.getElementById("global-error-info").setAttribute("style", "");
-        document.getElementById("global-error-info-text").innerText = "本应用不能在浏览器中运行!"
-      };
-      throw Error("本应用不能在浏览器中运行! App must run in Electron")
-    }
-    function ignoreGlobalErrAndHide() {
-      if (confirm("忽略错误继续运行可能会导致意外的程序行为，是否继续？如果您不是开发者调试程序，不建议继续运行")) {
-        appLogger.info("Continue run after global error");
-        document.getElementById("global-error-info").style.display = "none"
-      }
-    }
-    function reloadWithNoDataMode() {
-      if (confirm("无数据模式将暂时不会加载您的数据，但您的数据并没有丢失，稍后重启以后您可以手动导出数据然后排查问题" + "（期间不要手动保存数据），更多说明，请参考帮助文档。是否继续无数据模式？")) {
-        appLogger.info("Set to no data mode ");
-        localStorage.setItem("noDataMode", "yes");
-        location.reload(true)
-      }
-    };
-    var nodeRequire = require;
-  </script>
 </head>
 
 <body>
@@ -100,9 +90,11 @@
         Version <span id="intro-ver">Unknow</span> <br>
         <i class="fa fa-copyright mr-2" aria-hidden="true"></i>2019 BY 梦欤
       </div>
-      <div id="window-loading-text">正在初始化，请稍后</div>
       <div class="progress">
-        <div class="progress-value" style="width: 100%"></div>
+        <div class="progress-value" id="init-progress-val">
+          <div class="progress-text" id="init-progress-val-text">0%</div>
+        </div>
+        <!--<span class="progress-sub-text">LOADING</span>-->
       </div>
     </div>
     <!--标题栏按钮-->
@@ -142,6 +134,86 @@
     <!--App-->
     <div id="app"></div>
   </div>
+  <script type="text/javascript">
+    var nodeRequire = null;
+    var initProgressTimer = null;
+    var initProgress = 0;
+    var initProgressSpeed = 0.2;
+    var initProgressTarget = 0;
+    var initProgressVal = document.getElementById('init-progress-val');
+    var initProgressValText = document.getElementById('init-progress-val-text');
+    
+    window.addEventListener("load", function () {
+      var a = document.createElement("script");
+      a.setAttribute("type", "text/javascript");
+      a.src = "renderer.js";
+      
+      runInitProgress(a);
+
+      a.onload = function(ev) {
+
+        initProgressTarget = 100;
+        initProgressSpeed = 1;
+
+        setTimeout(() => {
+          if(typeof loaderStart === "function")
+            loaderStart()
+        }, 1000);
+      }
+
+      //Append script
+      document.body.appendChild(a);
+
+      //Test require
+      if (typeof require == "undefined") {
+        document.getElementById("window-loading").setAttribute("style", "display:none");
+        document.querySelectorAll(".window-title-bar")[0].setAttribute("style", "display:none");
+        document.getElementById("global-error-info").setAttribute("style", "");
+        document.getElementById("global-error-info-text").innerText = "本应用不能在浏览器中运行!"
+      } else {
+        nodeRequire = require;
+      }
+    });
+    
+    function initProgressSet() {
+      initProgressVal.setAttribute('style', 'width:'+initProgress+'%');
+      initProgressValText.innerText = parseInt(initProgress)+'%';
+    }
+    function initProgressHandle() {
+      if(initProgress < initProgressTarget){
+        initProgress += initProgressSpeed;
+        initProgressSet();
+      }
+      if(initProgress >= 70 && initProgress < 80)
+        initProgressSpeed = 1;
+      if(initProgress >= 80 && initProgress < 99) 
+        initProgressSpeed = 0.5;
+      if(initProgress >= 100) {
+        initProgressValText.setAttribute('style', 'display:none');
+        clearInterval(initProgressTimer);
+        initProgressTimer = null;
+      }
+    }
+    function runInitProgress(script) {
+      initProgressTimer = setInterval(initProgressHandle, 50);
+      initProgressTarget = 99;
+      initProgress = 0;
+      initProgressSpeed = 2;
+    }
+    function ignoreGlobalErrAndHide() {
+      if (confirm("忽略错误继续运行可能会导致意外的程序行为，是否继续？如果您不是开发者调试程序，不建议继续运行")) {
+        appLogger.info("Continue run after global error");
+        document.getElementById("global-error-info").style.display = "none"
+      }
+    }
+    function reloadWithNoDataMode() {
+      if (confirm("无数据模式将暂时不会加载您的数据，但您的数据并没有丢失，稍后重启以后您可以手动导出数据然后排查问题" + "（期间不要手动保存数据），更多说明，请参考帮助文档。是否继续无数据模式？")) {
+        appLogger.info("Set to no data mode ");
+        localStorage.setItem("noDataMode", "yes");
+        location.reload(true)
+      }
+    };
+  </script>
 </body>
 
 </html>

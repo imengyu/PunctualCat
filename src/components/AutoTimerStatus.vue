@@ -1,44 +1,19 @@
 <template>
 
-  <div :class="'autotimer-status' + (isWarn?' warn':'')">
+  <div :class="'autotimer-status' + (isWarn?' warn':'')" id="auto-status">
     <div class="toggle">
       <el-tooltip
         placement="top"
-        :content="autoRunning?'切换自动播放状态':'开启自动播放系统'">
+        :content="autoRunning?'关闭自动播放':'开启自动播放'">
         <el-switch
+          class="autotimer-switch"
+          :width="50"
           v-model="autoRunning"
           active-color="#13ce66"
           inactive-color="#ff4949">
         </el-switch>
       </el-tooltip>
-    </div>
-    <div v-if="isWarn" class="warn">
-      <el-tooltip
-        placement="top"
-        content="提示：自动播放系统当前处于关闭状态，现在不会自动播放铃声">
-        <i class="iconfont icon-cuowuhttp"></i>
-      </el-tooltip>
-    </div>
-    <div v-else class="warn success">
-      <el-popover
-        placement="bottom"
-        width="200"
-        transition="pulse"
-        trigger="manual"
-        v-model="statusVisible">
-        <div class="text-success mt-1 mb-3">
-          <i class="iconfont icon-xuanzhong"></i> 自动播放系统正常运行中 
-          <a href="javascript:;" class="float-right" @click="statusVisible=false" title="隐藏"><i class="iconfont icon-tiaojian-copy"></i></a>
-        </div>
-        <auto-status-circle ref="statusCircle" class="mb-3"
-          :degree1="degree1" :degree2="degree2" :degree3="degree3"
-          :task1="task1" :task2="task2" task3="task3"
-          :colorForegound1="colorForegound1" :colorForegound2="colorForegound2"
-          :colorForegound3="colorForegound3" :colorBackground1="colorBackground1"
-          :colorBackground2="colorBackground2" :colorBackground3="colorForegound3">
-        </auto-status-circle>
-        <i slot="reference" class="iconfont icon-duigou" @click="statusVisible=true"></i>
-      </el-popover>
+      <span :class="isWarn?'sp e':'sp'">{{isWarn?'自动播放系统已关闭':'自动播放系统正常运行'}}</span>
     </div>
   </div>
 
@@ -209,20 +184,16 @@ export default class AutoTimerStatus extends Vue {
 <style lang="scss">
 .autotimer-status {
 
-  position: relative;
+  position: absolute;
   display: inline-flex;
-  width: 68px;
   height: 30px;
-  padding: 0 6px;
+  padding: 2px 9px;
   justify-content: center;
   align-items: center;
   user-select: none;
-  border-radius: 15px;
-
-  &:hover {
-    background-color: #fff;
-    box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.08);
-  }
+  right: 160px;
+  top: -30px;
+  z-index: 2002;
 
   .toggle {
     display: inline-flex;
@@ -253,6 +224,37 @@ export default class AutoTimerStatus extends Vue {
       font-size: 12px;
       color: #fff;
     }
+  }
+  .sp {
+    font-size: 12px;
+    color: #888;
+    word-break: keep-all;
+    margin-left: 15px;
+
+    &.e { color: #c72e00; }
+  }
+}
+.autotimer-switch {
+  .el-switch__core:before {
+    content: "OFF";
+    
+    position: absolute;
+    top: -1px;
+    left: unset;
+    right: 8px;
+    
+    transition: all .3s;
+    width: 20px;
+    height: 16px;
+    color: #FFF;
+    display: inline-block;
+  }
+
+  &.is-checked .el-switch__core::before {
+    content: "ON";
+    top: 0px;
+    left: 5px;
+    right: unset;
   }
 }
 </style>

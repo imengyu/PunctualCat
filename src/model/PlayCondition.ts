@@ -6,7 +6,7 @@ import { getTimeNow } from '../services/AutoPlayService'
 /**
  * 条件执行器类型
  */
-export type PlayConditionActuatorType = 'unknow'|'time'|'date'|'week'|'week-range'|'date-range'|'time-range'|'group'
+export type PlayConditionActuatorType = 'unknow'|'time'|'date'|'week'|'week-range'|'date-range'|'time-range'|'group'|'any'
 
 export type PlayConditionActuatorLogicType = 'and'|'or'|'unknow'
 
@@ -48,7 +48,10 @@ let anyPlayConditionAllowType : PlayConditionAllowType = {
  */
 export class PlayConditionActuator implements AutoPlayable {
   
-  private constructor(type : PlayConditionActuatorType) { this.type = type; }
+  private constructor(type : PlayConditionActuatorType) { 
+    this.type = type; 
+    this.uid = CommonUtils.genNonDuplicateID(4);
+  }
 
   /**
    * 递归自动转换为执行体
@@ -57,7 +60,13 @@ export class PlayConditionActuator implements AutoPlayable {
   public static tryConvertConStrToActuator(conStr : string, allow : PlayConditionAllowType, fullConStr : string, thisConStartIndex : number) : PlayConditionActuator {
     let newActyator : PlayConditionActuator = null;
     let conStrFix = conStr.trim();
-    if((conStrFix.startsWith('(') && conStrFix.endsWith(')')) || (conStrFix.startsWith('（') && conStrFix.endsWith('）'))){
+
+    //Convert con
+    if((conStrFix == '任意' || conStrFix == '不限' || conStrFix == '*')) {
+      newActyator = new PlayConditionActuator('any');
+      if(anyPlayConditionAllowType.intervalType != 'day' || anyPlayConditionAllowType.timeType != 'point') 
+        newActyator.throwErrWithPosition('错误：不限条件只能使用在时间点判断上', conStr, thisConStartIndex);
+    }else if((conStrFix.startsWith('(') && conStrFix.endsWith(')')) || (conStrFix.startsWith('（') && conStrFix.endsWith('）'))){
       //Loop for group (xxx)
       newActyator = new PlayConditionActuator('group');
       let conStrArr = newActyator.splitContStrToArr(conStrFix.substr(1, conStrFix.length - 2));
@@ -93,6 +102,8 @@ export class PlayConditionActuator implements AutoPlayable {
         newActyator.solveValuesRange(conStrFix, conStrFixSplited[0].trim(), conStrFixSplited[1].trim(), fullConStr, conStr.indexOf(conStrFixSplited[0]));
       }else newActyator.solveValuesSimple(conStrFix, fullConStr, conStr.indexOf(conStrFix)); 
     }
+
+    //Check allow type
     if(allow != anyPlayConditionAllowType) {
       let finalType = newActyator.getConditionSummaryType();
       if(allow.intervalType == 'day'){
@@ -293,6 +304,8 @@ export class PlayConditionActuator implements AutoPlayable {
     
   }
 
+  public uid : string;
+
   public isTopLevel() { 
     return CommonUtils.isNullObject(this.parent)
   }
@@ -480,6 +493,7 @@ export class PlayConditionActuator implements AutoPlayable {
   public isPlayingTime(type: AutoPlayCheckType) : boolean {
     let dateNow = getTimeNow();
     switch(this.type) {
+      case 'any': return true;
       case 'date': {
         return (this.dateValue.day == 0 || this.dateValue.day == dateNow.getDate()) &&
           (this.dateValue.month == 0 || this.dateValue.month == dateNow.getMonth() + 1) &&
@@ -561,8 +575,8 @@ export class PlayConditionActuator implements AutoPlayable {
   public isStoppingTime(type: AutoPlayCheckType) {
     let dateNow = getTimeNow();
     switch(this.type) {
-      case 'week-range': 
-        return this.weekRangeValue.end == dateNow.getDay()
+      case 'any': return false;
+      case 'week-range': return this.weekRangeValue.end == dateNow.getDay()
       case 'date-range': {
         return this.dateRangeValue.end.day == dateNow.getDate() &&
           this.dateRangeValue.end.month == dateNow.getMonth() + 1 &&
@@ -600,11 +614,10 @@ export class PlayConditionActuator implements AutoPlayable {
  */
 export class PlayCondition implements AutoPlayable, AutoSaveable {
 
-
   public saveToJSONObject(): object {
     return { 
       value: this.toConditionString() ,
-      allow: this.conAllowType
+      allow: this.conAllowType,
     }
   }
   public loadFromJsonObject(json: any) {
@@ -620,6 +633,8 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
   public constructor(conStr: string, jsonObject?: any, conAllowType?: PlayConditionAllowType) {
     if(conStr && conStr != '') this.toConditionList(conStr);
     else if(jsonObject) this.loadFromJsonObject(jsonObject);
+    this.uid = CommonUtils.genNonDuplicateID(10);
+
     if(conAllowType) this.conAllowType = conAllowType;
   }
 
@@ -630,6 +645,8 @@ export class PlayCondition implements AutoPlayable, AutoSaveable {
   public conConvertStatus : 'unknow'|'success'|'failed' = 'unknow';
   public conConvertErr : PlayConditionActuatorError = null;
   private conAllowType : PlayConditionAllowType = anyPlayConditionAllowType;
+
+  public uid : string;
 
   /* 临时属性 */
   public tempBvar1 = false;

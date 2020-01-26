@@ -36,19 +36,18 @@ function initVue() {
   showIntro();
 };
 function showIntro() {
-  $('#window-loading-text').fadeOut(800, function(){
-    $('#intro-ver').text(window.appVesrsion + ' ' + window.appBuildDate);
-    $('.intro img').show().addClass(['animated','bounceInDown']);
-    $('.intro h3').show().addClass(['animated','bounceInUp']);
-    $('.intro .ver-text').show().addClass(['animated','bounceInUp']);
-    setTimeout(() => $('#window-loading .progress').fadeOut(800), 1000)
-  });
+  $('#init-progress-val-text').hide();
+  $('#intro-ver').text(window.appVesrsion + ' ' + window.appBuildDate);
+  $('.intro img').show().addClass(['animated','bounceInDown']);
+  $('.intro h3').show().addClass(['animated','bounceInUp']);
+  $('.intro .ver-text').show().addClass(['animated','bounceInUp']);
+  setTimeout(() => $('#window-loading .progress').fadeOut(800), 1000)
 }
 function showErr(source, lineno, colno, error) {
   $('#global-error-info-content').html('<div class="text-blod">' + error + '</div>' + 
     '<div><span class="text-secondary>位置：</span><span class="text-primary>' + source + ':' + lineno + ':' + colno + '</span></div>');
   $('#global-error-info').show();
-  $('#intro').hide();
+  $('.intro').hide();
 }
 
 
@@ -182,22 +181,26 @@ function initNativeModule() {
   }
 }
 
-//Loader start
+//Loader start 
 
-initBasePath();
-initLogs().then(() => {
-  initDb().then(() => {
-    initNativeModule();
-    initGlobal();
-    initVue()
+function loaderStart() {
+  initBasePath();
+  initLogs().then(() => {
+    initDb().then(() => {
+      initNativeModule();
+      initGlobal();
+      initVue()
+    }).catch((err) => {
+      console.error(err);
+      dialog.showErrorBox('初始化数据失败', err);
+    });
   }).catch((err) => {
     console.error(err);
-    dialog.showErrorBox('初始化数据失败', err);
+    dialog.showErrorBox('初始化日志失败', err);
   });
-}).catch((err) => {
-  console.error(err);
-  dialog.showErrorBox('初始化日志失败', err);
-});
+}
+
+(<any>window).loaderStart = loaderStart;
 
 //Base type extends
 

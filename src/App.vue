@@ -1,5 +1,7 @@
 <template>
   <div class="window-container">
+    
+    <!--登录-->
     <div v-if="background && background != ''" class="full-background"
       :style="'background-image: url(file:///' + background + ');opacity:' + (backgroundOpacity/100)"
     ></div>
@@ -20,6 +22,17 @@
         </div>
       </div>
     </div>
+    <!--许可-->
+    <div :class="'argeement-allow-view '+(argeementVisible?'show':'hide')">
+      <argeement-view />
+      <div class="argeemen-bottom-area">
+        <el-button class="mt-3" size="small" @click="onArgeementFinish(false)" round>我不同意以上协议</el-button>
+        <el-button class="mt-3" size="small" type="primary" @click="onArgeementFinish(true)" round>我不同意以上协议并开始使用软件</el-button>
+      </div>
+    </div>
+    
+    <!--播放状态设置-->
+    <auto-status ref="autoStatus"></auto-status>
     <!--日历弹出区-->
     <transition enter-active-class="animated fadeInLeft anim-fast delay-300ms" leave-active-class="animated bounceOutLeft anim-fast">
       <div v-show="calendarViaible" class="calendar-host">
@@ -56,7 +69,8 @@
       <radio-view v-if="topTabSelectItem" v-show="topTabSelectItem.name=='radio-message'" :app="app" />
     </transition>
     <transition :enter-active-class="tabTransitionClass[0]" :leave-active-class="tabTransitionClass[1]">
-      <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" :app="app" :nativeModuleEnabled="nativeModuleEnabled" />
+      <settings-view ref="settingsView" v-if="topTabSelectItem" v-show="topTabSelectItem.name=='settings'" 
+        :app="app" :nativeModuleEnabled="nativeModuleEnabled" @showHelpWindow="showHelpWindow" @showArgeementView="showArgeemenyWindow" />
     </transition>
     <!--底部音乐频谱-->
     <audio-wave ref="audioWave" class="main-audio-wave"></audio-wave>
@@ -71,13 +85,15 @@
       <div v-show="introductionVisible" class="introduction-host">
         <div class="introduction-inner">
           <div class="page">
-            <swiper :options="introductionSwiperOption">
+            <swiper ref="introductionSwiper" :options="introductionSwiperOption">
               <swiper-slide>
                 <div class="introduction-page">
                   <img src="./assets/images/intro/auto.svg" />
                   <h5>完全自动的执行</h5>
                   <p>任务完全由软件自动播放系统自动执行，无需您进行人工干预</p>
-                  <div class="footer-button"></div>
+                  <div class="footer-button">
+                    <el-button size="small" @click="$refs['introductionSwiper'].swiper.slideNext()" round>下一页</el-button>
+                  </div>
                 </div>
               </swiper-slide>
               <swiper-slide>
@@ -85,7 +101,9 @@
                   <img src="./assets/images/intro/security.svg" />
                   <h5>安全的数据存放</h5>
                   <p>您的数据被安全保护在系统内部，您还可以设置保护密码来保护系统</p>
-                  <div class="footer-button"></div>
+                  <div class="footer-button">
+                    <el-button size="small" @click="$refs['introductionSwiper'].swiper.slideNext()" round>下一页</el-button>
+                  </div>
                 </div>
               </swiper-slide>
               <swiper-slide>
@@ -94,14 +112,12 @@
                   <h5>精细的任务设置</h5>
                   <p>任务可自定义多种条件，满足您的多种播放需求</p>
                   <div class="footer-button">
-                    <el-button type="primary" size="small" @click="endFirstIntroductionPage" round>立即开始使用</el-button>
+                    <el-button type="primary" size="medium" @click="endFirstIntroductionPage" round>立即开始使用</el-button>
                   </div>
                 </div>
                 
               </swiper-slide>
               <div class="swiper-pagination" slot="pagination"></div>
-              <div class="swiper-button-prev" slot="button-prev"></div>
-              <div class="swiper-button-next" slot="button-next"></div>
             </swiper>
           </div>
         </div>
@@ -199,9 +215,10 @@ import TableView from "./views/TableView.vue"
 import RadioView from "./views/RadioView.vue"
 import LogView from "./views/LogView.vue"
 
-import WelecomeView from "./views/WelecomeView.vue"
+import ArgeementView from "./views/ArgeementView.vue"
 import GuideView from "./views/GuideView.vue"
 import HelpView from "./views/HelpView.vue";
+import ArgeementBigView from "./views/ArgeementBigView.vue";
 
 import { MusicItem, MusicAction, MusicStatus, getPlayingCount, setPlayingCountChangedCallback, setMusicWaveStartCallback, setMusicWaveStopCallback } from './model/MusicItem'
 import IconToolItem from "./model/IconToolItem";
@@ -221,10 +238,10 @@ import { loadMenuIcon } from "./utils/MenuUtils";
 import 'swiper/dist/css/swiper.css'
 import { swiper, swiperSlide } from 'vue-awesome-swiper'
 
-
 const ipc = electron.ipcRenderer;
 const remote = electron.remote;
 const screen = remote.screen;
+const dialog = remote.dialog;
 
 @Component({
   components: {
@@ -242,6 +259,7 @@ const screen = remote.screen;
     'swiper': swiper,
     'swiper-slide': swiperSlide,
     'guide-view': GuideView,
+    'argeement-view': ArgeementView,
   }
 })
 export default class App extends Vue {
@@ -258,6 +276,7 @@ export default class App extends Vue {
   isShowLogList : boolean = false;
   menuVisible : boolean = false;
   voiceProverVisible : boolean = false;
+  argeementVisible : boolean = false;
   introductionVisible : boolean = false;
   guideVisible : boolean = false;
   quitDialog : boolean = false;
@@ -281,10 +300,6 @@ export default class App extends Vue {
     pagination: {
       el: '.swiper-pagination'
     },
-    navigation: {
-      nextEl: '.swiper-button-next',
-      prevEl: '.swiper-button-prev'
-    }
   };
 
   logger : Logger = null;
@@ -400,7 +415,7 @@ export default class App extends Vue {
   showStartUpError(message : string, e) {
     $("#global-error-info").show();
     $("#global-error-info-content").html('<span class="display-block text-important">' + message + '</span><span class="display-block font-monospace">' + e + '</span>');
-    $("#intro").hide();
+    $(".intro").hide();
     this.logger.error(message, e);
     console.error(message, e)
   }
@@ -449,6 +464,10 @@ export default class App extends Vue {
 
           //Load actions
           this.initGlobalActions();
+
+          //run argeement
+          if(!SettingsServices.getSettingBoolean('app.argeementAllowed')) 
+            this.argeementVisible = true;
           
           //music history
           this.serviceMusicHistory = createMusicHistoryService(this.musicHistoryList);
@@ -490,13 +509,15 @@ export default class App extends Vue {
 
               this.userLogger.writeLog('系统初始化完成');
 
+              (<AutoTimerStatus>this.$refs['autoStatus']).bindServer(this.autoPlayService);
+
               //hide intro
               setTimeout(() => {
 
                 this.topTabSelectItem = this.topToolbar[0];
                 this.autoPlayService.start();
                 this.inited = true;
-
+                
                 //run first tip
                 if(SettingsServices.getSettingBoolean('app.firstRun')) {
                   SettingsServices.setSettingBoolean('app.firstRun', false);
@@ -585,8 +606,8 @@ export default class App extends Vue {
     this.menuSettings.append(new electron.remote.MenuItem({ label: '查看日志', accelerator: 'CmdOrCtrl+O', click: () => this.showLogView(), icon: loadMenuIcon(require('./assets/images/menu/log.png')) }));
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '入门', click: () => this.showFirstGuidePage(), icon: loadMenuIcon(require('./assets/images/menu/tip.png')) }));
-    this.menuSettings.append(new electron.remote.MenuItem({ label: '欢迎', click: () => this.showWelecomePage() }));
     this.menuSettings.append(new electron.remote.MenuItem({ label: '帮助', click: () => this.showHelpWindow(null), icon: loadMenuIcon(require('./assets/images/menu/help.png')) }));
+
     this.menuSettings.append(new electron.remote.MenuItem({ type: 'separator' }))
     this.menuSettings.append(new electron.remote.MenuItem({ label: '软件设置', click: () => this.goToSettingsPage('global'), icon: loadMenuIcon(require('./assets/images/menu/settings.png')) }));
 
@@ -627,6 +648,18 @@ export default class App extends Vue {
     developerSubMenu.append(new electron.remote.MenuItem({ label: '重载页面', accelerator: 'CmdOrCtrl+R', click: () => location.reload(true) }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '杀死页面', click: () => { location.href = 'chrome://kill/' } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '错误测试', click: () => { throw new Error('测试异常，抛出错误') } }));
+    developerSubMenu.append(new electron.remote.MenuItem({ label: 'message测试', click: () => { 
+      this.$message({
+        message: '恭喜你，这是一条成功消息',
+        type: 'success',
+        duration: 0
+      });
+      this.$message({
+        message: '警告哦，这是一条警告消息',
+        type: 'warning',
+        duration: 0
+      });
+    } }));
     developerSubMenu.append(new electron.remote.MenuItem({ label: '强制跳转到 URL', click: () => { 
       this.$prompt('输入要跳转到的 URL ', 'DEBUG - URL', {
         confirmButtonText: '跳转',
@@ -1289,9 +1322,11 @@ export default class App extends Vue {
     //ipc.send('main-act-show-help-window', arg); 
     if(this.topTabSelectItem != this.topToolbar[0])
       this.topTabSelectItem = this.topToolbar[0];
-    setTimeout(() => {
-      (<TableView>this.$refs['tableView']).addPage('guide', '帮助文档', HelpView);
-    }, 200);  
+    setTimeout(() => (<TableView>this.$refs['tableView']).addPage('help', '帮助文档', HelpView), 200);  
+  }
+  showArgeemenyWindow() { 
+    if(this.topTabSelectItem != this.topToolbar[0]) this.topTabSelectItem = this.topToolbar[0];
+    setTimeout(() => (<TableView>this.$refs['tableView']).addPage('argeement', '软件用户许可协议', ArgeementBigView), 200);  
   }
   showLogView(findItem : UserLog = null) { 
     this.isShowLogList = true;
@@ -1321,14 +1356,22 @@ export default class App extends Vue {
   onShowVoiceSettingsForGuide(){
     this.voiceProverVisible = true;
   }
-
-  showWelecomePage() {
-    if(this.topTabSelectItem != this.topToolbar[0])
-      this.topTabSelectItem = this.topToolbar[0];
-    setTimeout(() => {
-      (<TableView>this.$refs['tableView']).addPage('welecome', '欢迎使用', WelecomeView);
-    }, 200);  
+  onArgeementFinish(allow) {
+    if(allow) {
+      SettingsServices.setSettingBoolean('app.argeementAllowed', true);
+      this.argeementVisible = false;
+    } else {
+      dialog.showMessageBox(this.currentWindow, {
+        message: '确定不同意该协议？',
+        type: 'warning',
+        buttons:[ '不同意', '取消' ],
+        noLink: true,
+      }).then((v) => {
+        if(v.response == 0) ipc.send("main-act-quit");
+      });
+    }
   }
+
   chooseImage(arg) { ipc.send('main-open-file-dialog-image', arg); }
   chooseMusic(arg) { ipc.send('main-open-file-dialog-music', arg); }
   emptyAction() {}

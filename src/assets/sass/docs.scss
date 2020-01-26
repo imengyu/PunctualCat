@@ -5,6 +5,9 @@
 @import "scroll";
 @import "badge";
 
+/*Base*/
+
+
 body, html{
   width: 100%;
   height: 100%;
@@ -18,13 +21,96 @@ body, html{
 }
 body{
   overflow: hidden;
-  background-color: #f1f1f1;
+  overflow-y: scroll;
+  background-color: #fff;
+
+  @include pc-fix-scrollbar-white()
 }
 
-/*App*/
-#app {
-  display: block;
-  width: 100%;
-  height: 100%;
+
+/*Base view*/
+
+.docs-view {
+  position: relative;
+
+  $catalog-width: 230px;
+  $catalog-tab-height: 0px;
+  $catalog-padding: 25px;
+
+  .docs-catalog {
+    position: fixed;
+    top: $catalog-tab-height;
+    left: 0;
+    bottom: 0;
+    width: $catalog-width;
+    padding: $catalog-padding;
+
+    overflow: hidden;
+    overflow-y: scroll;
+
+    @include pc-fix-scrollbar-white();
+  }
+  .docs-content {
+    position: absolute;
+    top: $catalog-tab-height;
+    right: 0;
+    left: $catalog-width + $catalog-padding*2;
+    padding: $catalog-padding;
+    padding-left: 0;
+
+    img {
+      max-width: 80%;
+      height: auto;
+    }
+  }
+}
+
+
+/*Toc*/
+
+.toc {
+	position: fixed;
+	left: 3em;
+	top: 5em;
+	padding: 1em;
+	width: 14em;
+	line-height: 2
+}
+
+.toc ul {
+	list-style: none;
+	padding: 0;
+	margin: 0
+}
+
+.toc ul ul {
+	padding-left: 2em
+}
+
+.toc li a {
+	display: inline-block;
+	color: #91aab9;
+	text-decoration: none;
+  transition: all .15s cubic-bezier(.23,1,.32,1);
+  transform: translate(5px);
+}
+
+.toc li.visible > a {
+  color: #009fff;
+  font-weight: bold;
+	transform: translate(10px);
+}
+
+.toc-marker {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: -1
+}
+
+.toc-marker path {
+	transition: all .3s ease
 }
 

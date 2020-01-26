@@ -1,14 +1,12 @@
 import '../assets/sass/docs.scss'
-import Vue from 'vue'
+import $ from 'jquery'
+import { initToc } from '../utils/Toc';
 
-new Vue({
-  el: '#app',
-  data: () => {
-    return {
 
-    }
-  },
-  methods: {
-    
-  }
+$(document).ready(function () {
+  initToc();
 });
+
+
+
+

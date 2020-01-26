@@ -190,6 +190,9 @@
             <div class="text-secondary">
               Copyright <i class="fa fa-copyright mr-2" aria-hidden="true"></i>2019 BY 梦欤. All rights reserved.
             </div>
+            <div class="mt-2">
+              <a href="javascript:;" @click="showArgeementView()">许可协议</a>
+            </div>
           </div>
           <div class="mt-4">
             <div style="display: inline-block; width: 100px; text-align: right;">
@@ -545,7 +548,7 @@ export default class SettingsView extends Vue {
   addMuteTime() {
     this.appSettingsBackup.auto.muteTimes.push(new PlayCondition('', null, { intervalType: 'any', timeType: 'range', forceDisallowTypes: [] }))
   }
-
+  
   //开机启动
 
   switchAutoStart(enable){
@@ -571,7 +574,7 @@ export default class SettingsView extends Vue {
     }catch{
       return '未知';
     }
-  }
+  } 
 
   //背景
 
@@ -719,7 +722,13 @@ export default class SettingsView extends Vue {
 
   //关于
 
-  showHelpWindow(arg) { ipc.send('main-act-show-help-window', arg); }
+  showHelpWindow(arg) { 
+    this.$emit('showHelpWindow', arg);
+    //ipc.send('main-act-show-help-window', arg); 
+  }
+  showArgeementView() {
+    this.$emit('showArgeementView');
+  }
 
   countDeveloperModeClick = 0;
   timerDeveloperMode = null;

@@ -10,6 +10,7 @@ class SettingsServices extends EventEmitter {
   private staticSettingsTemplate = {
     app: {
       firstRun: true,
+      argeementAllowed: false
     },
     window: {
       oldSize: {

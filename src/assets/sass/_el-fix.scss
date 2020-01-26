@@ -1,35 +1,43 @@
 @import "scroll";
 
+/*Message*/
+
 .el-message {
   border: none;
-  background-color: #7e8d9a;
-  color: #fff;
+  color: #6f7479;
+  animation: showSweetAlertElMessage .3s;
+  background-color: #fff;
+  box-shadow: 0 5px 22px 0 rgba(0,0,0,0.2);
+  border-radius: 8px;
+  will-change: transform;
 
   .el-message__closeBtn {
-    color: #fff;
+    color: #6f7479;
   }
 }
 .el-message--info {
 
-  background-color: #7e8d9a;
-  .el-icon-info { color: #fff; }
-  .el-message__content { color: #fff; }
+  color: #6e6f70;
+  .el-icon-info { color: #6e6f70; }
+  .el-message__content { color: #6e6f70; }
 }
 .el-message--success {
-  background-color: #5bc146;
-  .el-icon-success { color: #fff; }
-  .el-message__content { color: #fff; }
+  color: #36a021;
+  .el-icon-success { color: #36a021; }
+  .el-message__content { color: #36a021; }
 }
 .el-message--warning {
-  background-color: #ffd14d;
-  .el-icon-warning { color: #fff; }
-  .el-message__content { color: #fff; }
+  color: #d6a315;
+  .el-icon-warning { color: #d6a315; }
+  .el-message__content { color: #d6a315; }
 }
 .el-message--error {
-  background-color: #fe4d62;
-  .el-icon-error { color: #fff; }
-  .el-message__content { color: #fff; }
+  color: #fe4d62;
+  .el-icon-error { color: #fe4d62; }
+  .el-message__content { color: #fe4d62; }
 }
+
+/*Dialog*/
 
 .el-dialog-width-fix-30 {
   .el-dialog { width: 30%; }
@@ -89,6 +97,13 @@
 }
 .el-table__body-wrapper{
   @include pc-fix-scrollbar-white();
+}
+.el-dialog {
+  animation: showSweetAlert .3s;
+  background-color: #fff;
+  box-shadow: 0 5px 22px 0 rgba(0,0,0,0.2);
+  border-radius: 8px;
+  will-change: transform;
 }
 
 .el-form-span {
@@ -194,6 +209,13 @@
     }
   }
 }
+.el-message-box {
+  animation: showSweetAlert .3s;
+  background-color: #fff;
+  box-shadow: 0 5px 22px 0 rgba(0,0,0,0.2);
+  border-radius: 8px;
+  will-change: transform;
+}
 .el-message-box__message p {
   line-height: 16px;
 }
@@ -237,6 +259,7 @@
 
 .v-modal {
   outline: none;
+  opacity: 0.2;
 
   &:focus {
     outline: none;

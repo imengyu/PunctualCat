@@ -30,6 +30,7 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
 
   public saveToJSONObject(): object {
     let buf = {
+      uid: this.uid,
       name: this.name,
       note: this.note,
       timeLimit: this.timeLimit,
@@ -53,8 +54,9 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     return buf;
   }
   public loadFromJsonObject(json: any) {
+    this.uid = json.uid;
     this.name = json.name;
-    this.note = json.name;
+    this.note = json.note;
     this.type = json.type;
     this.enabled = json.enabled;
     this.volume = json.volume;
@@ -87,14 +89,19 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     this.logger = window.appLogger;
     this.musicHistoryService = getMusicHistoryService();
     if(jsonObject) this.loadFromJsonObject(jsonObject);
-    else this.condition = new PlayCondition('', null, {
-      intervalType: 'any',
-      timeType: 'point',
-      forceDisallowTypes: [ 'day-range', 'day-point' ]
-    });
+    else {
+      this.uid = CommonUtils.genNonDuplicateID(8);
+      this.condition = new PlayCondition('', null, {
+        intervalType: 'any',
+        timeType: 'point',
+        forceDisallowTypes: [ 'day-range', 'day-point' ]
+      });
+    }
   }
 
   private musicHistoryService : MusicHistoryService =  null;
+
+  public uid : string;
 
   public parent : PlayTable = null;
 

@@ -17,26 +17,14 @@
           border>
           <el-table-column
             prop="name"
-            label="任务名称"
+            label="状态/任务名称"
             :sortable="'custom'"
             :resizable="true"
             :show-overflow-tooltip="true"
-            width="120">
+            width="145">
             <template slot-scope="scope">
-              <el-input size="mini" placeholder="请输入任务名称" v-show="scope.row.editing" v-model="scope.row.name"></el-input>
-              <span class="no-warp-span-full" v-show="!scope.row.editing" :title="scope.row.name">{{scope.row.name}}</span>
-            </template>
-          </el-table-column>
-          <el-table-column
-            prop="status"
-            label="状态"
-            width="38">
-            <template slot-scope="scope">
-              <div class="text-center">
-                <el-tooltip v-if="scope.row.editing" placement="right" content="您正在编辑任务，保存任务以后才能自动播放" :open-delay="150">
-                  <i class="iconfont icon-hj1" style="color: #0087bb"></i>
-                </el-tooltip>
-                <el-tooltip v-else-if="scope.row.status == 'normal'" placement="right" content="任务就绪，等待播放" :open-delay="400">
+              <div class="status" v-if="!scope.row.editing">
+                <el-tooltip v-if="scope.row.status == 'normal'" placement="right" content="任务就绪，等待播放" :open-delay="400">
                   <i class="iconfont icon-dengdaiqueren"></i>
                 </el-tooltip>
                 <el-tooltip v-else-if="scope.row.status == 'played'" placement="right" content="任务已播放" :open-delay="150">
@@ -61,6 +49,8 @@
                   <i class="iconfont icon-dengdaizhihang" style="color:#cacaca"></i>
                 </el-tooltip>
               </div>
+              <el-input size="mini" placeholder="请输入任务名称" v-if="scope.row.editing" v-model="scope.row.name"></el-input>
+              <span class="no-warp-span-full" v-else :title="scope.row.name">{{scope.row.name}}</span>
             </template>
           </el-table-column>
           <el-table-column
@@ -70,7 +60,7 @@
             :resizable="true"
             :show-overflow-tooltip="true"
             :formatter="tableFormatterCondition"
-            width="95">
+            width="105">
             <template slot-scope="scope">
               <condition-input size="mini" v-show="scope.row.editing" :condition="scope.row.condition"></condition-input>
               <span class="no-warp-span-full" v-show="!scope.row.editing" v-html="getTaskConHtml(scope.row)"></span>
@@ -246,12 +236,12 @@
           </el-table-column>
           <el-table-column
             prop="volume"
-            label="音量%"
+            label="音量"
             align="center"
             :min="0"
             :max="100"
             :resizable="false"
-            width="52">
+            width="40">
             <template slot-scope="scope">
               <el-input-number size="mini" controls-position="right" v-show="scope.row.editing" v-model="scope.row.volume"></el-input-number>
               <span v-show="!scope.row.editing">{{scope.row.volume}}</span>
@@ -264,7 +254,7 @@
             :min="1"
             :max="50"
             :resizable="false"
-            width="52">
+            width="40">
             <template slot-scope="scope">
               <el-input-number size="mini" controls-position="right" v-show="scope.row.editing" v-model="scope.row.loopCount"></el-input-number>
               <span v-show="!scope.row.editing">{{scope.row.loopCount}}</span>
@@ -274,7 +264,7 @@
             label="启用"
             align="center"
             :resizable="false"
-            width="45"
+            width="40"
             prop="enabled">
             <template slot-scope="scope">
               <span v-if="scope.row.enabled" class="text-success">是</span>
@@ -329,7 +319,6 @@
       </div>
     </div>
     <div class="bottom-area">
-      <div v-if="currentShowTable || currentShowPage" class="table-cursor" :style="'left:'+getCurrentItemCurLeft()+'px'"></div>
       <div class="table-tables">
         <table-list v-if="pages" lockAxis="x" axis="x" v-model="pages" :distance="20" @add="addTable" @input="resortPageEnd" class="pages">
           <table-item v-for="(page, index) in pages" :index="index" :key="index"
@@ -349,23 +338,35 @@
             @contextmenu="showTableRightMenu(table)"
             @dblclick="editTable(table)"
             :id="'table_item_'+index" >
-            <el-tooltip placement="top" :content="getTableStatusString(table.status)">
-              <span class="status" :data-status="table.status" @click="showTableRightMenu(table)"></span>
+            <el-tooltip v-if="table.status == 'normal'" placement="top" content="此计划表今日不播放" :open-delay="400">
+              <i class="status iconfont icon-dengdaizhihang"></i>
+            </el-tooltip>
+            <el-tooltip v-else-if="table.status == 'playing'" placement="top" content="此计划表正在自动播放" :open-delay="150">
+              <i class="status iconfont icon-dengdaiqueren text-success"></i>
+            </el-tooltip>
+            <el-tooltip v-else-if="table.status == 'disabled'" placement="top" content="此计划表已禁用" :open-delay="150">
+              <i class="status iconfont icon-dengdaizhihang" style="color:#cacaca"></i>
             </el-tooltip>
             {{ table.name }}
           </table-item>
         </table-list>
       </div>
-      <div class="bottom-right-area">
-        <div id="bottom-right-table-action-area" style="display:inline-block">
-          <el-tooltip v-if="currentShowTable"  placement="top" content="设置计划表属性">
-            <a type="text" class="icon" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
-          </el-tooltip>
-          <el-tooltip v-if="currentShowTable" placement="top" content="向计划表添加一个任务">
-            <a type="text" class="icon" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
-          </el-tooltip>
-        </div>
-        <auto-status ref="autoStatus" id="auto-status" class="auto-status ml-2"></auto-status>
+      <div class="bottom-right-area">   
+        <el-tooltip v-if="currentShowTable"  placement="top" content="设置计划表属性">
+          <a type="text" class="icon" @click="editTable(currentShowTable)" href="javascript:;"><i class="iconfont icon-ccaozuo"></i></a>
+        </el-tooltip>
+        <el-tooltip v-if="currentShowTable" placement="top" content="向计划表添加一个任务">
+          <a type="text" class="icon" @click="addTask(currentShowTable)" href="javascript:;"><i class="iconfont icon-zengjia1"></i></a>
+        </el-tooltip>
+        <div v-if="currentShowTable" class="card-tab-float info-area">
+          <span v-if="currentShowTable.status=='normal'" class="text-secondary mr-2">时间表已启用但今日不播</span>
+          <span v-else-if="currentShowTable.status=='playing'" class="text-success mr-2">时间表正在播放</span>
+          <span v-else-if="currentShowTable.status=='disabled'" class="text-danger mr-2">时间表已禁用</span>
+         
+          <a href="javascript:;" v-if="currentShowTable.enabled" class="text-danger" round @click="enableTable(currentShowTable, false)">禁用</a>
+          <a href="javascript:;" v-else class="text-primary" round @click="enableTable(currentShowTable, true)">启用</a>
+
+        </div>  
       </div>
       <div class="bottom-right-footer"></div>
     </div>
@@ -527,7 +528,6 @@ export default class TableView extends Vue {
     this.createMenu();
     PlayTask.setGlobalStateChangedCallback(this.globalTaskStateChanged);
     setTimeout(this.autoSwitchCurrentView, 1300);
-    (<AutoTimerStatus>this.$refs['autoStatus']).bindServer(this.autoPlayService);
   }
 
   createMenu() {
@@ -560,21 +560,6 @@ export default class TableView extends Vue {
     return row.getPlayTaskString();
   }
 
-  getCurrentItemCurLeft() {
-    if(this.currentShowTable) {
-      let id = '#table_item_' + this.tables.indexOf(this.currentShowTable);
-      let $obj = $(id);
-      if($obj.length > 0)
-        return $obj.offset().left + $obj.width() / 2 - 5;
-    } else if(this.currentShowPage) {
-      let id = '#page_item_' + this.pages.indexOf(this.currentShowPage);
-      let $obj = $(id);
-      if($obj.length > 0)
-        return $obj.offset().left + $obj.width() / 2 - 5;
-    }
-    return 0;
-  }
-
   addTable() {
     this.currentEditTable = new PlayTable();
     this.currentIsNewTable = true;
@@ -599,16 +584,20 @@ export default class TableView extends Vue {
     }).catch(() => {});
   } 
   enableTable(table : PlayTable, enable : boolean) {
-    this.$confirm(enable ? '是否启用该计划表? ' : '确定禁用该计划表? 此计划表将不会被自动播放', '提示', {
-      confirmButtonText: enable ? '启用' : '禁用',
-      cancelButtonText: '取消',
-      roundButton: true,
-      type: 'warning'
-    }).then(() => {
-      table.enabled = enable;
-      this.autoPlayService.flushTable(table);
-      this.$message({ type: 'success', message: '计划表已' + (enable ? '启用' : '禁用') + '!' });
-    }).catch(() => {});
+    if(table.enabled != enable) {
+      this.$confirm(enable ? '是否启用该计划表? ' : '确定禁用该计划表? 此计划表将不会被自动播放', '提示', {
+        confirmButtonText: enable ? '启用' : '禁用',
+        cancelButtonText: '取消',
+        roundButton: true,
+        type: 'warning'
+      }).then(() => {
+        table.enabled = enable;
+        this.autoPlayService.flushTable(table);
+        this.$message({ type: 'success', message: '计划表已' + (enable ? '启用' : '禁用') + '!' });
+      }).catch(() => {
+        table.enabled = !enable;
+      });
+    }
   } 
   editTable(table : PlayTable) {
     this.currentEditTable = table;
@@ -842,15 +831,6 @@ export default class TableView extends Vue {
     let b = task.condition.toConditionHtml();
     return '<div style="padding:0 3px;line-height: 29px;">' + (b == '' ? '<span style="font-size:12px;color:#888">未定义条件</span>' : b) + '</div>';
   }
-  getTableStatusString(type : string) {
-    switch(type){
-      case 'playing': return '此计划表正在自动播放';
-      case 'normal': return '此计划表今日不播放';
-      case 'disabled': return '此计划表已禁用';
-      default: return '';
-    }
-
-  }
 
 
   //Pages
@@ -916,12 +896,13 @@ export default class TableView extends Vue {
 <style lang="scss">
 @import "../assets/sass/_scroll";
 
+/* Table */
+
 .table-area {
   .main-container {
     padding: 30px;
   }
 }
-
 .table-cursor {
   display: inline-block;
   width: 0px;
@@ -933,73 +914,7 @@ export default class TableView extends Vue {
   border-color: #fff transparent transparent transparent;
   top: 0;
 }
-.table-tables {
-  position: absolute;
-  left: 0;
-  top: 0;
-  right: 100px;
 
-  .list {
-    display: inline-block;
-    list-style: none;
-    margin: 0;
-    padding: 10px;
-
-    &.pages {
-      padding-right: 0;
-
-      .add {
-        display: none;
-      }
-    }
-  }
-}
-.bottom-right-area {
-  position: absolute;
-  width: 200px;
-  top: 0;
-  right: 0;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: 10px;
-
-  a {
-    color: #000;
-    font-size: 16px;
-    margin-right: 15px;
-    padding: 7px;
-    border-radius: 50%;
-   
-    text-align: center;
-
-    &.icon {
-      font-weight: bold;
-      padding: 7px 7px 6px 7px;
-      margin-right: 5px;
-    }
-
-    &:hover {
-      background-color: white;
-      box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.08);
-      color: #0078c9;
-    }
-
-    i {
-      font-size: 16px;
-    }
-  }
-}
-.bottom-right-footer {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 120px;
-  height: 30px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-}
 .table-tasks {
 
   .el-table__empty-block {
@@ -1010,10 +925,10 @@ export default class TableView extends Vue {
     line-height: 15px;
   }
   tr,td {
-    height: 29px;
+    height: 36px;
   }
   td.el-table_1_column_3 .cell {
-    padding: 0;
+    padding: 0 5px;
   }
   .el-table_1_column_2 .cell > div {
     font-size: 18px;
@@ -1025,6 +940,7 @@ export default class TableView extends Vue {
     border-top: 2px solid transparent;
     border-bottom: 2px solid #f3f3f3;
     transition: all ease-in-out .4s!important;
+    padding: 0;
 
     &:first-child {
       border-left: 2px solid transparent;
@@ -1034,6 +950,11 @@ export default class TableView extends Vue {
     }
   }
 
+  .status {
+    font-size: 18px;
+    display: inline-block;
+    margin-right: 8px;
+  }
   .editing-task {
 
     td {
@@ -1096,7 +1017,17 @@ export default class TableView extends Vue {
     }
   }
 
+  th.is-center .cell,
+  td.is-center .cell {
+    justify-content: center;
+  }
+
   .cell {
+
+    display: flex!important;
+    justify-content: flex-start;
+    align-items: center;
+    min-height: 30px;
 
     .controls .el-button {
       padding: 0;
@@ -1154,28 +1085,61 @@ export default class TableView extends Vue {
     }
   }
 }
+.table-tables {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 100px;
+
+  .list {
+    display: inline-block;
+    list-style: none;
+    margin: 0;
+    padding: 0 10px;
+    vertical-align: top;
+
+    &.pages {
+      padding-right: 0;
+
+      .add {
+        display: none;
+      }
+    }
+  }
+}
 .table-items, .table-tables li {
+
+  $item-round-width-border: 6px;
+
+  position: relative;
   display: inline-block;
   font-size: 16px;
   line-height: 16px;
   text-align: center;
-  padding: 7px 8px;
-  border-radius: 16px;
+  padding: 10px 8px;
+  margin: 0 4px;
+  border-bottom-left-radius: $item-round-width-border;
+  border-bottom-right-radius: $item-round-width-border;
   user-select: none;
   vertical-align: middle;
   cursor: pointer;
   transition: color,background-color,box-shadow ease-in-out .15s;
   white-space: nowrap;
 
+  &.active,
   &:hover {
     background-color: white;
-    box-shadow: 0 0 5px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 6px 11px 0px rgba(0, 0, 0, 0.08);
+
+    &::after,
+    &::before {
+      display: inline-block;
+    }
   }
   &.active {
     color: #0078c9;
   }
   &.add {
-
     width: 30px;
     height: 30px;
     display: inline-flex;
@@ -1183,9 +1147,12 @@ export default class TableView extends Vue {
     align-items: center;
     align-content: center;
     padding: 0;
+    box-shadow: none;
 
     &:hover {
       color: #0078c9;
+      background-color: transparent;
+      box-shadow: none;
     }
 
     i {
@@ -1218,14 +1185,41 @@ export default class TableView extends Vue {
     }
   }
 
+  $item-round-width: 2px;
+
+  &::after {
+    display: none;
+    content: '';
+    width: 0;
+    height: 0;
+    position: absolute;
+    border-style: solid;
+    border-width: $item-round-width;
+    border-color: transparent transparent white transparent;
+    left: -$item-round-width;
+    top: -$item-round-width;
+    transform: rotate(45deg);
+  }
+  &::before {
+    display: none;
+    content: '';
+    width: 0;
+    height: 0;
+    position: absolute;
+    border-style: solid;
+    border-width: $item-round-width;
+    border-color: transparent transparent white transparent;
+    right: -$item-round-width;
+    top: -$item-round-width;
+    transform: rotate(-45deg);
+  }
+
   .status {
 
     display: inline-block;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
     cursor: pointer;
-    vertical-align: bottom;
+    margin-right: 3px;
+    font-size: 15px;
 
     &[data-status='unknow']{
       background-color: #420000;
@@ -1279,6 +1273,70 @@ export default class TableView extends Vue {
     color: #aaa;
   }
 }
+
+/* bottom area */
+
+.bottom-right-area {
+  position: absolute;
+  width: 270px;
+  top: 0;
+  right: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 0 10px 10px 10px;
+
+  > a {
+    color: #000;
+    font-size: 16px;
+    margin-right: 15px;
+    padding: 7px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+   
+    text-align: center;
+
+    &.icon {
+      font-weight: bold;
+      padding: 4px 8px 5px 8px;
+      margin-right: 5px;
+    }
+
+    &:hover {
+      color: #0078c9;
+    }
+
+    i {
+      font-size: 16px;
+    }
+  }
+
+  .info-area {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    height: 30px;
+    padding: 2px 9px;
+    font-size: 12px;
+
+    .el-button--mini, .el-button--mini.is-round {
+      padding: 5px 8px;
+    }
+  }
+}
+.bottom-right-footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 120px;
+  height: 30px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* propever */
+
 .propever-buttons {
   display: flex;
   justify-content: space-between;
@@ -1330,6 +1388,8 @@ export default class TableView extends Vue {
   }
 }
 
+/* command list */
+
 .command-list {
   list-style: none;
   margin: 10px 0 20px 0;
@@ -1363,7 +1423,7 @@ export default class TableView extends Vue {
   }
 }
 
-
+/* Others */
 
 .no-warp-span-full {
   display: inline-block;
