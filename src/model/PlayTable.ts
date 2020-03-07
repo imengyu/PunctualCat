@@ -4,7 +4,7 @@ import { PlayCondition } from './PlayCondition'
 import CommonUtils from '../utils/CommonUtils';
 
 /**
- * 播放计划表
+ * 播放时间表
  */
 export class PlayTable implements AutoPlayable, AutoSaveable {
 
@@ -94,16 +94,15 @@ export class PlayTable implements AutoPlayable, AutoSaveable {
       });
     }
   }
-
   /**
-   * 检测当前 播放计划表 是否达到指定的播放时间
+   * 检测当前 播放时间表 是否达到指定的播放时间
    * @param type 检测类型
    */
   public isPlayingTime(type: AutoPlayCheckType) {
     return this.condition ? this.condition.isPlayingTime(type) : false;
   }
   /**
-   * 检测当前 播放计划表 是否达到指定的停止时间
+   * 检测当前 播放时间表 是否达到指定的停止时间
    * @param type 检测类型
    */
   public isStoppingTime(type: AutoPlayCheckType) {

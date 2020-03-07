@@ -114,6 +114,7 @@ export default class IconToolBar extends Vue {
         color: #007dc5;
       }
     }
+    &:focus,
     &:hover {
 
       &.bottom {

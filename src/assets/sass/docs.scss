@@ -44,6 +44,9 @@ body{
     bottom: 0;
     width: $catalog-width;
     padding: $catalog-padding;
+    padding-right: 0;
+    margin-right: $catalog-padding;
+    z-index: 1;
 
     overflow: hidden;
     overflow-y: scroll;
@@ -51,12 +54,13 @@ body{
     @include pc-fix-scrollbar-white();
   }
   .docs-content {
-    position: absolute;
-    top: $catalog-tab-height;
-    right: 0;
-    left: $catalog-width + $catalog-padding*2;
+    position: relative;
+    //top: $catalog-tab-height;
+    //right: 0;
     padding: $catalog-padding;
-    padding-left: 0;
+    padding-left: $catalog-width + $catalog-padding*2;
+    
+    //padding-left: 0;
 
     img {
       max-width: 80%;

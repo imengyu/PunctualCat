@@ -88,6 +88,10 @@ class SettingsServices extends EventEmitter {
         for(;i<arr.length;i++) this.staticSettings.auto.muteTimes.push(new PlayCondition(null, arr[i]));
       }
       else this.staticSettings = CommonUtils.clone(this.staticSettingsTemplate);
+      
+      console.log('[SettingsServices] loadSettings : ')
+      console.dir(this.staticSettings);
+
       this.emit('load');
     }).catch(() => {
       this.staticSettings = CommonUtils.clone(this.staticSettingsTemplate);
@@ -103,6 +107,8 @@ class SettingsServices extends EventEmitter {
     let arr : Array<PlayCondition> = dataClone.auto.muteTimes; dataClone.auto.muteTimes = [];
     for(var i=0;i<arr.length;i++) dataClone.auto.muteTimes.push(arr[i].saveToJSONObject());
     //Save
+    console.log('[SettingsServices] saveSettings : ')
+    console.dir(dataClone);
     return this.staticDataStorageServices.saveData('settings', dataClone);
   }
 

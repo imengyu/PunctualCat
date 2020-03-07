@@ -924,7 +924,6 @@ export default class App extends Vue {
   }
   saveDatas() : Promise<any> {
     return new Promise((resolve, reject) => {
-      if(this.$refs['settingsView']) (<SettingsView>this.$refs['settingsView']).autoSaveSettings();
       //musics
       let musics = this.serviceMusicHistory.saveToMusicPathArray();
       this.baseData = this.serviceTables.saveToJSONObject();

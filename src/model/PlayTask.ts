@@ -88,7 +88,11 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
     super();
     this.logger = window.appLogger;
     this.musicHistoryService = getMusicHistoryService();
-    if(jsonObject) this.loadFromJsonObject(jsonObject);
+    if(jsonObject) {
+      this.loadFromJsonObject(jsonObject);
+      if(CommonUtils.isNullOrEmpty(this.uid))
+        this.uid = CommonUtils.genNonDuplicateID(8);
+    }
     else {
       this.uid = CommonUtils.genNonDuplicateID(8);
       this.condition = new PlayCondition('', null, {
@@ -389,6 +393,8 @@ export class PlayTask extends EventEmitter implements AutoPlayable, AutoSaveable
       return '<span class="badge badge-pill badge-warning">重启计算机</span>'
     else if(this.type == 'shutdown')
       return '<span class="badge badge-pill badge-danger">关闭计算机</span>'
+    else if(this.type == 'mutetime')
+      return '<span class="badge badge-pill badge-secondary">静音时段</span>'
     return '<span class="text-secondary">未定义任务</span>';
   }
 }

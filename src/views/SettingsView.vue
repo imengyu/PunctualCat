@@ -242,12 +242,12 @@
       width="50%">
       <span class="text-secondary display-block mb-2">选择您需要 {{ (currentIsImportData ? '导入' : '导出') }} 的数据：</span>
       <div v-if="!currentIsImportData">
-        <el-checkbox v-model="dataExportConfig.includeData">所有计划表数据</el-checkbox><br />
+        <el-checkbox v-model="dataExportConfig.includeData">所有时间表数据</el-checkbox><br />
         <el-checkbox v-model="dataExportConfig.includeSettings">软件设置</el-checkbox><br />
         <el-checkbox v-model="dataExportConfig.includeMusicHistory">最近音乐列表</el-checkbox>
       </div>
       <div v-else-if="dataImport">
-        <el-checkbox v-model="dataImportConfig.includeData" :disabled="!dataImport.dataConfig.includeData">所有计划表数据</el-checkbox><br />
+        <el-checkbox v-model="dataImportConfig.includeData" :disabled="!dataImport.dataConfig.includeData">所有时间表数据</el-checkbox><br />
         <el-checkbox v-model="dataImportConfig.includeSettings" :disabled="!dataImport.dataConfig.includeSettings">软件设置</el-checkbox><br />
         <el-checkbox v-model="dataImportConfig.includeMusicHistory" :disabled="!dataImport.dataConfig.includeMusicHistory">最近音乐列表</el-checkbox>
       </div>
@@ -421,9 +421,6 @@ export default class SettingsView extends Vue {
 
   //保存、恢复默认按钮
 
-  autoSaveSettings() {
-    SettingsServices.setData(this.appSettingsBackup);
-  }
   saveSettings() {
     SettingsServices.setData(this.appSettingsBackup);
     UserLogService.writeLog('设置已更新');

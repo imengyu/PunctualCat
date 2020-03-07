@@ -1,9 +1,8 @@
 export function initToc() {
   var toc = document.querySelector('.toc');
-  var tocPath = document.querySelector('.toc-marker path');
+  var tocPath = <any>document.querySelector('.toc-marker path');
   var tocItems;
   var TOP_MARGIN = 0.2, BOTTOM_MARGIN = 0.4;
-  var PADDING = 5;
   var pathLength;
 
   var drawPath = function() {
@@ -71,4 +70,5 @@ export function initToc() {
   drawPath();
   window.addEventListener('resize', drawPath);
   window.addEventListener('scroll', sync);
+  document.body.addEventListener('scroll', sync);
 }

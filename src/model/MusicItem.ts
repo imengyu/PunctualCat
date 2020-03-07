@@ -141,7 +141,8 @@ export class MusicItem extends EventEmitter {
         clearInterval(this.audioFadeInterval);
       this.audioFading = true;
       this.audioFadeInterval = setInterval(() => {
-        if(this.audio.volume > 0.01) this.audio.volume-=volumeStep;
+        if(this.audio.volume > 0.01 && this.audio.volume - volumeStep >= 0) 
+          this.audio.volume-=volumeStep;
         else {
           clearInterval(this.audioFadeInterval);
           callback();
@@ -165,7 +166,8 @@ export class MusicItem extends EventEmitter {
         clearInterval(this.audioFadeInterval);
       this.audioFading = true;
       this.audioFadeInterval = setInterval(() => {
-        if(this.audio.volume < endVolume) this.audio.volume+=volumeStep;
+        if(this.audio.volume < endVolume && this.audio.volume + volumeStep <= 1) 
+          this.audio.volume+=volumeStep;
         else {
           this.audio.volume = endVolume;
           clearInterval(this.audioFadeInterval);
@@ -254,6 +256,8 @@ export class MusicItem extends EventEmitter {
 
         if(fromStart) this.audio.currentTime = 0;//从头开始
   
+        if(SettingsServices.getSettingBoolean('player.enableFade') && this.audio.currentTime > 0)
+          this.audio.volume = 0.01;
         this.audio.play().then(() => {
           
           if(startPos > 0) this.audio.currentTime = startPos;

@@ -36,7 +36,7 @@
               <i v-else-if="logChild.type=='info'" class="iconfont icon-info text-primary"></i>
               <i v-else-if="logChild.type=='warn'" class="iconfont icon-warn text-warning"></i>
               <i v-else-if="logChild.type=='success'" class="iconfont icon-roundcheck text-success"></i>
-              <span v-if="logChild.showTime" class="time">{{ log.time }}</span>
+              <span v-if="logChild.showTime" class="time">{{ logChild.time }}</span>
               <span v-html="logChild.title"></span>
               <a v-if="logChild.text!=''" :title="(logChild.showText?'收起详细信息':'展开详细信息')"
                 href="javascript:;" class="expand-button-v" 

@@ -732,3 +732,43 @@ a {
     transform: rotate(-45deg);
   }
 }
+
+
+.ex-toggle {
+  display: inline-block;
+  position: relative;
+  width: 40px;
+  height: 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all ease-in-out 0.3s;
+
+  &::after {
+    display: inline-block;
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: #fff;
+    top: 1px;
+    content: '';
+    transition: all ease-in-out 0.3s;
+  }
+
+  &.on {
+    background-color: #13ce66;
+
+    &::after {
+      left: unset;
+      right: 1px;
+    }
+  }
+  &.off {
+    background-color: #ff4949;
+
+    &::after {
+      left: 1px;
+      right: unset;
+    }
+  }
+}
